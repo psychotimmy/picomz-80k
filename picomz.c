@@ -24,20 +24,13 @@ void mem_write(void* unusedv, uint16_t addr, uint8_t value)
   }
 
   /* Video RAM */
-  if (addr < 0xD400) {
-    mzvram[addr-0xD000] = value;
+  /* Now deals with writing outside the real range, rather than returning */
+  /* an error as previously */
+  if (addr < 0xE000) {
+    mzvram[addr&0x03ff] = value;
     return;
   }
 
-  /* Unused addresses. Note that a real MZ-80K doesn't decode all the   */
-  /* address lines properly, so writes to these addresses can affect    */
-  /* others. Poor practice though - and I haven't found any MZ-80K code */
-  /* in the 'wild' yet that relies on this side effect. */
-  if ((addr >= 0xD400) && (addr < 0xE000)) {
-    SHOW("** Writing 0x%02x to unused address 0x%04x **\n",value,addr);
-    return;
-  }
-  
   /* Write to the Intel 8255 */
   if (addr<0xE004) {
     wr8255(addr,value);
@@ -74,13 +67,9 @@ uint8_t mem_read(void* unusedv, uint16_t addr)
   if (addr < 0xD000) return(mzuserram[addr-0x1000]);
 
   /* Video RAM */
-  if (addr < 0xD400) return(mzvram[addr-0xD000]);
-
-  /* Unused addresses */
-  if ((addr >= 0xD400) && (addr < 0xE000)) {
-    SHOW("Reading unused address 0x%04x\n",addr);
-    return(0xC7);
-  }
+  /* Now reads unused addresses between D400 and E000 as per */
+  /* the real hardware */
+  if (addr < 0xE000) return(mzvram[addr&0x03ff]);
 
   /* Intel 8255 */
   if (addr < 0xE004) return(rd8255(addr));
