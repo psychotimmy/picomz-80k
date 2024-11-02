@@ -28,7 +28,6 @@ uint8_t vgate;                  /* /VGATE signal */
 
 static uint8_t cblink=0;        /* Cursor blink (0 = off, 1 = on) */
 static uint8_t c555=0;          /* Pseudo 555 timer  for cursor blink */
-static uint8_t newkey[KBDROWS]; /* Next keypress on the keyboard */
 
 // The control port is implemented as follows:
 // 
@@ -99,6 +98,7 @@ void wr8255(uint16_t addr, uint8_t data)
     case 2:// Overwrite the lower 4 bits of port C.
            // This is allowed, but normally the control port is used
            // to affect 1 bit at a time.
+           SHOW("!! addressing portC directly with 0x%02x !!\n",data);
            portC = (portC&0xF0)|(data&0x0F);
            break;
     case 3:// Control port code
@@ -160,7 +160,15 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
+  static uint8_t newkey[KBDROWS] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+  };                                /* Next keypress on the keyboard    */     
+  static uint8_t idxloop=KBDROWS;   /* Allows keyscanning games to work */
+  static uint8_t scancount=0;       /* Check that every row has been */
+                                    /* scanned at least twice */
   uint8_t idx,retval;
+
   switch (addr&0x0003) {      // addr is between 0xE000 and 0xE002
     case 0:// Read from portA global
            retval=portA;
@@ -168,16 +176,29 @@ uint8_t rd8255(uint16_t addr)
     case 1:// Port B is keyboard input
            idx=portA&0x0F;
            // 10 lines to strobe, so idx must be between 0 and 9
-           if (idx>=9) {
-             /* New strobe starting - memcpy the processkey array & reset it */
-             idx=9;
-             memcpy(newkey,processkey,KBDROWS);
-             memset(processkey,0xFF,KBDROWS);
+           if (idx<10) {
+             /* Allow multiple passes to better emulate a real MZ-80K   */
+             /* keyboard and to support keyscanning games like Tomahawk */
+             /* This solution isn't ideal, but is an improvement on the */
+             /* method used in release 1.0.0                            */
+             if ((idx==idxloop) && (scancount >= (KBDROWS*2))) {
+               /* Full keyboard scan completed twice */
+	       memset(processkey,0xFF,KBDROWS);
+               memset(newkey,0xFF,KBDROWS);
+               idxloop=KBDROWS;
+             }
+             if ((processkey[idx] != 0xFF) && (idxloop == KBDROWS)) {
+               /* We have a new key, start full keyboard scan */
+               memcpy(newkey,processkey,KBDROWS);
+               idxloop=idx;
+               scancount=0;
+             }
+             retval=newkey[idx];
+             ++scancount;
            }
-           retval=newkey[idx];       // Return value is stored in the
-                                     // newkey array - populated from
-                                     // processkey (see keyboard.c) when a
-                                     // new strobe through the 10 lines starts
+           else {
+             retval=0xFF;                // 0xFF always returned if idx > 9
+           }
            break;
     case 2:// Read upper 4 bits from portC 
            retval=portC&0x0F;          // Lower 4 bits returned unchanged
@@ -188,6 +209,7 @@ uint8_t rd8255(uint16_t addr)
            retval|=(vblank?0x80:0x00);        // /V-BLANK status
            break;
     default:// Error!
+           retval=0xC7;
            SHOW("Error: illegal address passed to rd8255 0x%04x\n",addr);
            break;
   }
