@@ -160,13 +160,9 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
-  static uint8_t newkey[KBDROWS] = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-  };                                /* Next keypress on the keyboard    */     
-  static uint8_t idxloop=KBDROWS;   /* Allows keyscanning games to work */
-  static uint8_t scancount=0;       /* Check that every row has been */
-                                    /* scanned at least twice */
+  static uint8_t idxloop=0;   /* Allows keyscanning games to work */
+                              /* by scanning keyboard matrix a few times*/
+                              /* before resetting the keypress */
   uint8_t idx,retval;
 
   switch (addr&0x0003) {      // addr is between 0xE000 and 0xE002
@@ -177,24 +173,40 @@ uint8_t rd8255(uint16_t addr)
            idx=portA&0x0F;
            // 10 lines to strobe, so idx must be between 0 and 9
            if (idx<10) {
-             /* Allow multiple passes to better emulate a real MZ-80K   */
-             /* keyboard and to support keyscanning games like Tomahawk */
-             /* This solution isn't ideal, but is an improvement on the */
-             /* method used in release 1.0.0                            */
-             if ((idx==idxloop) && (scancount >= (KBDROWS*2))) {
-               /* Full keyboard scan completed twice */
+
+             /* If we're part way through processing a key, increment */
+             /* the loop */
+
+             if (idxloop > 0) {
+               ++idxloop;
+               //SHOW("idx, idxloop are %d%  d\n",idx,idxloop);
+             }
+
+             /* Reset processkey array if we've been through it */
+             /* KBDSCANTIMES after a keypress was sensed        */
+
+             if (idxloop == (KBDROWS*KBDSCANTIMES+1)) {
+               /* Full keyboard scan completed KBDSCANTIMES */
 	       memset(processkey,0xFF,KBDROWS);
-               memset(newkey,0xFF,KBDROWS);
-               idxloop=KBDROWS;
+               idxloop=0;
              }
-             if ((processkey[idx] != 0xFF) && (idxloop == KBDROWS)) {
-               /* We have a new key, start full keyboard scan */
-               memcpy(newkey,processkey,KBDROWS);
-               idxloop=idx;
-               scancount=0;
+
+             /* If this is the first active keyboard row */
+             /* found since the last keypress, set idxloop to 1 */
+
+             if ((processkey[idx] != 0xFF) && (idxloop==0)) {
+               idxloop=1;
+               //SHOW("idx starting point, idxloop are %d%  d\n",idx,idxloop);
              }
-             retval=newkey[idx];
-             ++scancount;
+
+             /* Return the current keyscan row contents */
+
+             if (idxloop > 0) {
+               retval=processkey[idx];
+               //SHOW("retval is %02x\n",retval);
+             }
+             else
+               retval=0xFF;
            }
            else {
              retval=0xFF;                // 0xFF always returned if idx > 9

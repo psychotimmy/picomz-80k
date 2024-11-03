@@ -101,6 +101,7 @@
 
 /* MZ-80K keyboard */
 #define KBDROWS 10     // There are 10 rows sensed on the keyboard
+#define KBDSCANTIMES 3 // Scan the keyboard n times before keypress is reset
 
 /* USB keyboard buffer */
 #define USBKBDBUF 12   // Should be ample
