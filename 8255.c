@@ -26,6 +26,16 @@ uint8_t csense=1;               /* Cassette sense toggle */
 uint8_t vblank=0;               /* /VBLANK signal */
 uint8_t vgate;                  /* /VGATE signal */
 
+uint8_t scantimes=1;            /* How many times the keyboard matrix is */
+                                /* scanned before it is reset. Most programs */
+                                /* work well on the default; some m/c games */
+                                /* need this set to 2 or 3 for keypresses to */
+                                /* be read effectively. A kludge, but the */
+                                /* best option at the moment - better than */
+                                /* releases 1.0.0 or 1.0.1 as more flexible */
+                                /* F9 key rotates between 1 and 3, 1 is the */
+                                /* default on startup. */
+
 static uint8_t cblink=0;        /* Cursor blink (0 = off, 1 = on) */
 static uint8_t c555=0;          /* Pseudo 555 timer  for cursor blink */
 
@@ -183,10 +193,10 @@ uint8_t rd8255(uint16_t addr)
              }
 
              /* Reset processkey array if we've been through it */
-             /* KBDSCANTIMES after a keypress was sensed        */
+             /* scantimes after a keypress was sensed           */
 
-             if (idxloop == (KBDROWS*KBDSCANTIMES+1)) {
-               /* Full keyboard scan completed KBDSCANTIMES */
+             if (idxloop == (KBDROWS*scantimes+1)) {
+               /* Full keyboard scan completed scantimes */
 	       memset(processkey,0xFF,KBDROWS);
                idxloop=0;
              }
