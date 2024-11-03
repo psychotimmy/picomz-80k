@@ -26,13 +26,6 @@
                          /* calculation is in the comment below */
 //(L_L+S256_L+HDR_L+(HDR_L/8)+CHK_L+(CHK_L/8)+L_L+WSGAP_L+STM_L+L_L)*2 
 
-/* Start points in mzemustatus array of emulator status area lines */
-#define EMULINE0      0
-#define EMULINE1     40
-#define EMULINE2     80
-#define EMULINE3    120
-#define EMULINE4    160
-
 /* Used in mzspinny() */
 #define TCOUNTERMAX 999  /* Maximum value of tapecounter */
 #define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */

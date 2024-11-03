@@ -313,6 +313,11 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
 
+      case 0x42: if ((++scantimes) > 3)   //F9 - no. times keymatrix scanned
+                   scantimes=1;           //     per keypress. Default=1
+                 mzemustatus[EMULINE4-1]=0x20+scantimes;
+                 break;
+
       case 0x44: mzreaddump();            //F11 - read memory dump
                  break;
       case 0x45: mzsavedump();            //F12 - save memory dump
@@ -1181,6 +1186,10 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
   if ((ncodes==5)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&
       (usbc[2]==0x32)&&(usbc[4]==0x7e)) {
     switch (usbc[3]) {
+      case 0x30: if ((++scantimes) > 3)    //F9 - no. times keymatrix scanned
+                   scantimes=1;            //     per keypress. Default=1
+                 mzemustatus[EMULINE4-1]=0x20+scantimes;
+                 break;
       case 0x33: mzreaddump();             //F11 - read memory dump
                  break;
       case 0x34: mzsavedump();             //F12 - save memory dump

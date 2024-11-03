@@ -109,6 +109,13 @@
 /* equivalent to 5 rows of 40 characters */
 #define EMUSSIZE 200   // Up to 200 bytes of status info stored
 
+/* Start points in mzemustatus array of emulator status area lines */
+#define EMULINE0      0
+#define EMULINE1     40
+#define EMULINE2     80
+#define EMULINE3    120
+#define EMULINE4    160
+
 /* Tape header and maximum body sizes in bytes */
 #define TAPEHEADERSIZE    128 // 128 bytes
 #define TAPEBODYMAXSIZE 48640 // 47.5Kbytes
@@ -154,6 +161,7 @@ extern uint8_t cmotor;
 extern uint8_t csense;
 extern uint8_t vgate;
 extern uint8_t vblank;
+extern uint8_t scantimes;
 extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 
