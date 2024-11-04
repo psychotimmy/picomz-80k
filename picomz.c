@@ -159,6 +159,8 @@ int main(void)
   SHOW("Z80 processor initialised\n");
 
   // Initialise USB keyboard
+  memset(processkey,0xFF,KBDROWS);
+
 #ifdef USBDIAGOUTPUT
   toggle=1;
   mzpicoled(toggle);
