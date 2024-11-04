@@ -19,7 +19,7 @@ uint8_t csense=1;               /* Cassette sense toggle */
                                 /* Toggled to 0 during MZ-80K startup */
                                 /* Note - the emulator currently ties the */
                                 /* cmotor & csense signals together. A more */
-                                /* faitfhful version would be to have */
+                                /* faithful version would have */
                                 /* separate buttons for  a virtual cassette */
                                 /* deck, so motor and sense are not always */
                                 /* the same. */
@@ -170,9 +170,9 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
-  static uint8_t idxloop=0;   /* Allows keyscanning games to work */
-                              /* by scanning keyboard matrix a few times*/
-                              /* before resetting the keypress */
+  static uint8_t idxloop=0;   // Allow multiple loops through the key matrix
+                              // if F9 selected for badly behaved m/c games
+                              // F9 toggles scantimes variable between 1 & 3
   uint8_t idx,retval;
 
   switch (addr&0x0003) {      // addr is between 0xE000 and 0xE002
@@ -184,39 +184,67 @@ uint8_t rd8255(uint16_t addr)
            // 10 lines to strobe, so idx must be between 0 and 9
            if (idx<10) {
 
-             /* If we're part way through processing a key, increment */
-             /* the loop */
+             /* Most programs need this route */
+             if (scantimes == 1) {
 
-             if (idxloop > 0) {
-               ++idxloop;
-               //SHOW("idx, idxloop are %d%  d\n",idx,idxloop);
+               /* This is row 9 or 8, so send key and reset*/
+               if (idx >= 8) {
+               retval = processkey[idx];
+               processkey[idx] = 0xFF;
+               }
+
+               /* This is a shifted key, but we've already scanned past */
+               /* row 8, so send nothing and wait for next scan loop    */
+               if ((idx < 8) && ((processkey[8] == 0xFE) ||
+                                 (processkey[8] == 0xDF))) {
+                 retval=0xFF;
+               }
+
+               /* There's no shift to wait for, send key*/
+               if ((idx < 8) && (processkey[8] != 0xFE)
+                             && (processkey[8] != 0xDF)) {
+                 retval=processkey[idx];
+                 processkey[idx] = 0xFF;
+               }
+
              }
 
-             /* Reset processkey array if we've been through it */
-             /* scantimes after a keypress was sensed           */
+             /* Some badly behaved m/c games need 2 or 3 passes through */
+             /* the raw keyboard matrix - scantimes = 2 or 3 */
+             else {
 
-             if (idxloop == (KBDROWS*scantimes+1)) {
-               /* Full keyboard scan completed scantimes */
-	       memset(processkey,0xFF,KBDROWS);
-               idxloop=0;
+               /* If we're part way through processing a key, increment */
+               /* the loop */
+
+               if (idxloop > 0) {
+                 ++idxloop;
+                 //SHOW("idx, idxloop are %d%  d\n",idx,idxloop);
+               }
+
+               /* Reset processkey array if we've been through it */
+               /* scantimes after a keypress was sensed           */
+
+               if (idxloop == (KBDROWS*scantimes+1)) {
+                 /* Full keyboard scan completed scantimes */
+	         memset(processkey,0xFF,KBDROWS);
+                 idxloop=0;
+               }
+
+               /* If this is the first active keyboard row */
+               /* found since the last keypress, set idxloop to 1 */
+
+               if ((processkey[idx] != 0xFF) && (idxloop==0)) {
+                 idxloop=1;
+                 //SHOW("idx starting point, idxloop are %d%  d\n",idx,idxloop);
+               }
+
+               /* Return the current keyscan row contents */
+
+               if (idxloop > 0) {
+                 retval=processkey[idx];
+                 //SHOW("retval is %02x\n",retval);
+               }
              }
-
-             /* If this is the first active keyboard row */
-             /* found since the last keypress, set idxloop to 1 */
-
-             if ((processkey[idx] != 0xFF) && (idxloop==0)) {
-               idxloop=1;
-               //SHOW("idx starting point, idxloop are %d%  d\n",idx,idxloop);
-             }
-
-             /* Return the current keyscan row contents */
-
-             if (idxloop > 0) {
-               retval=processkey[idx];
-               //SHOW("retval is %02x\n",retval);
-             }
-             else
-               retval=0xFF;
            }
            else {
              retval=0xFF;                // 0xFF always returned if idx > 9

@@ -46,10 +46,8 @@
 // Design decision 1 - map usb lower case keys to upper case
 // to better mimic the way the MZ-80K keyboard works.
 
-uint8_t processkey[KBDROWS] = {         // Return keyboard characters
-0xFF,0xFF,0xFF,0xFF,0xFF,               // All 0xFF means no key to process
-0xFF,0xFF,0xFF,0xFF,0xFF
-};
+uint8_t processkey[KBDROWS];            // Return keyboard characters
+                                        // All 0xFF means no key to process
 
 static uint8_t smlcapled = 0;           // SML/CAPS toggle 
 static int16_t tfno = 0;                // Current tape file number
