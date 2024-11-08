@@ -77,7 +77,7 @@ Then issue the commands:
 There should now be two .uf2 files in the build directory for the emulator that can be installed on
 your Pico.
 
-**picomz-80k.uf2** is for normal use. It requires a UK USB keyboard connected directly to the Pico.
+**picomz-80k.uf2** is for normal use. It assumes a UK USB keyboard connected directly to the Pico.
 
 **picomz-80k-diag.uf2** can only be used through a terminal emulator (such as minicom) as diagnostic messages are output to the Pico's USB port.
 
