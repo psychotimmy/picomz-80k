@@ -270,7 +270,6 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  break;
 
       case 0x3a: //F1 - Not mapped to an MZ-80K key
-                 mzspinny(0);             // Reset tape counter
                  if (!tfwd) {             // Reverse if tape not going forward
                    tfwd=true;
                    tfno++;
@@ -285,7 +284,6 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  }
                  break;
       case 0x3b: //F2 - Not mapped to an MZ-80K key
-                 mzspinny(0);             // Reset tape counter
                  if (tfwd) {              // Reverse if tape not going back
                    tfwd=false;
                    tfno--;
@@ -301,11 +299,6 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x3c: //F3 - Not mapped to an MZ-80K key
                  mzspinny(0);             // Reset tape counter
-                 tfno=0;
-                 tftemp=tapeloader(tfno); // Rewind tape to first file
-                 if (tftemp >= 0) {       // Increment if not at end of tape
-                   ++tfno;
-                 }
                  break;
       case 0x3d: //F4 - Not mapped to an MZ-80K key
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
@@ -1115,7 +1108,6 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
         case 0x4d: processkey[8]=0x10^0xFF;  //Num keypad enter = CR
                    break;
         case 0x50: //F1 - Not mapped to an MZ-80K key
-                   mzspinny(0);             // Reset tape counter
                    if (!tfwd) {             // Reverse if tape not going forward
                      tfwd=true;
                      tfno++;
@@ -1130,7 +1122,6 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
                    }
                    break;
         case 0x51: //F2 - Not mapped to an MZ-80K key
-                   mzspinny(0);
                    if (tfwd) {              // Reverse if tape not going back
                      tfwd=false;
                      tfno--;
@@ -1146,11 +1137,6 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
                    break;
         case 0x52: //F3 - Not mapped to an MZ-80K key
                    mzspinny(0);
-                   tfno=0;
-                   tftemp=tapeloader(tfno);  // Rewind tape to first file
-                   if (tftemp >= 0) {        // Increment if not at end of tape
-                     ++tfno;
-                   }
                    break;
         case 0x53: //F4 - Not mapped to an MZ-80K key
                    memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
