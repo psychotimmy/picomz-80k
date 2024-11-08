@@ -69,13 +69,36 @@ static uint8_t  rptcode;             // Store (possible) repeating key code
 static uint8_t  rptmodifier;         // Store (possible) repeating modfier
 static uint32_t rpttime;             // Time to repeat a key code
 
+static uint8_t kaddr=0xFF;           // Keyboard address
+static uint8_t kinst;                // Keyboard instance
+
+static uint8_t kleds_now=0x00;       // Keyboard leds status now
+static uint8_t kleds_prev=0xFF;      // Previous keyboard leds status
+
+static bool numlock=false;           // Numlock key status
+static bool numlock_prev_rpt=false;  // Numlock pressed in previous report
+static bool numlock_this_rpt=false;  // Numlock pressed in this report
+
 // Used to send a repeating key to the MZ-80K
+// and set status of NUM LOCK led
 void mzrptkey(void)
 {
-  if (rptcode && (to_ms_since_boot(get_absolute_time()) > rpttime)) {
-    // Send the repeating key to the MZ-80K and update next repeat time
-    mzhidmapkey(rptcode,rptmodifier);
-    rpttime += MZ_KEY_REPEAT_INTERVAL;
+  if (kaddr != 0xFF) {                // Check a keyboard is active
+
+    // Set / unset NUM LOCK led as necessary
+    if (kleds_now != kleds_prev) {
+        tuh_hid_set_report(kaddr, kinst, 0, HID_REPORT_TYPE_OUTPUT, 
+                           &kleds_now, sizeof(kleds_now));
+      kleds_prev = kleds_now;
+    }
+
+    // Deal with repeating keys
+    if (rptcode && (to_ms_since_boot(get_absolute_time()) > rpttime)) {
+      // Send the repeating key to the MZ-80K and update next repeat time
+      mzhidmapkey(rptcode,rptmodifier);
+      rpttime += MZ_KEY_REPEAT_INTERVAL;
+    }
+
   }
 
   return;
@@ -85,12 +108,28 @@ void mzrptkey(void)
 // by mzhidmapkey() rather than here
 static void process_kbd_report(hid_keyboard_report_t const *report)
 {
+
   // Clear the repeat key code if it's not the same as in current report
   if (report->keycode[0] != rptcode) {
     rptcode=0x00;
     rptmodifier=0x00;
     rpttime=0;
   }
+
+  // Did the status of the Num Lock key change ?
+  if (report->keycode[0] == 0x53)
+    numlock_this_rpt=true;
+  else
+    numlock_this_rpt=false;
+
+  if (numlock_this_rpt && !numlock_prev_rpt) {
+    numlock = !numlock;      // Toggle numlock key
+    if (numlock)             // Change Num Lock LED
+      kleds_now |= KEYBOARD_LED_NUMLOCK;
+    else
+      kleds_now &= ~KEYBOARD_LED_NUMLOCK;
+  }
+  numlock_prev_rpt=numlock_this_rpt;  // Save this status
    
   // Ignore anything less than 0x04 - no key, error conditions etc.
   if (report->keycode[0] > 0x03) {
@@ -118,6 +157,11 @@ void tuh_hid_mount_cb(uint8_t addr, uint8_t inst,
     // Do nothing if the HID isn't a keyboard
     return;
   }
+
+  // Store keyboard address and instance - used to set NUM LOCK led
+  kaddr=addr;
+  kinst=inst;
+
   // Request to receive reports
   // tuh_hid_report_received_cb() callback invoked when a report is available
   while (!tuh_hid_receive_report(addr,inst)) {
@@ -350,7 +394,79 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  processkey[9]=0x04^0xFF;
                  break;
 
+      // 0x53 - NUM LOCK -  is dealt with before this function is called
+
+      case 0x54: processkey[7]=0x10^0xFF; ///
+                 break;
+      case 0x55: processkey[8]=0x01^0xFF; //*
+                 processkey[2]=0x20^0xFF;
+                 break;
+      case 0x56: processkey[0]=0x20^0xFF; //-
+                 break;
+      case 0x57: processkey[8]=0x01^0xFF; //+
+                 processkey[0]=0x20^0xFF;
+                 break;
       case 0x58: processkey[8]=0x10^0xFF; //<CR>  (USB keypad Enter)
+                 break;
+
+      case 0x59: if (numlock) 
+                   processkey[0]=0x01^0xFF; //1  
+                 else {
+                   processkey[8]=0x01^0xFF; //<CLR> (USB End)
+                   processkey[9]=0x01^0xFF;
+                 }
+                 break;
+      case 0x5a: if (numlock) 
+                   processkey[1]=0x01^0xFF; //2  
+                 else
+                   processkey[9]=0x04^0xFF; //down arrow
+                 break;
+      case 0x5b: if (numlock) 
+                   processkey[0]=0x02^0xFF; //3  
+                 else
+                   processkey[9]=0x08^0xFF; //BREAK (unshifted) (USB PgDn)
+                 break;
+      case 0x5c: if (numlock) 
+                   processkey[1]=0x02^0xFF; //4  
+                 else
+                   processkey[8]=0x09^0xFF; //left arrow
+                 break;
+      case 0x5d: if (numlock) 
+                   processkey[0]=0x04^0xFF; //5  
+                 break;
+      case 0x5e: if (numlock) 
+                   processkey[1]=0x04^0xFF; //6  
+                 else
+                   processkey[8]=0x08^0xFF; //right arrow
+                 break;
+      case 0x5f: if (numlock) 
+                   processkey[0]=0x08^0xFF; //7  
+                 else
+                   processkey[9]=0x01^0xFF; //home (HOME)
+                 break;
+      case 0x60: if (numlock) 
+                   processkey[1]=0x08^0xFF; //8  
+                 else {
+                   processkey[8]=0x01^0xFF; //up arrow
+                   processkey[9]=0x04^0xFF;
+                 }
+                 break;
+      case 0x61: if (numlock) 
+                   processkey[0]=0x10^0xFF; //9  
+                 else {
+                   processkey[8]=0x01^0xFF; //Shift BREAK (USB PgUp)
+                   processkey[9]=0x08^0xFF;
+                 }
+                 break;
+      case 0x62: if (numlock) 
+                   processkey[1]=0x10^0xFF; //0  
+                 else
+                   processkey[8]=0x03^0xFF; //insert (INS)
+                 break;
+      case 0x63: if (numlock) 
+                   processkey[6]=0x10^0xFF; //.
+                 else
+                   processkey[8]=0x02^0xFF; //delete (DEL)
                  break;
 
       case 0x64: processkey[8]=0x01^0xFF; //backslash (non US USB key 102)
