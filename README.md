@@ -27,7 +27,7 @@ If the Pico's green led is flashing slowly (1s between flashes), then your micro
 
 If either of these error conditions occur, the emulator will not display the monitor prompt until the problem is resolved. 
 
-To find a file to load from the microSD card, use the F1 key to browse its contents. 
+To find a file to load from the microSD card, use the F1 key to browse its contents forwards, F2 to go backwards. 
 
 ## Brief developer notes
 
