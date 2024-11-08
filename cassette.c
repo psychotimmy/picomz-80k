@@ -602,7 +602,13 @@ int16_t tapeloader(int16_t n)
                mzemustatus[spos++]=0x84; //d
                mzemustatus[spos]=0x85;   //e
                break;
-    case 0x02: mzemustatus[spos++]=0x02; //B
+    case 0x02: mzemustatus[spos++]=0x13; //S
+               mzemustatus[spos++]=0x88; //h
+               mzemustatus[spos++]=0x81; //a
+               mzemustatus[spos++]=0x92; //r
+               mzemustatus[spos++]=0x90; //p
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x02; //B
                mzemustatus[spos++]=0x01; //A
                mzemustatus[spos++]=0x13; //S
                mzemustatus[spos++]=0x09; //I
@@ -621,6 +627,22 @@ int16_t tapeloader(int16_t n)
     case 0x04: mzemustatus[spos++]=0x9a; //z
                mzemustatus[spos++]=0x85; //e
                mzemustatus[spos]=0x8e;   //n
+               break;
+    case 0x06: mzemustatus[spos++]=0x03; //C
+               mzemustatus[spos++]=0x88; //h
+               mzemustatus[spos++]=0x81; //a
+               mzemustatus[spos++]=0x8c; //l
+               mzemustatus[spos++]=0x8b; //k
+               mzemustatus[spos++]=0x97; //w
+               mzemustatus[spos++]=0x85; //e
+               mzemustatus[spos++]=0x8c; //l
+               mzemustatus[spos++]=0x8c; //l
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x02; //B
+               mzemustatus[spos++]=0x01; //A
+               mzemustatus[spos++]=0x13; //S
+               mzemustatus[spos++]=0x09; //I
+               mzemustatus[spos]=0x03; //C
                break;
     case 0x20: mzemustatus[spos++]=0x8d; //m
                mzemustatus[spos++]=0x85; //e

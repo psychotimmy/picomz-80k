@@ -152,6 +152,8 @@ extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
 
 /* vgadisplay.c */
+extern uint16_t whitepix;
+extern uint16_t blackpix;
 extern void vga_main(void);
 
 /* 8255.c */

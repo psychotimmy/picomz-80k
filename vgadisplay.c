@@ -18,8 +18,8 @@
 #define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K
 
 // On the MZ-80K, pixels are either white or black
-static uint16_t whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);
-static uint16_t blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
+uint16_t whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);
+uint16_t blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
 
 /* Generate each pixel for the current scanline */
 int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
