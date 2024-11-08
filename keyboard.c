@@ -303,6 +303,13 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
       case 0x3d: //F4 - Not mapped to an MZ-80K key
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
+                 
+      case 0x3e: //F5 - Not mapped to an MZ-80K key
+                 uint16_t temp;
+                 temp=whitepix;           // Reverse video
+                 whitepix=blackpix;
+                 blackpix=temp;
+                 break;
 
       case 0x42: if ((++scantimes) > 3)   //F9 - no. times keymatrix scanned
                    scantimes=1;           //     per keypress. Default=1
@@ -1141,6 +1148,7 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
         case 0x53: //F4 - Not mapped to an MZ-80K key
                    memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                    break;
+
         default:   break;                    // Ignore unmapped keys
       }
     }
@@ -1166,6 +1174,22 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
       default:   break;                    //Ignore unmapped keys
     }
   }
+
+  if ((ncodes==5)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&
+      (usbc[2]==0x31)&&(usbc[4]==0x7e)) {
+    switch (usbc[3]) {
+      case 0x36: //F5 - Not mapped to an MZ-80K key
+                 uint16_t temp;
+                 temp=whitepix;            //Reverse video
+                 whitepix=blackpix;
+                 blackpix=temp;
+                 break;
+
+      default:   break;                    //Ignore unmapped keys
+    }
+  }
+
+
 
   if ((ncodes==5)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&
       (usbc[2]==0x32)&&(usbc[4]==0x7e)) {
