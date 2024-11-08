@@ -85,4 +85,4 @@ your Pico.
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 30th October 2024.
+### This README was last updated on 8th November 2024.
