@@ -27,7 +27,7 @@ If the Pico's green led is flashing slowly (1s between flashes), then your micro
 
 If either of these error conditions occur, the emulator will not display the monitor prompt until the problem is resolved. 
 
-To find a file to load from the microSD card, use the F1 key to browse its contents. 
+To find a file to load from the microSD card, use the F1 key to browse its contents forwards, F2 to go backwards. 
 
 ## Brief developer notes
 
@@ -77,7 +77,7 @@ Then issue the commands:
 There should now be two .uf2 files in the build directory for the emulator that can be installed on
 your Pico.
 
-**picomz-80k.uf2** is for normal use. It requires a UK USB keyboard connected directly to the Pico.
+**picomz-80k.uf2** is for normal use. It assumes a UK USB keyboard connected directly to the Pico.
 
 **picomz-80k-diag.uf2** can only be used through a terminal emulator (such as minicom) as diagnostic messages are output to the Pico's USB port.
 
@@ -85,4 +85,4 @@ your Pico.
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 30th October 2024.
+### This README was last updated on 8th November 2024.
