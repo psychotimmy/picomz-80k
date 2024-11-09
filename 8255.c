@@ -186,24 +186,22 @@ uint8_t rd8255(uint16_t addr)
            // 10 lines (KBDROWS) to strobe, so idx must be between 0 and 9
            if (idx < KBDROWS) {
 
-             /* If we're at the top of the scan refresh newkey from  */
-             /* the processkey global */
-             if (idx == 9)
+             /* Copy processkey if at start of scan and ready for a new */
+             /* key - we may not be if scantimes > 1                    */
+             if ((idxloop == 0) && (idx == 9)) {
                memcpy(newkey,processkey,KBDROWS);
+               memset(processkey,0xFF,KBDROWS);
+               idxloop=9*scantimes;
+             }
 
              /* Return the current row of the keyboard matrix */
              retval=newkey[idx];
-
-             /* Increment the number of scans if on last row of matrix */
-             if (idx == 0) 
-               ++idxloop;
-
-             /* Enough scans done, clear processkey for next key event */
-             if ((idx == 9) && (idxloop >= scantimes)) {
-               memset(processkey,0xFF,KBDROWS);
-               idxloop=0;
-             }
-
+             /* Reset newkey if in last scan of the matrix */
+             if (idxloop < KBDROWS)
+               newkey[idx]=0xFF;
+             /* Decrement loop counter if not at zero */
+             if (idxloop > 0)
+               --idxloop;
            }
            else {
              retval=0xFF;                // 0xFF always returned if idx > 9
