@@ -93,7 +93,7 @@ uint16_t mzpicosecs(void)
   datetime_t t;
 
   rtc_get_datetime(&t);
-  elapsed=t.hour*360+t.min*60+t.sec-1;
+  elapsed=t.hour*3600+t.min*60+t.sec-1;
   return(elapsed);
 }
 
@@ -269,7 +269,8 @@ void wrE008(uint8_t data)
 
   if (data == 0) {
     // Disable sound generation if an alarm has been set
-    if (tone_alarm) mzpico_tone_off(tone_alarm, unused);
+    if (tone_alarm) 
+      mzpico_tone_off(tone_alarm, unused);
     return;
   }
 

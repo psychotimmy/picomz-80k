@@ -131,12 +131,13 @@ int main(void)
 #endif
   stdio_init_all();
 
+  busy_wait_ms(1250);              // Wait for inits to complete before
+                                   // outputting diagnostics etc.
+
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
-  sleep_ms(500);
-
-  SHOW("\n Hello! My friend\n");
+  SHOW("\nHello! My friend\n");
   SHOW("Hello! My computer\n\n");
 
   // Initialise mzuserram
@@ -220,6 +221,7 @@ int main(void)
   #else
     tuh_task();                   // Check for new keyboard events
     mzrptkey();                   // Check for a repeating key event
+                                  // or a NUM LOCK event
   #endif
   }
 
