@@ -87,8 +87,8 @@ void mzrptkey(void)
 
     // Set / unset NUM LOCK led as necessary
     if (kleds_now != kleds_prev) {
-        tuh_hid_set_report(kaddr, kinst, 0, HID_REPORT_TYPE_OUTPUT, 
-                           &kleds_now, sizeof(kleds_now));
+      tuh_hid_set_report(kaddr, kinst, 0, HID_REPORT_TYPE_OUTPUT, 
+                         &kleds_now, sizeof(kleds_now));
       kleds_prev = kleds_now;
     }
 
