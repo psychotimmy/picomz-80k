@@ -76,7 +76,7 @@
 #define CROMSIZE        2048  //   2   Kbytes Character ROM
 #define URAMSIZE        49152 //   0.5 Kbytes Monitor + 48 Kbytes User RAM
 #define VRAMSIZE        1024  //   1   Kbyte  Video RAM
-#define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
+#define FDROMSIZE       1024  //   1   Kbyte  FD ROM (not used at present)
 
 /***************************************************/
 /* Sharp MZ-80K memory map summary                 */
@@ -130,6 +130,7 @@ extern void mzpicoled(uint8_t);
 /* sharpcorp.c */
 extern const uint8_t mzmonitor[MROMSIZE];
 extern const uint8_t cgrom[CROMSIZE];
+extern const uint8_t fdrom[FDROMSIZE];
 
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];

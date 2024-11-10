@@ -85,6 +85,9 @@ uint8_t mem_read(void* unusedv, uint16_t addr)
 
   /* Sound */
   if (addr < 0xE009) return(rdE008());
+  
+  /* FD ROM */
+  if ((addr > 0xEFFF) && (addr < 0xF401)) return(fdrom[addr-0xF000]);
 
   /* Unused addresses */
   SHOW("Reading unused address 0x%04x\n",addr);
