@@ -51,7 +51,6 @@
 #include "pico/scanvideo/composable_scanline.h"
 #include "pico/time.h"
 #include "hardware/gpio.h"
-#include "hardware/rtc.h"
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
 #include "fatfs/ffconf.h"
