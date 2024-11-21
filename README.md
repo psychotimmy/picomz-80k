@@ -31,9 +31,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-While the Raspberry Pico SDK 2.0.0 will successfully build Pico MZ-80K, identical code runs approximately 8% more slowly than under SDK 1.5.1. Pico MZ-80K also exhibits some instability when built with SDK 2.0.0 that is not present when built with SDK 1.5.1. 
-
-As such, it is ***strongly recommended*** that you use SDK 1.5.1 if you wish to rebuild Pico MZ-80K at this time.
+The current Pico SDK master branch (2.0.0 plus fixes - latest stable) works successfully with release 1.0.7 onwards of Pico MZ-80K.
 
 ## Instructions for rebuilding Pico MZ-80K (see also the documentation subdirectory)
 
@@ -44,19 +42,23 @@ CMake (version 3.13 or later) and a gcc cross compiler.
    sudo apt install cmake
    sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
 ```   
-The Pico MZ-80K emulator has been tested using the Raspberry Pico SDK version 1.5.1. This and
-the pico-extras repository must be available on your computer if you wish to compile the emulator.
+The Pico MZ-80K emulator relies on the latest stable release of the Raspberry Pico SDK. This and
+the Pico Extras repository must be available on your computer if you wish to compile the emulator.
 
-Assuming that you are already in the subdirectory you wish to install the Pico SDK under, issue the
-commands:
+Assuming that you are already in the subdirectory in which you wish to install the Pico SDK, Pico Extras 
+and Pico MZ-80K repositories, issue the commands:
 ```
-   git clone https://github.com/raspberrypi/pico-sdk.git -b 1.5.1
-   git clone https://github.com/raspberrypi/pico-extras.git -b sdk-1.5.1
+   git clone --recursive https://github.com/raspberrypi/pico-sdk.git -b master
+   git clone https://github.com/raspberrypi/pico-extras.git -b master
 ```   
-Then clone the current version of the Pico MZ-80K repository.
+Then clone **either** the current release of the Pico MZ-80K repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git
-```   
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.0.7
+```
+**or** the latest stable version:
+```
+   git clone https://github.com/psychotimmy/picomz-80k.git -b main
+```
 Ensure that the Pico SDK and Pico Extras subdirectories have been exported. 
 
 For example, if these libraries have been installed under /home/pi, use:
@@ -66,9 +68,7 @@ For example, if these libraries have been installed under /home/pi, use:
 ```   
 Then issue the commands:
 ```
-   cd pico-sdk
-   git submodule update --init --recursive
-   cd ../picomz-80k
+   cd picomz-80k
    mkdir build
    cd build
    cmake -DPICO_BOARD=vgaboard ..
@@ -85,4 +85,4 @@ your Pico.
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 8th November 2024.
+### This README was last updated on 21st November 2024.

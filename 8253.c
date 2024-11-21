@@ -34,6 +34,7 @@
 static uint16_t counter0; /* Two byte counter for sound frequency */
 static uint16_t counter2; /* Two byte counter for time */
 static bool out2;         /* Start / stop counter 2 output */
+static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
 
 static uint16_t c2start;  /* Records value set in counter 2 when initialised */
 
@@ -63,38 +64,31 @@ static alarm_id_t tone_alarm;  /* We use alarms to start/stop tones */
 /* Internal 8253 functions to support the Sharp MZ-80K clock */
 /*                                                           */
 /*************************************************************/
-void mzpico_rtc_init(void)
+void mzpico_clk_init(void)
 {
-  // Start on Monday 1st January 2024 00:00:00
-  // This is arbitrary, as the MZ-80K clock only
-  // counts in seconds for half a day. It has no
-  // concept of years, months etc.
-  datetime_t t = {
-    .year  = 2024,
-    .month = 01,
-    .day   = 01,
-    .dotw  = 1,    // Monday
-    .hour  = 00,
-    .min   = 00,
-    .sec   = 00
-  };
- 
-  // Start the pico RTC
-  rtc_init();
-  rtc_set_datetime(&t);
+  // Store the absoltue time in the clockreset global. The MZ-80K
+  // clock will count seconds from here.
 
+  clockreset=get_absolute_time();
   return;
 }
 
-/* Return the number of seconds minus 1 since the Pico RTC was initialised */
+/* Return the number of seconds since mzpico_clk_init() was called */
 uint16_t mzpicosecs(void)
 {
-  uint16_t elapsed;
-  datetime_t t;
+  uint16_t seconds_elapsed;
+  int64_t  us_elapsed;
+  absolute_time_t time_now;
 
-  rtc_get_datetime(&t);
-  elapsed=t.hour*3600+t.min*60+t.sec-1;
-  return(elapsed);
+  // Get the current time
+  time_now=get_absolute_time();
+  // Calculate the number of microseconds between call to mzpico_clk_init()
+  // and now
+  us_elapsed=absolute_time_diff_us(clockreset,time_now);
+  // Convert to seconds and return
+  seconds_elapsed=(uint16_t)(us_elapsed/1000000);
+
+  return(seconds_elapsed);
 }
 
 /*************************************************************/
@@ -239,7 +233,7 @@ void wr8253(uint16_t addr, uint8_t val)
     /* E006 - write the countdown value to counter 2 */
     /* This is a 16bit value, sent LSB, MSB */
     if (!msb2) {
-      mzpico_rtc_init(); // (re)initialise the time to 00:00:00
+      mzpico_clk_init(); // Reset the start time for the MZ-80K clock
       out2=true;         // Set output pin high to allow counter to decrement
       counter2=val;
       msb2=1;
