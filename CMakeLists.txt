@@ -14,7 +14,7 @@
 
   pico_sdk_init()
 
-  if (PICO_PLATFORM=rp2040)
+  if (PICO_PLATFORM MATCHES "rp2040")
 
   add_executable(picomz-80k
 	picomz.c
