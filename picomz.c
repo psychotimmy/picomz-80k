@@ -125,10 +125,24 @@ int main(void)
   int8_t  ncodes;          // No. codes to process in usb keyboard buffer
 #endif
 
-#ifdef USBDIAGOUTPUT
-  // Set system clock to 175MHz if in diag mode - see also CMakeLists.txt
+#if defined (USBDIAGOUTPUT) && defined (PICO1)
+  // Set system clock to 175MHz if in diag mode on a rp2040
+  // See also CMakeLists.txt
   set_sys_clock_pll(1050000000,6,1);
 #endif
+
+#if defined (USBDIAGOUTPUT) && defined (PICO2)
+  // Set system clock to 125MHz if in diag mode on a rp2350
+  // See also CMakeLists.txt
+  set_sys_clock_pll(1500000000,6,2);
+#endif
+
+#if ! defined (USBDIAGOUTPUT) && defined (PICO2)
+  // Set system clock to 100MHz if in normal mode on a rp2350
+  // See also CMakeLists.txt
+  set_sys_clock_pll(1500000000,5,3);
+#endif
+
   stdio_init_all();
 
   busy_wait_ms(1250);              // Wait for inits to complete before
@@ -203,6 +217,10 @@ int main(void)
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
+
+  #ifdef PICO2
+    busy_wait_us(1);              // Need to slow down a Pico 2 a little more
+  #endif
 
   #ifdef USBDIAGOUTPUT
     usbc[0]=tud_cdc_read_char();  // Read keyboard, no wait
