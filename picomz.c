@@ -217,8 +217,8 @@ int main(void)
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-
-  #ifdef PICO2
+    
+  #if ! defined (USBDIAGOUTPUT) && defined (PICO2)
     busy_wait_us(1);              // Need to slow down a Pico 2 a little more
   #endif
 
