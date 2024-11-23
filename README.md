@@ -1,7 +1,7 @@
 # Pico MZ-80K 
-## A Sharp MZ-80K Emulator for the Raspberry Pico Microcontroller
+## A Sharp MZ-80K Emulator for the Raspberry Pico and Pico 2 Microcontrollers
 
-A Raspberry Pico implementation of the Sharp MZ-80K sold in the UK from 1979, utilising the Pimoroni VGA demo base.
+A Raspberry Pico and Pico 2 implementation of the Sharp MZ-80K sold in the UK from 1979, utilising the Pimoroni VGA demo base.
 
 ![A picture of a Pimoroni VGA demo base with a Raspberry Pico (with headers) installed.](https://z80.timholyoake.uk/wp-content/uploads/2024/09/20240905_101721-1024x633.jpg)
 
@@ -13,7 +13,13 @@ Full user and systems documentation is provided in the [documentation subdirecto
 
 Ensure a microSD card containing one or more Sharp MZ-80K software (.mzf) files is installed in the slot on the Pimoroni VGA demo base. 
 
-If you have successfully flashed either **picomz-80k.uf2** or **picomz-80k-diag.uf2** to the pico, when a USB keyboard (use picomz-80k.uf2) or terminal emulator (use picomz-80k-diag.uf2) plus VGA display is connected, you will see:
+Flash one of:
+
+**picomz-80k.uf2** (standard) or **picomz-80k-diag.uf2** (diag) for a Pico
+
+**pico2mz-80k.uf2** (standard) or **pico2mz-80k-diag.uf2** (diag) for a Pico 2
+
+When a USB keyboard (standard versions) or terminal emulator (diag versions) plus a VGA display is connected, you will see:
 
 ** MONITOR SP-1002 **
 
@@ -31,7 +37,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-The current Pico SDK master branch (2.0.0 plus fixes - latest stable) works successfully with release 1.0.7 onwards of Pico MZ-80K.
+The current Pico SDK master branch (2.0.0 plus fixes - latest stable) works successfully with release 1.0.7 (or later) of Pico MZ-80K. Pico MZ-80K release 1.1.0 is the first one to support the Pico 2.
 
 ## Instructions for rebuilding Pico MZ-80K (see also the documentation subdirectory)
 
@@ -53,7 +59,7 @@ and Pico MZ-80K repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ-80K repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.0.7
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.1.0
 ```
 **or** the latest stable version:
 ```
@@ -66,7 +72,7 @@ For example, if these libraries have been installed under /home/pi, use:
    export PICO_SDK_PATH=/home/pi/pico-sdk
    export PICO_EXTRAS_PATH=/home/pi/pico-extras
 ```   
-Then issue the commands:
+For a Pico build, issue the commands:
 ```
    cd picomz-80k
    mkdir build
@@ -74,15 +80,23 @@ Then issue the commands:
    cmake -DPICO_BOARD=vgaboard ..
    make
 ```
+For a Pico 2 build, issue the commands:
+```
+   cd picomz-80k
+   mkdir build
+   cd build
+   cmake -DPICO_BOARD=vgaboard -DPICO_PLATFORM=rp2350 ..
+   make
+```
 There should now be two .uf2 files in the build directory for the emulator that can be installed on
-your Pico.
+your Pico or Pico 2.
 
-**picomz-80k.uf2** is for normal use. It assumes a UK USB keyboard connected directly to the Pico.
+**picomz-80k.uf2** or **pico2mz-80k.uf2** are for standard use. They assume a UK USB keyboard connected directly to the Pico or Pico 2.
 
-**picomz-80k-diag.uf2** can only be used through a terminal emulator (such as minicom) as diagnostic messages are output to the Pico's USB port.
+**picomz-80k-diag.uf2** or **pico2mz-80k-diag.uf2** can only be used through a terminal emulator (such as minicom) as diagnostic messages are output to the Pico's USB port.
 
 ## Project Background
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 21st November 2024.
+### This README was last updated on 22nd November 2024.
