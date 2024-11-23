@@ -31,20 +31,21 @@
 #define PICOTONE1 27      /* The VGA board uses pins 27 & 28 for sound (pwm) */
 #define PICOTONE2 28
 
-static uint16_t counter0; /* Two byte counter for sound frequency */
-static uint16_t counter2; /* Two byte counter for time */
-static bool out2;         /* Start / stop counter 2 output */
-static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
+/* Holds global variables relating to the 8253 PIT */
+typedef struct i8253 {
+  uint16_t counter0; /* Two byte counter for sound frequency */
+  uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
+                     /* we're writing to or reading from (E004) */
 
-static uint16_t c2start;  /* Records value set in counter 2 when initialised */
+  uint16_t c2start;  /* Records value set in counter 2 when initialised */
+  uint16_t counter2; /* Two byte counter for time */
+  uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
+                     /* we're writing to or reading from (E006) */
+  bool out2;         /* Start / stop counter 2 output */
 
-static uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
-                          /* we're writing to or reading from (E006) */
+  uint8_t e008call;  /* Incremented whenever E008 is read */
 
-static uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
-                          /* we're writing to or reading from (E004) */
-
-static uint8_t e008call;  /* Incremented whenever E008 is read */
+} i8253;
 
 typedef struct toneg {    /* Tone generator structure for pwm sound  */
   uint8_t slice1;         /* Initialised by pico_tone_init() function */
@@ -55,9 +56,12 @@ typedef struct toneg {    /* Tone generator structure for pwm sound  */
   float freq;             /* Requested frequency in Hz */
 } toneg;
 
-static toneg picotone;         /* Tone generator global static */
+static i8253 mzpit;            /* MZ-80K PIT static */
 
+static toneg picotone;         /* Tone generator global static */
 static alarm_id_t tone_alarm;  /* We use alarms to start/stop tones */
+
+static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
 
 /*************************************************************/
 /*                                                           */
@@ -161,15 +165,15 @@ void mzpico_tone_on(void)
 void p8253_init(void) 
 {
   // Sound generation
-  counter0 = 0x0000;
-  msb0 = 0;
+  mzpit.counter0 = 0x0000;
+  mzpit.msb0 = 0;
   pico_tone_init();
-  e008call = 0x00;   // Used as a return value when E008 is read
+  mzpit.e008call = 0x00;   // Used as a return value when E008 is read
 
   // MZ-80K time
-  counter2 = 0x0000;
-  msb2 = 0;
-  c2start = 0x0000;
+  mzpit.counter2 = 0x0000;
+  mzpit.msb2 = 0;
+  mzpit.c2start = 0x0000;
 }
 
 // Note - latching is currently ignored - unlikely to be crucial to the MZ-80K emulator's operation
@@ -179,24 +183,24 @@ uint8_t rd8253(uint16_t addr)
 
     /* E006 - read the countdown value from counter 2 */
 
-    if ((counter2 == 1) && (out2)) {  // Counter2 has reached 1 (0 seconds),
-      out2=false;                     // so trigger an interupt if
-      z80_gen_int(&mzcpu,0x01);       // this has not already happened
+    if ((mzpit.counter2 == 1)&&(mzpit.out2)) { // Counter2 reached 1 (0 secs),
+      mzpit.out2=false;                        // so trigger an interupt if
+      z80_gen_int(&mzcpu,0x01);                // this has not already happened
     }
 
-    if (counter2 <= 1) {                   // Special handling if the counter
-      msb2=!msb2;                          // is zero (1 or less)
+    if (mzpit.counter2 <= 1) {             // Special handling if the counter
+      mzpit.msb2=!mzpit.msb2;              // is zero (1 or less)
       return(0x00);
     }
 
-    if (!msb2) {
-      counter2=c2start-mzpicosecs();  
-      msb2=1;
-      return(counter2&0xFF);
+    if (!mzpit.msb2) {
+      mzpit.counter2=mzpit.c2start-mzpicosecs();  
+      mzpit.msb2=1;
+      return(mzpit.counter2&0xFF);
     }
     else {
-      msb2=0;
-      return((counter2>>8)&0xFF);
+      mzpit.msb2=0;
+      return((mzpit.counter2>>8)&0xFF);
     }
   }
 
@@ -213,15 +217,15 @@ void wr8253(uint16_t addr, uint8_t val)
     // The 8253 on the MZ-80K is fed with a 1MHz pulse
     // A 16 bit value is sent LSB, MSB to this address to divide
     // the base frequency to get the desired frequency.
-    if (!msb0) {
-      counter0=val;
-      msb0=1;
+    if (!mzpit.msb0) {
+      mzpit.counter0=val;
+      mzpit.msb0=1;
     }
     else {
-      counter0|=((val<<8)&0xFF00);
-      msb0=0;
-      if (counter0 == 0) counter0=1;  // Avoids possible divide by 0
-      picotone.freq=1000000.0/(float)counter0;
+      mzpit.counter0|=((val<<8)&0xFF00);
+      mzpit.msb0=0;
+      if (mzpit.counter0==0) mzpit.counter0=1;  // Avoids possible divide by 0
+      picotone.freq=1000000.0/(float)mzpit.counter0;
       //SHOW("Frequency requested is %f Hz\n",picotone.freq);
     }
   }
@@ -232,17 +236,17 @@ void wr8253(uint16_t addr, uint8_t val)
   if (addr == 0xE006) {
     /* E006 - write the countdown value to counter 2 */
     /* This is a 16bit value, sent LSB, MSB */
-    if (!msb2) {
+    if (!mzpit.msb2) {
       mzpico_clk_init(); // Reset the start time for the MZ-80K clock
-      out2=true;         // Set output pin high to allow counter to decrement
-      counter2=val;
-      msb2=1;
+      mzpit.out2=true;   // Set output pin high to allow counter to decrement
+      mzpit.counter2=val;
+      mzpit.msb2=1;
     }
     else {
-      counter2|=((val<<8)&0xFF00);
-      msb2=0;
-      c2start=counter2; /* Keep the start value so we can calculate elapsed */
-                        /* seconds since initialisation of counter2 */
+      mzpit.counter2|=((val<<8)&0xFF00);
+      mzpit.msb2=0;
+      mzpit.c2start=mzpit.counter2; // Keep the start value so we can calculate
+                                    // seconds since counter2 initialisation
     }
   }
 
@@ -254,7 +258,7 @@ uint8_t rdE008(void)
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
   // Each time this routine is called, the return value is incremented by 1
   sleep_ms(11);
-  return(++e008call);
+  return(mzpit.e008call++);
 }
 
 void wrE008(uint8_t data) 
