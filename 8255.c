@@ -8,7 +8,7 @@
 // Note that the MZ-80K only uses the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
-uint8_t portA;                  /* 0xE000 - port A */
+static uint8_t portA;           /* 0xE000 - port A */
                                 /* 0xE001 - port B */
 uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
@@ -20,7 +20,7 @@ uint8_t csense=1;               /* Cassette sense toggle */
                                 /* Note - the emulator currently ties the */
                                 /* cmotor & csense signals together. A more */
                                 /* faithful version would have */
-                                /* separate buttons for  a virtual cassette */
+                                /* separate buttons for a virtual cassette */
                                 /* deck, so motor and sense are not always */
                                 /* the same. */
 uint8_t vblank=0;               /* /VBLANK signal */
@@ -36,8 +36,7 @@ uint8_t scantimes=1;            /* How many times the keyboard matrix is */
                                 /* F9 key rotates between 1 and 3, 1 is the */
                                 /* default on startup. */
 
-static uint8_t cblink=0;        /* Cursor blink (0 = off, 1 = on) */
-static uint8_t c555=0;          /* Pseudo 555 timer  for cursor blink */
+static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 
 // The control port is implemented as follows:
 // 
@@ -83,24 +82,25 @@ static uint8_t c555=0;          /* Pseudo 555 timer  for cursor blink */
 // Bit 4 - Cassette motor (0 = off, 1 = on)
 // Bit 5 - Data input from the cassette read line
 // Bit 6 - Timing pulse for the cursor flash timer
-// Bit 7 - Detects /VBLANK (1- vblank period, 0 otherwise)
+// Bit 7 - Detects /VBLANK (1 = vblank period, 0 otherwise)
 
 // Port C lower 4 bits (0-3) - outputs
-// Bit 0 - /VGATE (1- blank the screen)
+// Bit 0 - /VGATE (1 = blank the screen)
 // Bit 1 - Write this bit to the cassette tape 
 // Bit 2 - Toggle SML/CAP LED red (1) / green (0)
 // Bit 3 - Cassette sense (0 = on, 1 = off)
 
 void wr8255(uint16_t addr, uint8_t data)
 {
+  static uint8_t ps555=0;            // Pseudo 555 timer for cursor blink
   switch (addr&0x0003) {             // addr is between 0xE000 and 0xE003
-    case 0:// Write to portA
-           if ((data&0x80) && (++c555 > 50)) {
-             c555=0;                 // A simple 555 timer emulation 
+    case 0:// Write to portA static
+           if ((data&0x80) && (++ps555 > 50)) {
+             ps555=0;                // A simple 555 timer emulation 
              ++cblink;               // Bit 7 controls cursor blink
            } 
                                      // Bits 0-3 are used by keyboard
-           portA=data;               // Keeps state in portA global
+           portA=data;               // Keeps state in portA static
            break;
     case 1:// Write to portB - this should never happen on an MZ-80K,
            // so nothing should change if a program tries to do it.
@@ -135,13 +135,18 @@ void wr8255(uint16_t addr, uint8_t data)
                      break;
              case 1: // Bit to write to cassette tape when
                      // motor and sense are on
-                     if (setbit) portC|=0x02;
-                     else portC&=0xFD;
-                     if (csense && cmotor) cwrite(setbit);
+                     if (setbit)
+                       portC|=0x02;
+                     else
+                       portC&=0xFD;
+                     if (csense && cmotor)
+                       cwrite(setbit);
                      break;
              case 2: // SML/CAP toggle
-                     if (setbit) portC|=0x04;
-                     else portC&=0xFB;
+                     if (setbit)
+                       portC|=0x04;
+                     else
+                       portC&=0xFB;
                      break;
              case 3: // Cassette sense
                      if (setbit) { 
@@ -177,8 +182,8 @@ uint8_t rd8255(uint16_t addr)
                                    /* matrix active for scantimes cycles */
   uint8_t idx,retval;
 
-  switch (addr&0x0003) {      // addr is between 0xE000 and 0xE002
-    case 0:// Read from portA global
+  switch (addr&0x0003) {           // addr is between 0xE000 and 0xE002
+    case 0:// Read from portA static
            retval=portA;
            break;
     case 1:// Port B is keyboard input

@@ -156,7 +156,6 @@ extern uint16_t blackpix;
 extern void vga_main(void);
 
 /* 8255.c */
-extern uint8_t portA;
 extern uint8_t portC;
 extern uint8_t cmotor;
 extern uint8_t csense;
