@@ -420,6 +420,10 @@ FRESULT mzsavedump(void)
   f_write(&fp, &mzcpu, sizeof(mzcpu), &bw);
   SHOW("Memory dump z80 cpu state: %d bytes written to MZDUMP.MZF\n",bw);
 
+  // Write 'tape' contents - 8253 state
+  f_write(&fp, &mzpit, sizeof(mzpit), &bw);
+  SHOW("Memory dump 8253 state: %d bytes written to MZDUMP.MZF\n",bw);
+
   // Close the file and return
   f_close(&fp);
 
@@ -471,6 +475,14 @@ FRESULT mzreaddump(void)
   f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
   if (br != sizeof(mzcpu)) {
     SHOW("Error on z80 read - expecting %d bytes, got %d\n",sizeof(mzcpu),br);
+    f_close(&fp);
+    return(FR_INT_ERR);      // assertion failed
+  }
+
+  // Read 8253 state
+  f_read(&fp, &mzpit, sizeof(mzpit), &br);
+  if (br != sizeof(mzpit)) {
+    SHOW("Error on 8253 read - expecting %d bytes, got %d\n",sizeof(mzpit),br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }

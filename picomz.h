@@ -119,6 +119,22 @@
 #define TAPEHEADERSIZE    128 // 128 bytes
 #define TAPEBODYMAXSIZE 48640 // 47.5Kbytes
 
+/* Holds global variables relating to the 8253 PIT */
+typedef struct pit8253 {  
+  uint16_t counter0; /* Two byte counter for sound frequency */
+  uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
+                     /* we're writing to or reading from (E004) */
+
+  uint16_t c2start;  /* Records value set in counter 2 when initialised */
+  uint16_t counter2; /* Two byte counter for time */
+  uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
+                     /* we're writing to or reading from (E006) */
+  bool out2;         /* Start / stop counter 2 output */ 
+
+  uint8_t e008call;  /* Incremented whenever E008 is read */
+
+} pit8253;
+
 /* sharpmz.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
@@ -166,6 +182,7 @@ extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 
 /* 8253.c */
+extern pit8253 mzpit;
 extern void p8253_init(void);
 extern uint8_t rd8253(uint16_t addr);
 extern void wr8253(uint16_t addr, uint8_t data);
