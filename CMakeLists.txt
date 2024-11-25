@@ -61,9 +61,9 @@
   link_directories(fatfs)
   link_directories(sdcard)
 
-  target_link_libraries(picomz-80k zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
+  target_link_libraries(picomz-80k zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
 
-  target_link_libraries(picomz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
+  target_link_libraries(picomz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
 
   pico_enable_stdio_usb(picomz-80k-diag 1)
   pico_enable_stdio_uart(picomz-80k-diag 0)
@@ -127,9 +127,9 @@ else()
   link_directories(fatfs)
   link_directories(sdcard)
 
-  target_link_libraries(pico2mz-80k zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
+  target_link_libraries(pico2mz-80k zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
 
-  target_link_libraries(pico2mz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
+  target_link_libraries(pico2mz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
 
   pico_enable_stdio_usb(pico2mz-80k-diag 1)
   pico_enable_stdio_uart(pico2mz-80k-diag 0)
