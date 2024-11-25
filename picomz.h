@@ -1,5 +1,6 @@
 // A Sharp MZ-80K emulator for the Raspberry Pi Pico
 // Release 1 - Written August - October 2024
+// Release 1.1 - Written November 2024
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -38,8 +39,8 @@
 #include <stdint.h>
 #include <string.h>
 #ifndef USBDIAGOUTPUT
-  #include "tusb_config.h" // Needs to come before tusb.h as overrides settings
-#endif                     // as it overrides settings in tusb_options.h
+  #include "tusb_config.h" // Needs to come before tusb.h as it
+#endif                     // overrides settings in tusb_options.h
 #include <tusb.h>        
 #include "pico.h"
 #include "pico/stdlib.h"
@@ -135,12 +136,11 @@ typedef struct pit8253 {
 
 } pit8253;
 
-/* sharpmz.c */
+/* picomz.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
 extern uint8_t mzvram[VRAMSIZE];
 extern uint8_t mzemustatus[EMUSSIZE];
-extern void mzpicoled(uint8_t);
 
 /* sharpcorp.c */
 extern const uint8_t mzmonitor[MROMSIZE];
@@ -188,3 +188,9 @@ extern uint8_t rd8253(uint16_t addr);
 extern void wr8253(uint16_t addr, uint8_t data);
 extern uint8_t rdE008();
 extern void wrE008(uint8_t data);
+
+/* miscfuncs.c */
+extern void mzpicoled(uint8_t);
+extern void ascii2mzdisplay(uint8_t*, uint8_t*);
+extern uint8_t mzsafefilechar(uint8_t);
+extern uint8_t mzascii2mzdisplay(uint8_t);

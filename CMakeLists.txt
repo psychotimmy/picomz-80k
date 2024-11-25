@@ -24,6 +24,7 @@
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   add_executable(picomz-80k-diag
@@ -34,6 +35,7 @@
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   target_include_directories(picomz-80k
@@ -59,9 +61,9 @@
   link_directories(fatfs)
   link_directories(sdcard)
 
-  target_link_libraries(picomz-80k zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
+  target_link_libraries(picomz-80k zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
 
-  target_link_libraries(picomz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
+  target_link_libraries(picomz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
 
   pico_enable_stdio_usb(picomz-80k-diag 1)
   pico_enable_stdio_uart(picomz-80k-diag 0)
@@ -79,6 +81,7 @@ else()
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   add_executable(pico2mz-80k-diag
@@ -89,6 +92,7 @@ else()
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   target_include_directories(pico2mz-80k
@@ -123,9 +127,9 @@ else()
   link_directories(fatfs)
   link_directories(sdcard)
 
-  target_link_libraries(pico2mz-80k zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
+  target_link_libraries(pico2mz-80k zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
 
-  target_link_libraries(pico2mz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
+  target_link_libraries(pico2mz-80k-diag zazu80 fatfs sdcard pico_stdlib pico_runtime pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
 
   pico_enable_stdio_usb(pico2mz-80k-diag 1)
   pico_enable_stdio_uart(pico2mz-80k-diag 0)
