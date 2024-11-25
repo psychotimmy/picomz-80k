@@ -37,7 +37,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-The current Pico SDK master branch (2.0.0 plus fixes - latest stable) works successfully with release 1.0.7 (or later) of Pico MZ-80K. Pico MZ-80K release 1.1.0 is the first one to support the Pico 2.
+The current Pico SDK master branch (2.1.0 plus fixes - latest stable) works successfully with release 1.1.0 (or later) of Pico MZ-80K. Pico MZ-80K release 1.1.0 was the first one to support the Pico 2.
 
 ## Instructions for rebuilding Pico MZ-80K (see also the documentation subdirectory)
 
@@ -99,4 +99,4 @@ your Pico or Pico 2.
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 22nd November 2024.
+### This README was last updated on 25th November 2024.
