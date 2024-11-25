@@ -77,7 +77,7 @@ void mzspinny(uint8_t state)
   static uint16_t spinny=0;         // Used to reset the tape counter
   static uint8_t ignore=0;          // Don't update the tape counter
                                     // with every call to this function
-  uint8_t mzstr[20];                // Used to convert ASCII to MZ display
+  uint8_t mzstr[15];                // Used to convert ASCII to MZ display
 
   // Reset the tape counter if state == 0
   if (!state) { 
@@ -255,7 +255,7 @@ int16_t tapeloader(int16_t n)
   FILINFO fno;
   FRESULT res;
   uint bytesread,bodybytes,dc;
-  uint8_t mzstr[20];
+  uint8_t mzstr[24];
 
   res=f_opendir(&dp,"/");	/* Open the root directory on the sd card */
   if (res) {
@@ -341,76 +341,33 @@ int16_t tapeloader(int16_t n)
   // 0x01 = machine code, 0x02 = language (BASIC,Pascal etc.), 0x03 = data
   // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K specific)
   switch (header[0]) {
-    case 0x01: mzemustatus[spos++]=0x8d; //m
-               mzemustatus[spos++]=0x2d; ///
-               mzemustatus[spos++]=0x83; //c
-               mzemustatus[spos++]=0x00; //<space>
-               mzemustatus[spos++]=0x83; //c
-               mzemustatus[spos++]=0x8f; //o
-               mzemustatus[spos++]=0x84; //d
-               mzemustatus[spos]=0x85;   //e
+    case 0x01: ascii2mzdisplay("Machine code",mzstr);
+               for (uint8_t i=0; i<12; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x02: mzemustatus[spos++]=0x13; //S
-               mzemustatus[spos++]=0x88; //h
-               mzemustatus[spos++]=0x81; //a
-               mzemustatus[spos++]=0x92; //r
-               mzemustatus[spos++]=0x90; //p
-               mzemustatus[spos++]=0x00; //<space>
-               mzemustatus[spos++]=0x02; //B
-               mzemustatus[spos++]=0x01; //A
-               mzemustatus[spos++]=0x13; //S
-               mzemustatus[spos++]=0x09; //I
-               mzemustatus[spos++]=0x03; //C
-               mzemustatus[spos++]=0x00; //<space>
-               mzemustatus[spos++]=0x85; //e
-               mzemustatus[spos++]=0x94; //t
-               mzemustatus[spos++]=0x83; //c
-               mzemustatus[spos]=0x2e;   //.
+    case 0x02: ascii2mzdisplay("Sharp BASIC etc.",mzstr);
+               for (uint8_t i=0; i<16; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x03: mzemustatus[spos++]=0x84; //d
-               mzemustatus[spos++]=0x81; //a
-               mzemustatus[spos++]=0x94; //t
-               mzemustatus[spos]=0x81;   //a
+    case 0x03: ascii2mzdisplay("Data file",mzstr);
+               for (uint8_t i=0; i<9; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x04: mzemustatus[spos++]=0x9a; //z
-               mzemustatus[spos++]=0x85; //e
-               mzemustatus[spos]=0x8e;   //n
+    case 0x04: ascii2mzdisplay("Zen source",mzstr);
+               for (uint8_t i=0; i<10; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x06: mzemustatus[spos++]=0x03; //C
-               mzemustatus[spos++]=0x88; //h
-               mzemustatus[spos++]=0x81; //a
-               mzemustatus[spos++]=0x8c; //l
-               mzemustatus[spos++]=0x8b; //k
-               mzemustatus[spos++]=0x97; //w
-               mzemustatus[spos++]=0x85; //e
-               mzemustatus[spos++]=0x8c; //l
-               mzemustatus[spos++]=0x8c; //l
-               mzemustatus[spos++]=0x00; //<space>
-               mzemustatus[spos++]=0x02; //B
-               mzemustatus[spos++]=0x01; //A
-               mzemustatus[spos++]=0x13; //S
-               mzemustatus[spos++]=0x09; //I
-               mzemustatus[spos]=0x03; //C
+    case 0x06: ascii2mzdisplay("Chalkwell BASIC",mzstr);
+               for (uint8_t i=0; i<15; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x20: mzemustatus[spos++]=0x8d; //m
-               mzemustatus[spos++]=0x85; //e
-               mzemustatus[spos++]=0x8d; //m
-               mzemustatus[spos++]=0x8f; //o
-               mzemustatus[spos++]=0x92; //r
-               mzemustatus[spos++]=0x99; //y
-               mzemustatus[spos++]=0x00; //<space>
-               mzemustatus[spos++]=0x84; //d
-               mzemustatus[spos++]=0x95; //u
-               mzemustatus[spos++]=0x8d; //m
-               mzemustatus[spos]=0x90;   //p
+    case 0x20: ascii2mzdisplay("Pico MZ-80K memory dump",mzstr);
+               for (uint8_t i=0; i<23; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
-    default:   mzemustatus[spos++]=0x95; //u
-               mzemustatus[spos++]=0x8e; //n
-               mzemustatus[spos++]=0x8b; //k
-               mzemustatus[spos++]=0x8e; //n
-               mzemustatus[spos++]=0x8f; //o
-               mzemustatus[spos++]=0x97; //w
-               mzemustatus[spos]=0x8e;   //n
+    default:   ascii2mzdisplay("Unknown file type",mzstr);
+               for (uint8_t i=0; i<17; i++)
+                 mzemustatus[spos++]=mzstr[i];
                break;
   }
 
