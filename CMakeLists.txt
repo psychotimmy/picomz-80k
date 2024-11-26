@@ -24,6 +24,7 @@
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   add_executable(picomz-80k-diag
@@ -34,6 +35,7 @@
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   target_include_directories(picomz-80k
@@ -79,6 +81,7 @@ else()
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   add_executable(pico2mz-80k-diag
@@ -89,6 +92,7 @@ else()
         8255.c
         8253.c
         cassette.c
+        miscfuncs.c
   )
 
   target_include_directories(pico2mz-80k

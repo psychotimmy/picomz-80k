@@ -12,7 +12,7 @@ volatile void* unusedv;
 volatile z80*  unusedz;
 
 /* Write a byte to RAM or an output device */
-void mem_write(void* unusedv, uint16_t addr, uint8_t value)
+void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
 {
   /* Can't write to monitor ROM or into FD ROM space */
   if ((addr < 0x1000) || (addr > 0xEFFF )) return;
@@ -58,7 +58,7 @@ void mem_write(void* unusedv, uint16_t addr, uint8_t value)
 }
 
 /* Read a byte from memory or input device */
-uint8_t mem_read(void* unusedv, uint16_t addr)
+uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 {
   /* Monitor ROM */
   if (addr < 0x1000) return(mzmonitor[addr]);
@@ -105,14 +105,6 @@ uint8_t sio_read(z80* unusedz, uint8_t addr)
   /* SIO not used by MZ-80K, so should never get here */
   SHOW("Error: In sio_read at 0x%04x\n",addr);
   return(0);
-}
-
-/* Turn the LED on the pico on or off */
-void mzpicoled(uint8_t state)
-{
-  // state == 1 is on, 0 is off.
-  gpio_put(PICO_DEFAULT_LED_PIN, state);
-  return;
 }
 
 /* Sharp MZ-80K emulator main loop */
