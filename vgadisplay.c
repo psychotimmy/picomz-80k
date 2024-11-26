@@ -94,7 +94,7 @@ void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
 {
   uint32_t *buf = dest->data;
   size_t buf_length = dest->data_max;
-  uint8_t lineNum = scanvideo_scanline_number(dest->scanline_id);
+  int lineNum = scanvideo_scanline_number(dest->scanline_id);
 
   /* If we're beyond the last scanline of the MZ-80K display,
      output the emulator status area. Toggle vblank as required */
