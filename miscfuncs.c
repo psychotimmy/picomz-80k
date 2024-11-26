@@ -19,128 +19,70 @@ void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 {
   uint8_t i;
 
-  for (i=0; i<strlen(converted); i++) // converted - assume all spaces
-    converted[i]=0x00;
+  // Set converted to mz display code spaces - 0x00
+  memset(converted,0x00,strlen(convert)); 
 
   for (i=0; i<strlen(convert); i++) {
+
+    /* Deal with scattered codes first - 0x20 (space) already set to 0x00 */
     switch(convert[i]) {
-      case 0x20: converted[i]=0x00;    // space
+
+      case 0x2a: converted[i]=0x6b;               // *
                  break;
-      case 0x21:                                  // !
-      case 0x22:                                  // "
-      case 0x23:                                  // #
-      case 0x24:                                  // $
-      case 0x25:                                  // %
-      case 0x26:                                  // &
-      case 0x27:                                  // '
-      case 0x28:                                  // (
-      case 0x29: converted[i]=convert[i]+0x40;    // ) symbols
+      case 0x2b: converted[i]=0x6a;               // +
                  break;
-      case 0x2A: converted[i]=0x6B;               // *
+      case 0x2c: converted[i]=0x2f;               // ,
                  break;
-      case 0x2B: converted[i]=0x6A;               // +
+      case 0x2d: converted[i]=0x2a;               // -
                  break;
-      case 0x2C: converted[i]=0x2F;               // ,
+      case 0x2e: converted[i]=0x2e;               // .
                  break;
-      case 0x2D: converted[i]=0x2A;               // -
+      case 0x2f: converted[i]=0x2d;               // /
                  break;
-      case 0x2E: converted[i]=0x2E;               // .
+
+      case 0x3a: converted[i]=0x4f;               // :
                  break;
-      case 0x2F: converted[i]=0x2D;               // /
+      case 0x3b: converted[i]=0x2c;               // ;
                  break;
-      case 0x30:
-      case 0x31:
-      case 0x32:
-      case 0x33:
-      case 0x34:
-      case 0x35:
-      case 0x36:
-      case 0x37:
-      case 0x38:
-      case 0x39: converted[i]=convert[i]-0x10;    // 0 - 9
+      case 0x3c: converted[i]=0x51;               // <
                  break;
-      case 0x3A: converted[i]=0x4F;               // :
+      case 0x3d: converted[i]=0x2b;               // =
                  break;
-      case 0x3B: converted[i]=0x2C;               // ;
+      case 0x3e: converted[i]=0x57;               // >
                  break;
-      case 0x3C: converted[i]=0x51;               // <
-                 break;
-      case 0x3D: converted[i]=0x2B;               // =
-                 break;
-      case 0x3E: converted[i]=0x57;               // >
-                 break;
-      case 0x3F: converted[i]=0x49;               // ?
+      case 0x3f: converted[i]=0x49;               // ?
                  break;
       case 0x40: converted[i]=0x55;               // @
                  break;
-      case 0x41:
-      case 0x42:
-      case 0x43:
-      case 0x44:
-      case 0x45:
-      case 0x46:
-      case 0x47:
-      case 0x48:
-      case 0x49:
-      case 0x4A:
-      case 0x4B:
-      case 0x4C:
-      case 0x4D:
-      case 0x4E:
-      case 0x4F:
-      case 0x50:
-      case 0x51:
-      case 0x52:
-      case 0x53:
-      case 0x54:
-      case 0x55:
-      case 0x56:
-      case 0x57:
-      case 0x58:
-      case 0x59:
-      case 0x5A: converted[i]=convert[i]-0x40;   // A - Z
+
+      case 0x5b: converted[i]=0x52;              // [
                  break;
-      case 0x5B: converted[i]=0x52;              // [
+      case 0x5c: converted[i]=0x59;              // \
                  break;
-      case 0x5C: converted[i]=0x59;              // \
-                 break;
-      case 0x5D: converted[i]=0x54;              // ]
-                 break;
-      case 0x61:
-      case 0x62:
-      case 0x63:
-      case 0x64:
-      case 0x65:
-      case 0x66:
-      case 0x67:
-      case 0x68:
-      case 0x69:
-      case 0x6A:
-      case 0x6B:
-      case 0x6C:
-      case 0x6D:
-      case 0x6E:
-      case 0x6F:
-      case 0x70:
-      case 0x71:
-      case 0x72:
-      case 0x73:
-      case 0x74:
-      case 0x75:
-      case 0x76:
-      case 0x77:
-      case 0x78:
-      case 0x79:
-      case 0x7A: converted[i]=convert[i]+0x20;   // a - z
-                 break;
-      case 0xA3: converted[i]=0x1B;              // £
-                 break;
-      case 0xA5: converted[i]=0xBC;              // Yen
+      case 0x5d: converted[i]=0x54;              // ]
                  break;
 
-      default:   converted[i]=0x00;              // Default is space
+      case 0xa3: converted[i]=0x1b;              // £
                  break;
+      case 0xa5: converted[i]=0xbc;              // Yen
+                 break;
+
     }
+
+    /* Now deal with contiguous sequences of codes */
+
+    if ((convert[i] >= 0x61) && (convert[i] <= 0x7a))
+      converted[i]=convert[i]+0x20;               // a - z
+
+    if ((convert[i] >= 0x41) && (convert[i] <= 0x5a))
+      converted[i]=convert[i]-0x40;               // A - Z
+
+    if ((convert[i] >= 0x30) && (convert[i] <= 0x39))
+      converted[i]=convert[i]-0x10;               // 0 - 9
+
+    if ((convert[i] >= 0x21) && (convert[i] <= 0x29))
+      converted[i]=convert[i]+0x40;               // ! " # $ % & ' ( ) 
+
   }
 
   return;
@@ -151,22 +93,12 @@ void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 /* Currently incomplete, but good enough for most purposes.         */
 uint8_t mzsafefilechar(uint8_t sharpchar)
 {
-  uint8_t asciichar;
-
-  /* Default anything not in the lists below to a dash */
-  asciichar=0x2d;
-
-  /* Sharp upper case letters are all ok */
-  if ((sharpchar >= 0x41) && (sharpchar <= 0x5a))
-    asciichar=sharpchar;
-
-  /* Sharp numbers are all ok */
-  if ((sharpchar >= 0x30) && (sharpchar <= 0x39)) 
-    asciichar=sharpchar;
+  uint8_t asciichar=0x2d; /* Default anything not in switch and ifs to dash */
 
   /* Sharp lower case letters are all ok */
   /* but are not contiguous ... convert  */
   switch(sharpchar) {
+
     case 0xa1: asciichar=0x61; //a
                break;
     case 0x9a: asciichar=0x62; //b
@@ -220,27 +152,27 @@ uint8_t mzsafefilechar(uint8_t sharpchar)
     case 0xa2: asciichar=0x7a; //z
                break;
   }
+
+  /* Sharp upper case letters are all ok */
+  if ((sharpchar >= 0x41) && (sharpchar <= 0x5a))
+    asciichar=sharpchar;
+
+  /* Sharp numbers are all ok */
+  if ((sharpchar >= 0x30) && (sharpchar <= 0x39)) 
+    asciichar=sharpchar;
   
   return(asciichar);
 }
 
 /* Convert a Sharp 'ASCII' character to a display character */
-/* Painful and incomplete - but good enough for version 1!  */
+/* Incomplete, but good enough for version 1!               */
 uint8_t mzascii2mzdisplay(uint8_t ascii)
 {
-  uint8_t displaychar;
+  uint8_t displaychar = 0x00;            // space returned for anything not
+                                         // in the switch and ifs below
 
   switch(ascii) {
-    case 0x21:                           //!
-    case 0x22:                           //"
-    case 0x23:                           //#
-    case 0x24:                           //$
-    case 0x25:                           //%
-    case 0x26:                           //&
-    case 0x27:                           //'
-    case 0x28:                           //(
-    case 0x29: displaychar=ascii+0x40;   //)
-               break;
+
     case 0x2a: displaychar=0x6b;   //*
                break;
     case 0x2b: displaychar=0x6a;   //+
@@ -253,17 +185,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0x2f: displaychar=0x2d;   ///
                break;
-    case 0x30:                           //0
-    case 0x31:                           //1
-    case 0x32:                           //2
-    case 0x33:                           //3
-    case 0x34:                           //4
-    case 0x35:                           //5
-    case 0x36:                           //6
-    case 0x37:                           //7
-    case 0x38:                           //8
-    case 0x39: displaychar=ascii-0x10;   //9
-               break;
+
     case 0x3a: displaychar=0x4f;   //:
                break;
     case 0x3b: displaychar=0x2c;   //;
@@ -278,33 +200,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0x40: displaychar=0x55;   //@
                break;
-    case 0x41:                           //A
-    case 0x42:                           //B
-    case 0x43:                           //C
-    case 0x44:                           //D
-    case 0x45:                           //E
-    case 0x46:                           //F
-    case 0x47:                           //G
-    case 0x48:                           //H
-    case 0x49:                           //I
-    case 0x4a:                           //J
-    case 0x4b:                           //K
-    case 0x4c:                           //L
-    case 0x4d:                           //M
-    case 0x4e:                           //N
-    case 0x4f:                           //O
-    case 0x50:                           //P
-    case 0x51:                           //Q
-    case 0x52:                           //R
-    case 0x53:                           //S
-    case 0x54:                           //T
-    case 0x55:                           //U
-    case 0x56:                           //V
-    case 0x57:                           //W
-    case 0x58:                           //X
-    case 0x59:                           //Y
-    case 0x5a: displaychar=ascii-0x40;   //Z
-               break;
+
     case 0x5b: displaychar=0x52;   //[
                break;
     case 0x5c: displaychar=0x59;   //\
@@ -375,9 +271,16 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0xff: displaychar=0x60;   //pi
                break;
-    default:   displaychar=0x00;   //<space> for anything not defined 
-               break;
   }
+
+  if ((ascii >= 0x41) && (ascii <= 0x5a))
+    displaychar=ascii-0x40;        // A - Z
+
+  if ((ascii >= 0x30) && (ascii <= 0x39))
+    displaychar=ascii-0x10;        // 0 - 9
+
+  if ((ascii >= 0x21) && (ascii <= 0x29))
+    displaychar=ascii+0x40;        // ! " # $ % & ' ( ) 
 
   return(displaychar);
 }
