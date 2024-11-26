@@ -30,7 +30,7 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
                                      // ROM we need
   // Now work through the display columns to generate the correct scanline
   pixels += 1;
-  for (int colidx=0;colidx<DWIDTH;colidx++) {
+  for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits = cgrom[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
@@ -60,7 +60,7 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
                                               // ROM we need
   // Now work through the display columns to generate the correct scanline
   pixels += 1;
-  for (int colidx=0;colidx<DWIDTH;colidx++) {
+  for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits = cgrom[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
@@ -94,7 +94,7 @@ void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
 {
   uint32_t *buf = dest->data;
   size_t buf_length = dest->data_max;
-  int lineNum = scanvideo_scanline_number(dest->scanline_id);
+  uint8_t lineNum = scanvideo_scanline_number(dest->scanline_id);
 
   /* If we're beyond the last scanline of the MZ-80K display,
      output the emulator status area. Toggle vblank as required */

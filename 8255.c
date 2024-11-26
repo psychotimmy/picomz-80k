@@ -121,7 +121,6 @@ void wr8255(uint16_t addr, uint8_t data)
            portCbit = (data>>1)&0x07; // Mask out everything except bits 1-3
                                       // Shift right 1 bit to make switch
                                       // statement simpler
-           if (portCbit != 1) SHOW("Setbit %d portCbit %d\n",setbit,portCbit);
            switch (portCbit) {
              case 0: // /VGATE
                      if (setbit) {
@@ -155,9 +154,8 @@ void wr8255(uint16_t addr, uint8_t data)
                        cmotor=!cmotor;   /* Toggle motor when bit set */
                        SHOW("motor %d sense %d\n",cmotor,csense);
                      }
-                     else { 
+                     else 
                        portC&=0xF7;      /* sense & motor remain as before */
-                     }
                      break;
                   /* Should never get to cases 4-7, so break */
              default:SHOW("Unexpected portC bit set attempt (%d)\n",portCbit);
@@ -196,21 +194,17 @@ uint8_t rd8255(uint16_t addr)
              if ((idxloop == 0) && (idx == 9)) {
                memcpy(newkey,processkey,KBDROWS);
                memset(processkey,0xFF,KBDROWS);
-               idxloop=9*scantimes;
+               idxloop=KBDROWS*scantimes-1;
              }
 
              /* Return the current row of the keyboard matrix */
              retval=newkey[idx];
-             /* Reset newkey if in last scan of the matrix */
-             if (idxloop < KBDROWS)
-               newkey[idx]=0xFF;
-             /* Decrement loop counter if not at zero */
+             /* Decrement idxloop counter if not at zero */
              if (idxloop > 0)
                --idxloop;
            }
-           else {
+           else
              retval=0xFF;                // 0xFF always returned if idx > 9
-           }
            break;
     case 2:// Read upper 4 bits from portC 
            retval=portC&0x0F;          // Lower 4 bits returned unchanged

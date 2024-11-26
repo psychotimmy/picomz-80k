@@ -73,17 +73,11 @@ static FATFS fs;         // File system pointer for sd card
 /* Update the tape counter in the emulator status area, line 3 */
 void mzspinny(uint8_t state)
 {
-  uint8_t spos=0;
+  uint8_t spos=EMULINE3;            // Write to fourth emulator status line
   static uint16_t spinny=0;         // Used to reset the tape counter
   static uint8_t ignore=0;          // Don't update the tape counter
                                     // with every call to this function
   uint8_t mzstr[15];                // Used to convert ASCII to MZ display
-
-  // Reset the tape counter if state == 0
-  if (!state) { 
-    spinny=0;
-    ignore=0;
-  }
 
   // Increment ignore. If this is >= TCOUNTERINC then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
@@ -97,7 +91,6 @@ void mzspinny(uint8_t state)
 
   // Write out value of spinny to the emulator status area
   ascii2mzdisplay("Tape counter: ",mzstr);
-  spos=EMULINE3;
   for (uint8_t i=0;i<14;i++)         // Can't use strlen as space is 0x00!!
     mzemustatus[spos++]=mzstr[i];
   
@@ -107,7 +100,7 @@ void mzspinny(uint8_t state)
   spinnyt=spinnyt%100;
   mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/10);
   spinnyt=spinnyt%10;
-  mzemustatus[spos]=0x20+(uint8_t) spinnyt;
+  mzemustatus[spos]=0x20+(uint8_t)spinnyt;
 
   return;
 }
@@ -119,7 +112,7 @@ FRESULT tapeinit(void)
 
   // Attempt to mount the sd card filesystem
   // Calling routine must deal with status
-  sleep_ms(500);
+  busy_wait_ms(500);
   res=f_mount(&fs, "", 1);
 
   return(res);
@@ -255,7 +248,7 @@ int16_t tapeloader(int16_t n)
   FILINFO fno;
   FRESULT res;
   uint bytesread,bodybytes,dc;
-  uint8_t mzstr[24];
+  uint8_t mzstr[25];
 
   res=f_opendir(&dp,"/");	/* Open the root directory on the sd card */
   if (res) {
@@ -264,7 +257,8 @@ int16_t tapeloader(int16_t n)
   }
 
   // If we're passed a number less than 0, use 0 (first file).
-  if (n < 0) n=0;
+  if (n < 0) 
+    n=0;
 
   dc=0;                         
   while (dc <= n) {             /* Find the nth file in the directory */
@@ -312,12 +306,11 @@ int16_t tapeloader(int16_t n)
   // Update the preloaded tape name in the emulator status area. Note
   // this is the name stored in the header, NOT the actual file name on
   // the SD card.
-  uint8_t spos;
+
+  uint8_t spos=EMULINE1;
   // spos: EMULINE0 = start of status area line 0, EMULINE1 = line 1 etc.
 
-  for (spos=EMULINE1;spos<EMULINE2;spos++) 
-    mzemustatus[spos]=0x00;
-  spos=EMULINE1;
+  memset(mzemustatus+EMULINE1,0x00,40); // Blank line
   ascii2mzdisplay("Next file is: ",mzstr);
   for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
     mzemustatus[spos++]=mzstr[i];
@@ -330,8 +323,7 @@ int16_t tapeloader(int16_t n)
     mzemustatus[spos++]=mzascii2mzdisplay(header[hpos++]);
 
   // Update the preloaded tape type in the emulator status area.
-  for (spos=EMULINE2;spos<EMULINE3;spos++) 
-    mzemustatus[spos]=0x00;
+  memset(mzemustatus+EMULINE2,0x00,40); // Blank line
   spos=EMULINE2;
   ascii2mzdisplay("File type is: ",mzstr);
   for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
