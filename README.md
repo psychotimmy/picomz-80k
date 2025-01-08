@@ -16,7 +16,7 @@ Flash one of:
 
 **picomz-80k-pimoroni.uf2** (standard version) or **picomz-80k-diag-pimoroni.uf2** (diag version) for a Pico mounted on a Pimoroni VGA demo base
 
-**pico2mz-80k-pimoroni.uf2** (standard vaersion) or **pico2mz-80k-diag-pimoroni.uf2** (diag version) for a Pico 2 mounted on a Pimoroni VGA demo base
+**pico2mz-80k-pimoroni.uf2** (standard version) or **pico2mz-80k-diag-pimoroni.uf2** (diag version) for a Pico 2 mounted on a Pimoroni VGA demo base
 
 ![A picture of a Pimoroni VGA demo base with a Raspberry Pico (with headers) installed.](https://z80.timholyoake.uk/wp-content/uploads/2024/09/20240905_101721-1024x633.jpg)
 
