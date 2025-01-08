@@ -1,6 +1,7 @@
 // A Sharp MZ-80K emulator for the Raspberry Pi Pico
 // Release 1 - Written August - October 2024
 // Release 1.1 - Written November 2024
+// Initial support for RC2014 RP2040 VGA card added January 2025
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -14,7 +15,7 @@
 
 // MIT License
 
-// Copyright (c) 2024 Tim Holyoake
+// Copyright (c) 2024,2025 Tim Holyoake
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #ifndef USBDIAGOUTPUT
   #include "tusb_config.h" // Needs to come before tusb.h as it
@@ -54,6 +56,9 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
+#ifdef RC2014RP2040VGA
+  #include "hardware/i2c.h"  // Required for RC2014 RP2040 VGA card
+#endif
 #include "fatfs/ffconf.h"
 #include "fatfs/ff.h"
 #include "sdcard/sdcard.h"
@@ -194,3 +199,41 @@ extern void mzpicoled(uint8_t);
 extern void ascii2mzdisplay(uint8_t*, uint8_t*);
 extern uint8_t mzsafefilechar(uint8_t);
 extern uint8_t mzascii2mzdisplay(uint8_t);
+
+/* pca9536.c - used by RC2014 RP2040 VGA card */
+#ifdef RC2014RP2040VGA
+  #define IO_MODE_IN 1
+  #define IO_MODE_OUT 0
+
+  #define IO_0 0
+  #define IO_1 1
+  #define IO_2 2
+  #define IO_3 3
+
+  #define SDA_PIN 18
+  #define SCL_PIN 19
+
+  #define PCA9536_ADDR 0x41
+  #define REG_INPUT    0  // default
+  #define REG_OUTPUT   1
+  #define REG_POLARITY 2
+  #define REG_CONFIG   3
+
+  extern i2c_inst_t* i2c_bus;             // RC2014 RP2040 VGA board support
+  extern bool i2c_bus_available;          // See pca9536.c
+
+  extern bool has_pca9536(i2c_inst_t *i2c);
+  extern bool pca9536_setup_io(i2c_inst_t *i2c, uint8_t io, uint8_t io_mode);
+  extern bool pca9536_output_io(i2c_inst_t *i2c, uint8_t io, bool value);
+  extern bool pca9536_output_reset(i2c_inst_t *i2c, uint8_t mask);
+  extern bool pca9536_input_io(i2c_inst_t *i2c, uint8_t io);
+  extern void init_i2c_bus(); 
+  extern void deinit_i2c_bus();
+  extern int reg_write(i2c_inst_t *i2c,const uint addr,const uint8_t reg,
+                       uint8_t *buf,const uint8_t nbytes);
+  extern int reg_read(i2c_inst_t *i2c,const uint addr,const uint8_t reg,
+                      uint8_t *buf,const uint8_t nbytes);
+  extern int reg_read_timeout(i2c_inst_t *i2c,const uint addr,
+                              const uint8_t reg,uint8_t *buf,
+                              const uint8_t nbytes,const uint timeout_us);
+#endif

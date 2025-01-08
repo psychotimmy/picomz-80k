@@ -28,8 +28,17 @@
 // functions delivered by the pico SDK.
 
 /* Pico pwm gpio pin definitions */
-#define PICOTONE1 27      /* The VGA board uses pins 27 & 28 for sound (pwm) */
-#define PICOTONE2 28
+#ifdef RC2014RP2040VGA
+                         // Not correct as will need to use i2c, but safe
+  #define PICOTONE1 19
+  #define PICOTONE2 19
+
+#else
+
+  #define PICOTONE1 27   // Pimoroni VGA board uses pins 27 & 28 for sound (pwm)
+  #define PICOTONE2 28
+
+#endif
 
 typedef struct toneg {    /* Tone generator structure for pwm sound  */
   uint8_t slice1;         /* Initialised by pico_tone_init() function */
