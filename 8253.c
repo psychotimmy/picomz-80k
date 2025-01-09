@@ -40,7 +40,7 @@
 
 #endif
 
-typedef struct toneg {    /* Tone generator structure for pwm sound  */
+typedef struct toneg {    /* Tone generator structure for sound  */
   uint8_t slice1;         /* Initialised by pico_tone_init() function */
   uint8_t slice2;
   uint8_t channel1;
@@ -49,8 +49,9 @@ typedef struct toneg {    /* Tone generator structure for pwm sound  */
   float freq;             /* Requested frequency in Hz */
 } toneg;
 
-pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
 static toneg picotone;         /* Tone generator global static */
+
+pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
 static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
 
 static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
@@ -87,9 +88,62 @@ uint16_t mzpicosecs(void)
   return(seconds_elapsed);
 }
 
+#ifdef RC2014RP2040VGA
+
 /*************************************************************/
 /*                                                           */
 /* Internal 8253 functions to support sound generation       */
+/* RC2014 RP2040 VGA terminal card over i2c                  */
+/*                                                           */
+/*************************************************************/
+void pico_tone_init()
+{
+
+  // I2C bus has already been initialised in picomz.c
+
+  // Not using the values below for very much at present -
+  // buzzer currrently just beeps at constant frequency.
+  // The rest of the picotone struct is for pwm sound only.
+
+  /* Determine the pico clock speed */
+  picotone.picoclock=clock_get_hz(clk_sys);
+
+  /* Set frequency to 0.1Hz (zero-ish) */
+  picotone.freq=0.1;
+
+  return;
+}
+
+static int64_t mzpico_tone_off(alarm_id_t id, void *userdata)
+{
+  // Turn the sound generator off
+  pca9536_output_io(i2c_bus,IO_1,false);
+  return(0); 
+}
+
+void mzpico_tone_on(void)
+{
+  uint32_t *unused; /* Dummy variable for alarm callback */
+
+  // Avoid possible divide by 0 by insisting frequency > 0.1Hz
+  if (picotone.freq > 0.1) { 
+
+    pca9536_output_io(i2c_bus,IO_1,true);
+
+    if (tone_alarm) cancel_alarm(tone_alarm);
+    // The delay of 20s below is arbitrary as the longest possible
+    // duration of a note on the MZ-80K is 7 seconds (7000ms).
+    // The alarm will always be cancelled before this value is reached.
+    tone_alarm=add_alarm_in_ms(20000,mzpico_tone_off,unused,true);
+  }
+}
+
+#else
+
+/*************************************************************/
+/*                                                           */
+/* Internal 8253 functions to support sound generation       */
+/* Pimoroni VGA demo base using PWM direct to gpio           */
 /*                                                           */
 /*************************************************************/
 void pico_tone_init()
@@ -152,6 +206,8 @@ void mzpico_tone_on(void)
     tone_alarm=add_alarm_in_ms(20000,mzpico_tone_off,unused,true);
   }
 }
+
+#endif
 
 /* Initialise the 8253 Programmable Interval Timer (PIT) */
 void p8253_init(void) 
