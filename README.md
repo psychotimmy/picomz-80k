@@ -22,6 +22,8 @@ Flash one of:
 
 **picomz-80k-rc2014.uf2** (standard version) for a RC2014 RP2040 VGA card mounted on a RC2014 backplane
 
+![A picture of a RC2014 RP2040 VGA terminal card on a backplane 8](https://z80.timholyoake.uk/wp-content/uploads/2025/01/20250110_093313-1024x642.jpg)
+
 When a USB keyboard (standard versions) or terminal emulator (diag versions) plus a VGA display is connected, you will see:
 
 ** MONITOR SP-1002 **
