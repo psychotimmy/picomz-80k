@@ -99,4 +99,4 @@ There should now be three (Pico) or two (Pico 2) .uf2 files in your build direct
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 8th January 2025.
+### This README was last updated on 10th January 2025.
