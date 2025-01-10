@@ -70,14 +70,255 @@ static FATFS fs;         // File system pointer for sd card
 // chkf - a copy of the file checksum
 // l - 1 long pulse
 
+/* Convert a Sharp 'ASCII' tape file name character to an 'ASCII'   */
+/* character that will form part of a legal FAT (sd card) file name */
+/* Currently incomplete, but good enough for most purposes.         */
+uint8_t mzsafefilechar(uint8_t sharpchar)
+{
+  uint8_t asciichar;
+
+  /* Default anything not in the lists below to a dash */
+  asciichar=0x2d;
+
+  /* Sharp upper case letters are all ok */
+  if ((sharpchar >= 0x41) && (sharpchar <= 0x5a))
+    asciichar=sharpchar;
+
+  /* Sharp numbers are all ok */
+  if ((sharpchar >= 0x30) && (sharpchar <= 0x39)) 
+    asciichar=sharpchar;
+
+  /* Sharp lower case letters are all ok */
+  /* but are not contiguous ... convert  */
+  switch(sharpchar) {
+    case 0xa1: asciichar=0x61; //a
+               break;
+    case 0x9a: asciichar=0x62; //b
+               break;
+    case 0x9f: asciichar=0x63; //c
+               break;
+    case 0x9c: asciichar=0x64; //d
+               break;
+    case 0x92: asciichar=0x65; //e
+               break;
+    case 0xaa: asciichar=0x66; //f
+               break;
+    case 0x97: asciichar=0x67; //g
+               break;
+    case 0x98: asciichar=0x68; //h
+               break;
+    case 0xa6: asciichar=0x69; //i
+               break;
+    case 0xaf: asciichar=0x6a; //j
+               break;
+    case 0xa9: asciichar=0x6b; //k
+               break;
+    case 0xb8: asciichar=0x6c; //l
+               break;
+    case 0xb3: asciichar=0x6d; //m
+               break;
+    case 0xb0: asciichar=0x6e; //n
+               break;
+    case 0xb7: asciichar=0x6f; //o
+               break;
+    case 0x9e: asciichar=0x70; //p
+               break;
+    case 0xa0: asciichar=0x71; //q
+               break;
+    case 0x9d: asciichar=0x72; //r
+               break;
+    case 0xa4: asciichar=0x73; //s
+               break;
+    case 0x96: asciichar=0x74; //t
+               break;
+    case 0xa5: asciichar=0x75; //u
+               break;
+    case 0xab: asciichar=0x76; //v
+               break;
+    case 0xa3: asciichar=0x77; //w
+               break;
+    case 0x9b: asciichar=0x78; //x
+               break;
+    case 0xbd: asciichar=0x79; //y
+               break;
+    case 0xa2: asciichar=0x7a; //z
+               break;
+  }
+  
+  return(asciichar);
+}
+
+/* Convert a Sharp 'ASCII' character to a display character */
+/* Painful and incomplete - but good enough for version 1!  */
+uint8_t mzascii2display(uint8_t ascii)
+{
+  uint8_t displaychar;
+
+  switch(ascii) {
+    case 0x21:                           //!
+    case 0x22:                           //"
+    case 0x23:                           //#
+    case 0x24:                           //$
+    case 0x25:                           //%
+    case 0x26:                           //&
+    case 0x27:                           //'
+    case 0x28:                           //(
+    case 0x29: displaychar=ascii+0x40;   //)
+               break;
+    case 0x2a: displaychar=0x6b;   //*
+               break;
+    case 0x2b: displaychar=0x6a;   //+
+               break;
+    case 0x2c: displaychar=0x2f;   //,
+               break;
+    case 0x2d: displaychar=0x2a;   //-
+               break;
+    case 0x2e: displaychar=0x2e;   //.
+               break;
+    case 0x2f: displaychar=0x2d;   ///
+               break;
+    case 0x30:                           //0
+    case 0x31:                           //1
+    case 0x32:                           //2
+    case 0x33:                           //3
+    case 0x34:                           //4
+    case 0x35:                           //5
+    case 0x36:                           //6
+    case 0x37:                           //7
+    case 0x38:                           //8
+    case 0x39: displaychar=ascii-0x10;   //9
+               break;
+    case 0x3a: displaychar=0x4f;   //:
+               break;
+    case 0x3b: displaychar=0x2c;   //;
+               break;
+    case 0x3c: displaychar=0x51;   //<
+               break;
+    case 0x3d: displaychar=0x2b;   //=
+               break;
+    case 0x3e: displaychar=0x57;   //>
+               break;
+    case 0x3f: displaychar=0x49;   //?
+               break;
+    case 0x40: displaychar=0x55;   //@
+               break;
+    case 0x41:                           //A
+    case 0x42:                           //B
+    case 0x43:                           //C
+    case 0x44:                           //D
+    case 0x45:                           //E
+    case 0x46:                           //F
+    case 0x47:                           //G
+    case 0x48:                           //H
+    case 0x49:                           //I
+    case 0x4a:                           //J
+    case 0x4b:                           //K
+    case 0x4c:                           //L
+    case 0x4d:                           //M
+    case 0x4e:                           //N
+    case 0x4f:                           //O
+    case 0x50:                           //P
+    case 0x51:                           //Q
+    case 0x52:                           //R
+    case 0x53:                           //S
+    case 0x54:                           //T
+    case 0x55:                           //U
+    case 0x56:                           //V
+    case 0x57:                           //W
+    case 0x58:                           //X
+    case 0x59:                           //Y
+    case 0x5a: displaychar=ascii-0x40;   //Z
+               break;
+    case 0x5b: displaychar=0x52;   //[
+               break;
+    case 0x5c: displaychar=0x59;   //\
+               break;
+    case 0x5d: displaychar=0x54;   //]
+               break;
+    case 0x6c: displaychar=0x5a;   // right arrow
+               break;
+    case 0x92: displaychar=0x85;   //e
+               break;
+    case 0x96: displaychar=0x94;   //t
+               break;
+    case 0x97: displaychar=0x87;   //g
+               break;
+    case 0x98: displaychar=0x88;   //h
+               break;
+    case 0x9a: displaychar=0x82;   //b
+               break;
+    case 0x9b: displaychar=0x98;   //x
+               break;
+    case 0x9c: displaychar=0x84;   //d
+               break;
+    case 0x9d: displaychar=0x92;   //r
+               break;
+    case 0x9e: displaychar=0x90;   //p
+               break;
+    case 0x9f: displaychar=0x83;   //c
+               break;
+    case 0xa0: displaychar=0x91;   //q
+               break;
+    case 0xa1: displaychar=0x81;   //a
+               break;
+    case 0xa2: displaychar=0x9a;   //z
+               break;
+    case 0xa3: displaychar=0x97;   //w
+               break;
+    case 0xa4: displaychar=0x93;   //s
+               break;
+    case 0xa5: displaychar=0x95;   //u
+               break;
+    case 0xa6: displaychar=0x89;   //i
+               break;
+    case 0xa9: displaychar=0x8b;   //k
+               break;
+    case 0xaa: displaychar=0x86;   //f
+               break;
+    case 0xab: displaychar=0x96;   //v
+               break;
+    case 0xaf: displaychar=0x8a;   //j
+               break;
+    case 0xb0: displaychar=0x8e;   //n
+               break;
+    case 0xb3: displaychar=0x8d;   //m
+               break;
+    case 0xb7: displaychar=0x8f;   //o
+               break;
+    case 0xb8: displaychar=0x8c;   //l
+               break;
+    case 0xbd: displaychar=0x99;   //y
+               break;
+    case 0xe1: displaychar=0x41;   //spade
+               break;
+    case 0xf3: displaychar=0x53;   //heart
+               break;
+    case 0xf8: displaychar=0x46;   //club
+               break;
+    case 0xfa: displaychar=0x44;   //diamond
+               break;
+    case 0xff: displaychar=0x60;   //pi
+               break;
+    default:   displaychar=0x00;   //<space> for anything not defined 
+               break;
+  }
+
+  return(displaychar);
+}
+
 /* Update the tape counter in the emulator status area, line 3 */
 void mzspinny(uint8_t state)
 {
-  uint8_t spos=EMULINE3;            // Write to fourth emulator status line
+  uint8_t spos=0;
   static uint16_t spinny=0;         // Used to reset the tape counter
   static uint8_t ignore=0;          // Don't update the tape counter
                                     // with every call to this function
-  uint8_t mzstr[15];                // Used to convert ASCII to MZ display
+
+  // Reset the tape counter if state == 0
+  if (!state) { 
+    spinny=0;
+    ignore=0;
+  }
 
   // Increment ignore. If this is >= TCOUNTERINC then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
@@ -90,9 +331,21 @@ void mzspinny(uint8_t state)
   }
 
   // Write out value of spinny to the emulator status area
-  ascii2mzdisplay("Tape counter: ",mzstr);
-  for (uint8_t i=0;i<14;i++)         // Can't use strlen as space is 0x00!!
-    mzemustatus[spos++]=mzstr[i];
+  spos=EMULINE3;
+  mzemustatus[spos++]=0x14; //T
+  mzemustatus[spos++]=0x81; //a
+  mzemustatus[spos++]=0x90; //p
+  mzemustatus[spos++]=0x85; //e
+  mzemustatus[spos++]=0x00; //<space>
+  mzemustatus[spos++]=0x83; //c
+  mzemustatus[spos++]=0x8f; //o
+  mzemustatus[spos++]=0x95; //u
+  mzemustatus[spos++]=0x8e; //n
+  mzemustatus[spos++]=0x94; //t
+  mzemustatus[spos++]=0x85; //e
+  mzemustatus[spos++]=0x92; //r
+  mzemustatus[spos++]=0x4f; //:
+  mzemustatus[spos++]=0x00; //<space>
   
   // Output the tape counter number
   uint16_t spinnyt=spinny;
@@ -100,7 +353,7 @@ void mzspinny(uint8_t state)
   spinnyt=spinnyt%100;
   mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/10);
   spinnyt=spinnyt%10;
-  mzemustatus[spos]=0x20+(uint8_t)spinnyt;
+  mzemustatus[spos]=0x20+(uint8_t) spinnyt;
 
   return;
 }
@@ -112,7 +365,7 @@ FRESULT tapeinit(void)
 
   // Attempt to mount the sd card filesystem
   // Calling routine must deal with status
-  busy_wait_ms(500);
+  sleep_ms(500);
   res=f_mount(&fs, "", 1);
 
   return(res);
@@ -166,10 +419,6 @@ FRESULT mzsavedump(void)
   // Write 'tape' contents - z80 state
   f_write(&fp, &mzcpu, sizeof(mzcpu), &bw);
   SHOW("Memory dump z80 cpu state: %d bytes written to MZDUMP.MZF\n",bw);
-
-  // Write 'tape' contents - 8253 state
-  f_write(&fp, &mzpit, sizeof(mzpit), &bw);
-  SHOW("Memory dump 8253 state: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Close the file and return
   f_close(&fp);
@@ -226,14 +475,6 @@ FRESULT mzreaddump(void)
     return(FR_INT_ERR);      // assertion failed
   }
 
-  // Read 8253 state
-  f_read(&fp, &mzpit, sizeof(mzpit), &br);
-  if (br != sizeof(mzpit)) {
-    SHOW("Error on 8253 read - expecting %d bytes, got %d\n",sizeof(mzpit),br);
-    f_close(&fp);
-    return(FR_INT_ERR);      // assertion failed
-  }
-
   // Success - close file
   f_close(&fp);
 
@@ -248,7 +489,6 @@ int16_t tapeloader(int16_t n)
   FILINFO fno;
   FRESULT res;
   uint bytesread,bodybytes,dc;
-  uint8_t mzstr[25];
 
   res=f_opendir(&dp,"/");	/* Open the root directory on the sd card */
   if (res) {
@@ -257,8 +497,7 @@ int16_t tapeloader(int16_t n)
   }
 
   // If we're passed a number less than 0, use 0 (first file).
-  if (n < 0) 
-    n=0;
+  if (n < 0) n=0;
 
   dc=0;                         
   while (dc <= n) {             /* Find the nth file in the directory */
@@ -306,60 +545,124 @@ int16_t tapeloader(int16_t n)
   // Update the preloaded tape name in the emulator status area. Note
   // this is the name stored in the header, NOT the actual file name on
   // the SD card.
-
-  uint8_t spos=EMULINE1;
+  uint8_t spos;
   // spos: EMULINE0 = start of status area line 0, EMULINE1 = line 1 etc.
-
-  memset(mzemustatus+EMULINE1,0x00,40); // Blank line
-  ascii2mzdisplay("Next file is: ",mzstr);
-  for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
-
+  for (spos=EMULINE1;spos<EMULINE2;spos++) 
+    mzemustatus[spos]=0x00;
+  spos=EMULINE1;
+  mzemustatus[spos++]=0x0e;  //N
+  mzemustatus[spos++]=0x85;  //e
+  mzemustatus[spos++]=0x98;  //x
+  mzemustatus[spos++]=0x94;  //t
+  mzemustatus[spos++]=0x00;  //<space>
+  mzemustatus[spos++]=0x86;  //f
+  mzemustatus[spos++]=0x89;  //i
+  mzemustatus[spos++]=0x8c;  //l
+  mzemustatus[spos++]=0x85;  //e
+  mzemustatus[spos++]=0x00;  //<space
+  mzemustatus[spos++]=0x89;  //i
+  mzemustatus[spos++]=0x93;  //s
+  mzemustatus[spos++]=0x4f;  //:
+  mzemustatus[spos++]=0x00;  //<space>
   // Tape name terminates with 0x0d or is 17 characters long
   // Stored in header[1] to header[17] - update status area with this
   // Note - needs converting from MZ 'ASCCI' to MZ display codes
   uint8_t hpos=1;
   while ((header[hpos] != 0x0d) && (hpos <= 17))
-    mzemustatus[spos++]=mzascii2mzdisplay(header[hpos++]);
+    mzemustatus[spos++]=mzascii2display(header[hpos++]);
 
   // Update the preloaded tape type in the emulator status area.
-  memset(mzemustatus+EMULINE2,0x00,40); // Blank line
+  for (spos=EMULINE2;spos<EMULINE3;spos++) 
+    mzemustatus[spos]=0x00;
   spos=EMULINE2;
-  ascii2mzdisplay("File type is: ",mzstr);
-  for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
-
+  mzemustatus[spos++]=0x06;  //F
+  mzemustatus[spos++]=0x89;  //i
+  mzemustatus[spos++]=0x8c;  //l
+  mzemustatus[spos++]=0x85;  //e
+  mzemustatus[spos++]=0x00;  //<space>
+  mzemustatus[spos++]=0x94;  //t
+  mzemustatus[spos++]=0x99;  //y
+  mzemustatus[spos++]=0x90;  //p
+  mzemustatus[spos++]=0x85;  //e
+  mzemustatus[spos++]=0x00;  //<space>
+  mzemustatus[spos++]=0x89;  //i
+  mzemustatus[spos++]=0x93;  //s
+  mzemustatus[spos++]=0x4f;  //:
+  mzemustatus[spos++]=0x00;  //<space>
   // Type of tape is stored in the header
   // 0x01 = machine code, 0x02 = language (BASIC,Pascal etc.), 0x03 = data
   // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K specific)
   switch (header[0]) {
-    case 0x01: ascii2mzdisplay("Machine code",mzstr);
-               for (uint8_t i=0; i<12; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x01: mzemustatus[spos++]=0x8d; //m
+               mzemustatus[spos++]=0x2d; ///
+               mzemustatus[spos++]=0x83; //c
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x83; //c
+               mzemustatus[spos++]=0x8f; //o
+               mzemustatus[spos++]=0x84; //d
+               mzemustatus[spos]=0x85;   //e
                break;
-    case 0x02: ascii2mzdisplay("Sharp BASIC etc.",mzstr);
-               for (uint8_t i=0; i<16; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x02: mzemustatus[spos++]=0x13; //S
+               mzemustatus[spos++]=0x88; //h
+               mzemustatus[spos++]=0x81; //a
+               mzemustatus[spos++]=0x92; //r
+               mzemustatus[spos++]=0x90; //p
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x02; //B
+               mzemustatus[spos++]=0x01; //A
+               mzemustatus[spos++]=0x13; //S
+               mzemustatus[spos++]=0x09; //I
+               mzemustatus[spos++]=0x03; //C
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x85; //e
+               mzemustatus[spos++]=0x94; //t
+               mzemustatus[spos++]=0x83; //c
+               mzemustatus[spos]=0x2e;   //.
                break;
-    case 0x03: ascii2mzdisplay("Data file",mzstr);
-               for (uint8_t i=0; i<9; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x03: mzemustatus[spos++]=0x84; //d
+               mzemustatus[spos++]=0x81; //a
+               mzemustatus[spos++]=0x94; //t
+               mzemustatus[spos]=0x81;   //a
                break;
-    case 0x04: ascii2mzdisplay("Zen source",mzstr);
-               for (uint8_t i=0; i<10; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x04: mzemustatus[spos++]=0x9a; //z
+               mzemustatus[spos++]=0x85; //e
+               mzemustatus[spos]=0x8e;   //n
                break;
-    case 0x06: ascii2mzdisplay("Chalkwell BASIC",mzstr);
-               for (uint8_t i=0; i<15; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x06: mzemustatus[spos++]=0x03; //C
+               mzemustatus[spos++]=0x88; //h
+               mzemustatus[spos++]=0x81; //a
+               mzemustatus[spos++]=0x8c; //l
+               mzemustatus[spos++]=0x8b; //k
+               mzemustatus[spos++]=0x97; //w
+               mzemustatus[spos++]=0x85; //e
+               mzemustatus[spos++]=0x8c; //l
+               mzemustatus[spos++]=0x8c; //l
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x02; //B
+               mzemustatus[spos++]=0x01; //A
+               mzemustatus[spos++]=0x13; //S
+               mzemustatus[spos++]=0x09; //I
+               mzemustatus[spos]=0x03; //C
                break;
-    case 0x20: ascii2mzdisplay("Pico MZ-80K memory dump",mzstr);
-               for (uint8_t i=0; i<23; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x20: mzemustatus[spos++]=0x8d; //m
+               mzemustatus[spos++]=0x85; //e
+               mzemustatus[spos++]=0x8d; //m
+               mzemustatus[spos++]=0x8f; //o
+               mzemustatus[spos++]=0x92; //r
+               mzemustatus[spos++]=0x99; //y
+               mzemustatus[spos++]=0x00; //<space>
+               mzemustatus[spos++]=0x84; //d
+               mzemustatus[spos++]=0x95; //u
+               mzemustatus[spos++]=0x8d; //m
+               mzemustatus[spos]=0x90;   //p
                break;
-    default:   ascii2mzdisplay("Unknown file type",mzstr);
-               for (uint8_t i=0; i<17; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    default:   mzemustatus[spos++]=0x95; //u
+               mzemustatus[spos++]=0x8e; //n
+               mzemustatus[spos++]=0x8b; //k
+               mzemustatus[spos++]=0x8e; //n
+               mzemustatus[spos++]=0x8f; //o
+               mzemustatus[spos++]=0x97; //w
+               mzemustatus[spos]=0x8e;   //n
                break;
   }
 

@@ -28,19 +28,24 @@
 // functions delivered by the pico SDK.
 
 /* Pico pwm gpio pin definitions */
-#ifdef RC2014RP2040VGA
-                         // Not correct as will need to use i2c, but safe
-  #define PICOTONE1 19
-  #define PICOTONE2 19
+#define PICOTONE1 27      /* The VGA board uses pins 27 & 28 for sound (pwm) */
+#define PICOTONE2 28
 
-#else
+static uint16_t counter0; /* Two byte counter for sound frequency */
+static uint16_t counter2; /* Two byte counter for time */
+static bool out2;         /* Start / stop counter 2 output */
 
-  #define PICOTONE1 27   // Pimoroni VGA board uses pins 27 & 28 for sound (pwm)
-  #define PICOTONE2 28
+static uint16_t c2start;  /* Records value set in counter 2 when initialised */
 
-#endif
+static uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
+                          /* we're writing to or reading from (E006) */
 
-typedef struct toneg {    /* Tone generator structure for sound  */
+static uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
+                          /* we're writing to or reading from (E004) */
+
+static uint8_t e008call;  /* Incremented whenever E008 is read */
+
+typedef struct toneg {    /* Tone generator structure for pwm sound  */
   uint8_t slice1;         /* Initialised by pico_tone_init() function */
   uint8_t slice2;
   uint8_t channel1;
@@ -51,99 +56,50 @@ typedef struct toneg {    /* Tone generator structure for sound  */
 
 static toneg picotone;         /* Tone generator global static */
 
-pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
-static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
-
-static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
+static alarm_id_t tone_alarm;  /* We use alarms to start/stop tones */
 
 /*************************************************************/
 /*                                                           */
 /* Internal 8253 functions to support the Sharp MZ-80K clock */
 /*                                                           */
 /*************************************************************/
-void mzpico_clk_init(void)
+void mzpico_rtc_init(void)
 {
-  // Store the absoltue time in the clockreset global. The MZ-80K
-  // clock will count seconds from here.
+  // Start on Monday 1st January 2024 00:00:00
+  // This is arbitrary, as the MZ-80K clock only
+  // counts in seconds for half a day. It has no
+  // concept of years, months etc.
+  datetime_t t = {
+    .year  = 2024,
+    .month = 01,
+    .day   = 01,
+    .dotw  = 1,    // Monday
+    .hour  = 00,
+    .min   = 00,
+    .sec   = 00
+  };
+ 
+  // Start the pico RTC
+  rtc_init();
+  rtc_set_datetime(&t);
 
-  clockreset=get_absolute_time();
   return;
 }
 
-/* Return the number of seconds since mzpico_clk_init() was called */
+/* Return the number of seconds minus 1 since the Pico RTC was initialised */
 uint16_t mzpicosecs(void)
 {
-  absolute_time_t time_now;
-  int64_t  us_elapsed;
-  uint16_t seconds_elapsed;
+  uint16_t elapsed;
+  datetime_t t;
 
-  // Get the current time
-  time_now=get_absolute_time();
-  // Calculate the number of microseconds between call to mzpico_clk_init()
-  // and the time now
-  us_elapsed=absolute_time_diff_us(clockreset,time_now);
-  // Convert to seconds and return
-  seconds_elapsed=(uint16_t)(us_elapsed/1000000);
-
-  return(seconds_elapsed);
+  rtc_get_datetime(&t);
+  elapsed=t.hour*3600+t.min*60+t.sec-1;
+  return(elapsed);
 }
-
-#ifdef RC2014RP2040VGA
 
 /*************************************************************/
 /*                                                           */
 /* Internal 8253 functions to support sound generation       */
-/* RC2014 RP2040 VGA terminal card over i2c                  */
-/*                                                           */
-/*************************************************************/
-void pico_tone_init()
-{
-
-  // I2C bus has already been initialised in picomz.c
-
-  // Not using the values below for very much at present -
-  // buzzer currrently just beeps at constant frequency.
-  // The rest of the picotone struct is for pwm sound only.
-
-  /* Determine the pico clock speed */
-  picotone.picoclock=clock_get_hz(clk_sys);
-
-  /* Set frequency to 0.1Hz (zero-ish) */
-  picotone.freq=0.1;
-
-  return;
-}
-
-static int64_t mzpico_tone_off(alarm_id_t id, void *userdata)
-{
-  // Turn the sound generator off
-  pca9536_output_io(i2c_bus,IO_1,false);
-  return(0); 
-}
-
-void mzpico_tone_on(void)
-{
-  uint32_t *unused; /* Dummy variable for alarm callback */
-
-  // Avoid possible divide by 0 by insisting frequency > 0.1Hz
-  if (picotone.freq > 0.1) { 
-
-    pca9536_output_io(i2c_bus,IO_1,true);
-
-    if (tone_alarm) cancel_alarm(tone_alarm);
-    // The delay of 20s below is arbitrary as the longest possible
-    // duration of a note on the MZ-80K is 7 seconds (7000ms).
-    // The alarm will always be cancelled before this value is reached.
-    tone_alarm=add_alarm_in_ms(20000,mzpico_tone_off,unused,true);
-  }
-}
-
-#else
-
-/*************************************************************/
-/*                                                           */
-/* Internal 8253 functions to support sound generation       */
-/* Pimoroni VGA demo base using PWM direct to gpio           */
 /*                                                           */
 /*************************************************************/
 void pico_tone_init()
@@ -207,21 +163,19 @@ void mzpico_tone_on(void)
   }
 }
 
-#endif
-
 /* Initialise the 8253 Programmable Interval Timer (PIT) */
 void p8253_init(void) 
 {
   // Sound generation
-  mzpit.counter0 = 0x0000;
-  mzpit.msb0 = 0;
+  counter0 = 0x0000;
+  msb0 = 0;
   pico_tone_init();
-  mzpit.e008call = 0x00;   // Used as a return value when E008 is read
+  e008call = 0x00;   // Used as a return value when E008 is read
 
   // MZ-80K time
-  mzpit.counter2 = 0x0000;
-  mzpit.msb2 = 0;
-  mzpit.c2start = 0x0000;
+  counter2 = 0x0000;
+  msb2 = 0;
+  c2start = 0x0000;
 }
 
 // Note - latching is currently ignored - unlikely to be crucial to the MZ-80K emulator's operation
@@ -231,24 +185,24 @@ uint8_t rd8253(uint16_t addr)
 
     /* E006 - read the countdown value from counter 2 */
 
-    if ((mzpit.counter2 == 1)&&(mzpit.out2)) { // Counter2 reached 1 (0 secs),
-      mzpit.out2=false;                        // so trigger an interupt if
-      z80_gen_int(&mzcpu,0x01);                // this has not already happened
+    if ((counter2 == 1) && (out2)) {  // Counter2 has reached 1 (0 seconds),
+      out2=false;                     // so trigger an interupt if
+      z80_gen_int(&mzcpu,0x01);       // this has not already happened
     }
 
-    if (mzpit.counter2 <= 1) {             // Special handling if the counter
-      mzpit.msb2=!mzpit.msb2;              // is zero (1 or less)
+    if (counter2 <= 1) {                   // Special handling if the counter
+      msb2=!msb2;                          // is zero (1 or less)
       return(0x00);
     }
 
-    if (!mzpit.msb2) {
-      mzpit.counter2=mzpit.c2start-mzpicosecs();  
-      mzpit.msb2=1;
-      return(mzpit.counter2&0xFF);
+    if (!msb2) {
+      counter2=c2start-mzpicosecs();  
+      msb2=1;
+      return(counter2&0xFF);
     }
     else {
-      mzpit.msb2=0;
-      return((mzpit.counter2>>8)&0xFF);
+      msb2=0;
+      return((counter2>>8)&0xFF);
     }
   }
 
@@ -265,15 +219,15 @@ void wr8253(uint16_t addr, uint8_t val)
     // The 8253 on the MZ-80K is fed with a 1MHz pulse
     // A 16 bit value is sent LSB, MSB to this address to divide
     // the base frequency to get the desired frequency.
-    if (!mzpit.msb0) {
-      mzpit.counter0=val;
-      mzpit.msb0=1;
+    if (!msb0) {
+      counter0=val;
+      msb0=1;
     }
     else {
-      mzpit.counter0|=((val<<8)&0xFF00);
-      mzpit.msb0=0;
-      if (mzpit.counter0==0) mzpit.counter0=1;  // Avoids possible divide by 0
-      picotone.freq=1000000.0/(float)mzpit.counter0;
+      counter0|=((val<<8)&0xFF00);
+      msb0=0;
+      if (counter0 == 0) counter0=1;  // Avoids possible divide by 0
+      picotone.freq=1000000.0/(float)counter0;
       //SHOW("Frequency requested is %f Hz\n",picotone.freq);
     }
   }
@@ -284,17 +238,17 @@ void wr8253(uint16_t addr, uint8_t val)
   if (addr == 0xE006) {
     /* E006 - write the countdown value to counter 2 */
     /* This is a 16bit value, sent LSB, MSB */
-    if (!mzpit.msb2) {
-      mzpico_clk_init(); // Reset the start time for the MZ-80K clock
-      mzpit.out2=true;   // Set output pin high to allow counter to decrement
-      mzpit.counter2=val;
-      mzpit.msb2=1;
+    if (!msb2) {
+      mzpico_rtc_init(); // (re)initialise the time to 00:00:00
+      out2=true;         // Set output pin high to allow counter to decrement
+      counter2=val;
+      msb2=1;
     }
     else {
-      mzpit.counter2|=((val<<8)&0xFF00);
-      mzpit.msb2=0;
-      mzpit.c2start=mzpit.counter2; // Keep the start value so we can calculate
-                                    // seconds since counter2 initialisation
+      counter2|=((val<<8)&0xFF00);
+      msb2=0;
+      c2start=counter2; /* Keep the start value so we can calculate elapsed */
+                        /* seconds since initialisation of counter2 */
     }
   }
 
@@ -306,7 +260,7 @@ uint8_t rdE008(void)
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
   // Each time this routine is called, the return value is incremented by 1
   sleep_ms(11);
-  return(mzpit.e008call++);
+  return(++e008call);
 }
 
 void wrE008(uint8_t data) 

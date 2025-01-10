@@ -1,7 +1,5 @@
 // A Sharp MZ-80K emulator for the Raspberry Pi Pico
 // Release 1 - Written August - October 2024
-// Release 1.1 - Written November 2024
-// Initial support for RC2014 RP2040 VGA card added January 2025
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -15,7 +13,7 @@
 
 // MIT License
 
-// Copyright (c) 2024,2025 Tim Holyoake
+// Copyright (c) 2024 Tim Holyoake
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,11 +36,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 #ifndef USBDIAGOUTPUT
-  #include "tusb_config.h" // Needs to come before tusb.h as it
-#endif                     // overrides settings in tusb_options.h
+  #include "tusb_config.h" // Needs to come before tusb.h as overrides settings
+#endif                     // as it overrides settings in tusb_options.h
 #include <tusb.h>        
 #include "pico.h"
 #include "pico/stdlib.h"
@@ -54,11 +51,9 @@
 #include "pico/scanvideo/composable_scanline.h"
 #include "pico/time.h"
 #include "hardware/gpio.h"
+#include "hardware/rtc.h"
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
-#ifdef RC2014RP2040VGA
-  #include "hardware/i2c.h"  // Required for RC2014 RP2040 VGA card
-#endif
 #include "fatfs/ffconf.h"
 #include "fatfs/ff.h"
 #include "sdcard/sdcard.h"
@@ -125,27 +120,12 @@
 #define TAPEHEADERSIZE    128 // 128 bytes
 #define TAPEBODYMAXSIZE 48640 // 47.5Kbytes
 
-/* Holds global variables relating to the 8253 PIT */
-typedef struct pit8253 {  
-  uint16_t counter0; /* Two byte counter for sound frequency */
-  uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
-                     /* we're writing to or reading from (E004) */
-
-  uint16_t c2start;  /* Records value set in counter 2 when initialised */
-  uint16_t counter2; /* Two byte counter for time */
-  uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
-                     /* we're writing to or reading from (E006) */
-  bool out2;         /* Start / stop counter 2 output */ 
-
-  uint8_t e008call;  /* Incremented whenever E008 is read */
-
-} pit8253;
-
-/* picomz.c */
+/* sharpmz.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
 extern uint8_t mzvram[VRAMSIZE];
 extern uint8_t mzemustatus[EMUSSIZE];
+extern void mzpicoled(uint8_t);
 
 /* sharpcorp.c */
 extern const uint8_t mzmonitor[MROMSIZE];
@@ -177,6 +157,7 @@ extern uint16_t blackpix;
 extern void vga_main(void);
 
 /* 8255.c */
+extern uint8_t portA;
 extern uint8_t portC;
 extern uint8_t cmotor;
 extern uint8_t csense;
@@ -187,53 +168,8 @@ extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 
 /* 8253.c */
-extern pit8253 mzpit;
 extern void p8253_init(void);
 extern uint8_t rd8253(uint16_t addr);
 extern void wr8253(uint16_t addr, uint8_t data);
 extern uint8_t rdE008();
 extern void wrE008(uint8_t data);
-
-/* miscfuncs.c */
-extern void mzpicoled(uint8_t);
-extern void ascii2mzdisplay(uint8_t*, uint8_t*);
-extern uint8_t mzsafefilechar(uint8_t);
-extern uint8_t mzascii2mzdisplay(uint8_t);
-
-/* pca9536.c - used by RC2014 RP2040 VGA card */
-#ifdef RC2014RP2040VGA
-  #define IO_MODE_IN 1
-  #define IO_MODE_OUT 0
-
-  #define IO_0 0
-  #define IO_1 1
-  #define IO_2 2
-  #define IO_3 3
-
-  #define SDA_PIN 18
-  #define SCL_PIN 19
-
-  #define PCA9536_ADDR 0x41
-  #define REG_INPUT    0  // default
-  #define REG_OUTPUT   1
-  #define REG_POLARITY 2
-  #define REG_CONFIG   3
-
-  extern i2c_inst_t* i2c_bus;             // RC2014 RP2040 VGA board support
-  extern bool i2c_bus_available;          // See pca9536.c
-
-  extern bool has_pca9536(i2c_inst_t *i2c);
-  extern bool pca9536_setup_io(i2c_inst_t *i2c, uint8_t io, uint8_t io_mode);
-  extern bool pca9536_output_io(i2c_inst_t *i2c, uint8_t io, bool value);
-  extern bool pca9536_output_reset(i2c_inst_t *i2c, uint8_t mask);
-  extern bool pca9536_input_io(i2c_inst_t *i2c, uint8_t io);
-  extern void init_i2c_bus(); 
-  extern void deinit_i2c_bus();
-  extern int reg_write(i2c_inst_t *i2c,const uint addr,const uint8_t reg,
-                       uint8_t *buf,const uint8_t nbytes);
-  extern int reg_read(i2c_inst_t *i2c,const uint addr,const uint8_t reg,
-                      uint8_t *buf,const uint8_t nbytes);
-  extern int reg_read_timeout(i2c_inst_t *i2c,const uint addr,
-                              const uint8_t reg,uint8_t *buf,
-                              const uint8_t nbytes,const uint timeout_us);
-#endif
