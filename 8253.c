@@ -27,11 +27,7 @@
 // Sound generation in this implementation relies on the pwm and alarm
 // functions delivered by the pico SDK.
 
-/* Pico pwm gpio pin definitions */
-#define PICOTONE1 27      /* The VGA board uses pins 27 & 28 for sound (pwm) */
-#define PICOTONE2 28
-
-typedef struct toneg {    /* Tone generator structure for pwm sound  */
+typedef struct toneg {    /* Tone generator structure for sound  */
   uint8_t slice1;         /* Initialised by pico_tone_init() function */
   uint8_t slice2;
   uint8_t channel1;
@@ -40,8 +36,9 @@ typedef struct toneg {    /* Tone generator structure for pwm sound  */
   float freq;             /* Requested frequency in Hz */
 } toneg;
 
-pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
 static toneg picotone;         /* Tone generator global static */
+
+pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
 static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
 
 static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
@@ -81,6 +78,7 @@ uint16_t mzpicosecs(void)
 /*************************************************************/
 /*                                                           */
 /* Internal 8253 functions to support sound generation       */
+/* PWM direct to gpio                                        */
 /*                                                           */
 /*************************************************************/
 void pico_tone_init()
