@@ -26,7 +26,10 @@ uint8_t csense=1;               /* Cassette sense toggle */
 uint8_t vblank=0;               /* /VBLANK signal */
 uint8_t vgate;                  /* /VGATE signal */
 
-uint8_t scantimes=1;            /* How many times the keyboard matrix is */
+static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
+
+#ifdef USBDIAGOUTPUT
+  uint8_t scantimes=1;          /* How many times the keyboard matrix is */
                                 /* scanned before it is reset. Most programs */
                                 /* work well on the default; some m/c games */
                                 /* need this set to 2 or 3 for keypresses to */
@@ -34,9 +37,10 @@ uint8_t scantimes=1;            /* How many times the keyboard matrix is */
                                 /* best option at the moment - better than */
                                 /* releases 1.0.0 or 1.0.1 as more flexible */
                                 /* F9 key rotates between 1 and 3, 1 is the */
-                                /* default on startup. */
-
-static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
+                                /* default on startup. Now only used in diag */
+                                /* builds as of v1.2.1 - properly fixed in */
+                                /* standard builds. */
+#endif
 
 // The control port is implemented as follows:
 // 
@@ -173,11 +177,13 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
+#ifdef USBDIAGOUTPUT
   static uint8_t newkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
                                      0xFF,0xFF,0xFF,0xFF,0xFF };
   static uint8_t idxloop=0;        /* Allows some m/c code games to work */
                                    /* by keeping the press from the key  */
                                    /* matrix active for scantimes cycles */
+#endif
   uint8_t idx,retval;
 
   switch (addr&0x0003) {           // addr is between 0xE000 and 0xE002
@@ -189,6 +195,7 @@ uint8_t rd8255(uint16_t addr)
            // 10 lines (KBDROWS) to strobe, so idx must be between 0 and 9
            if (idx < KBDROWS) {
 
+#ifdef USBDIAGOUTPUT
              /* Copy processkey if at start of scan and ready for a new */
              /* key - we may not be if scantimes > 1                    */
              if ((idxloop == 0) && (idx == 9)) {
@@ -202,6 +209,9 @@ uint8_t rd8255(uint16_t addr)
              /* Decrement idxloop counter if not at zero */
              if (idxloop > 0)
                --idxloop;
+#else
+             retval=processkey[idx];
+#endif
            }
            else
              retval=0xFF;                // 0xFF always returned if idx > 9

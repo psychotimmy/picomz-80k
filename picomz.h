@@ -165,9 +165,12 @@ extern const uint8_t cgrom[CROMSIZE];
 
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];
-extern void mzrptkey(void);
-extern void mzcdcmapkey(int32_t*, int8_t);
-extern void mzhidmapkey(uint8_t, uint8_t);
+#ifdef USBDIAGOUTPUT
+  extern void mzcdcmapkey(int32_t*, int8_t);
+#else
+  extern void mzrptkey(void);
+  extern void mzhidmapkey(uint8_t, uint8_t);
+#endif
 
 /* cassette.c */
 extern uint8_t crstate;
@@ -194,7 +197,9 @@ extern uint8_t cmotor;
 extern uint8_t csense;
 extern uint8_t vgate;
 extern uint8_t vblank;
-extern uint8_t scantimes;
+#ifdef USBDIAGOUTPUT
+  extern uint8_t scantimes;
+#endif
 extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 
@@ -231,8 +236,7 @@ extern uint8_t mzascii2mzdisplay(uint8_t);
   #define REG_POLARITY 2
   #define REG_CONFIG   3
 
-  extern i2c_inst_t* i2c_bus;             // RC2014 RP2040 VGA board support
-  extern bool i2c_bus_available;          // See pca9536.c
+  extern i2c_inst_t* i2c_bus;
 
   extern bool has_pca9536(i2c_inst_t *i2c);
   extern bool pca9536_setup_io(i2c_inst_t *i2c, uint8_t io, uint8_t io_mode);

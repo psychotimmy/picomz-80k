@@ -155,18 +155,16 @@ int main(void)
 #ifdef RC2014RP2040VGA
 
   // Check for I2C capability on RC2014 RP2040 VGA board
-  i2c_bus_available=false;
   init_i2c_bus();
   if (has_pca9536(i2c_bus)) {
     SHOW("PCA9536 detected\n");
-    i2c_bus_available=true;
     pca9536_output_reset(i2c_bus,0b0011); // preinitialize output at LOW
     pca9536_setup_io(i2c_bus,IO_0,IO_MODE_OUT); // USB_POWER
-    pca9536_setup_io(i2c_bus,IO_1,IO_MODE_OUT); // BUZZER
+    pca9536_setup_io(i2c_bus,IO_1,IO_MODE_OUT); // ACTIVE BUZZER (not used)
     pca9536_setup_io(i2c_bus,IO_2,IO_MODE_IN);  // not used
     pca9536_setup_io(i2c_bus,IO_3,IO_MODE_IN);  // not used 
 
-    pca9536_output_io(i2c_bus,IO_0,true);
+    pca9536_output_io(i2c_bus,IO_0,true); // Allow output to USB keyboard
   }
   else {
     SHOW("PCA9536 NOT detected\n");

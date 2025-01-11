@@ -37,9 +37,7 @@
 
 #include "picomz.h"
 
-bool i2c_bus_available;
-
-i2c_inst_t *i2c_bus = i2c1;
+i2c_inst_t *i2c_bus = i2c1;  // Use i2c bus 1
 
 bool has_pca9536( i2c_inst_t *i2c ){
   // try to read configuration of the PC9536 on the I2C bus. Check for immutable
