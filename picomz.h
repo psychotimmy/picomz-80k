@@ -165,9 +165,12 @@ extern const uint8_t cgrom[CROMSIZE];
 
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];
-extern void mzrptkey(void);
-extern void mzcdcmapkey(int32_t*, int8_t);
-extern void mzhidmapkey(uint8_t, uint8_t);
+#ifdef USBDIAGOUTPUT
+  extern void mzcdcmapkey(int32_t*, int8_t);
+#else
+  extern void mzrptkey(void);
+  extern void mzhidmapkey(uint8_t, uint8_t);
+#endif
 
 /* cassette.c */
 extern uint8_t crstate;
@@ -194,7 +197,9 @@ extern uint8_t cmotor;
 extern uint8_t csense;
 extern uint8_t vgate;
 extern uint8_t vblank;
-extern uint8_t scantimes;
+#ifdef USBDIAGOUTPUT
+  extern uint8_t scantimes;
+#endif
 extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 

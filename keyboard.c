@@ -143,6 +143,10 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
     // We have a keypress to pass to the MZ-80K
     mzhidmapkey(report->keycode[0],report->modifier);
   }
+  else {
+    // We have a key up to pass to the MZ-80K
+    mzhidmapkey(0x00,0x00);
+  }
 
   return;
 }
@@ -207,7 +211,8 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
   /* Unshifted USB keys */
   if (modifier == 0x00) {
     switch (usbk0) {
-
+      case 0x00: memset(processkey,0xFF,KBDROWS); // Key up - clear buffer
+                 break;
       case 0x04: processkey[4]=0x01^0xFF; //A  
                  break;
       case 0x05: processkey[6]=0x04^0xFF; //B  
@@ -355,9 +360,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  blackpix=temp;
                  break;
 
-      case 0x42: if ((++scantimes) > 3)   //F9 - no. times keymatrix scanned
-                   scantimes=1;           //     per keypress. Default=1
-                 mzemustatus[EMULINE4-1]=0x20+scantimes;
+      case 0x42: //F9 - no. times keymatrix scanned not used in std versions
                  break;
 
       case 0x44: mzreaddump();            //F11 - read memory dump
