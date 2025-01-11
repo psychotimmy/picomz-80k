@@ -64,7 +64,7 @@ and Pico MZ-80K repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ-80K repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.2.0
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.2.1
 ```
 **or** the latest stable version:
 ```
@@ -99,4 +99,4 @@ There should now be three (Pico) or two (Pico 2) .uf2 files in your build direct
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 10th January 2025.
+### This README was last updated on 11th January 2025.
