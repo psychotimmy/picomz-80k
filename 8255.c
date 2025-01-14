@@ -210,7 +210,19 @@ uint8_t rd8255(uint16_t addr)
              if (idxloop > 0)
                --idxloop;
 #else
-             retval=processkey[idx];
+             if (idx < 8) {
+               // Wait for next strobe if shift key pressed
+               if (processkey[8]==0xFE)
+                 retval=0xFF;
+               else
+                 retval=processkey[idx];
+             }
+             else {
+               retval=processkey[idx];
+               if ((idx == 8) && (processkey[8]==0xFE)) 
+                 // Shift key has been processed - clear it
+                 processkey[idx]=0xFF;
+             }
 #endif
            }
            else
