@@ -81,14 +81,6 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
   return (DWIDTH*CWIDTH-4);
 }
 
-/* Blank current scanline - used to implement the /VGATE signal */
-int32_t gen_blank_scanline(uint32_t *buf, size_t buf_len) 
-{
-  buf[0] = COMPOSABLE_COLOR_RUN | 0;
-  buf[1] = VGA_WIDTH - MIN_RUN | (COMPOSABLE_EOL_ALIGN << 16);
-  return(2);
-}
-
 /* Output the composed scanline to the display */
 void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
 {
@@ -104,10 +96,6 @@ void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
     if (lineNum == VGA_LINES-1) vblank = 1; 
   }
   else { 
-    if (vgate==1) // /VGATE==1 means the display must be blanked
-                  // Note - emulator status area is NOT blanked
-      dest->data_used = gen_blank_scanline(buf, buf_length);
-    else 
       dest->data_used = gen_scanline(buf, buf_length, lineNum);
   }
 

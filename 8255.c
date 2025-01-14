@@ -24,7 +24,7 @@ uint8_t csense=1;               /* Cassette sense toggle */
                                 /* deck, so motor and sense are not always */
                                 /* the same. */
 uint8_t vblank=0;               /* /VBLANK signal */
-uint8_t vgate;                  /* /VGATE signal */
+uint8_t vgate;                  /* /VGATE signal  - not used */
 
 static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 
@@ -127,6 +127,12 @@ void wr8255(uint16_t addr, uint8_t data)
                                       // statement simpler
            switch (portCbit) {
              case 0: // /VGATE
+                     // The code using this flag in vgadisplay.c was removed 
+                     // after release 1.2.2. It makes no difference to the
+                     // emulator, unlike the original hardware.
+                     // If /VGATE is used too frequently it exceeds the
+                     // capability of the pico and pico2 to generate a stable
+                     // VGA display, resulting in screen corruption.
                      if (setbit) {
                        portC|=0x01;
                        vgate=0;      // Signal to unblank screen
