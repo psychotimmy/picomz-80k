@@ -144,8 +144,8 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
     mzhidmapkey(report->keycode[0],report->modifier);
   }
   else {
-    // We have a key up to pass to the MZ-80K
-    mzhidmapkey(0x00,0x00);
+    // We have a key up - clear processkey array
+    memset(processkey,0xFF,KBDROWS);
   }
 
   return;
