@@ -27,27 +27,7 @@
 // Sound generation in this implementation relies on the pwm and alarm
 // functions delivered by the pico SDK.
 
-/* Pico pwm gpio pin definitions */
-#define PICOTONE1 27      /* The VGA board uses pins 27 & 28 for sound (pwm) */
-#define PICOTONE2 28
-
-/* Holds global variables relating to the 8253 PIT */
-typedef struct i8253 {
-  uint16_t counter0; /* Two byte counter for sound frequency */
-  uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
-                     /* we're writing to or reading from (E004) */
-
-  uint16_t c2start;  /* Records value set in counter 2 when initialised */
-  uint16_t counter2; /* Two byte counter for time */
-  uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
-                     /* we're writing to or reading from (E006) */
-  bool out2;         /* Start / stop counter 2 output */
-
-  uint8_t e008call;  /* Incremented whenever E008 is read */
-
-} i8253;
-
-typedef struct toneg {    /* Tone generator structure for pwm sound  */
+typedef struct toneg {    /* Tone generator structure for sound  */
   uint8_t slice1;         /* Initialised by pico_tone_init() function */
   uint8_t slice2;
   uint8_t channel1;
@@ -56,10 +36,10 @@ typedef struct toneg {    /* Tone generator structure for pwm sound  */
   float freq;             /* Requested frequency in Hz */
 } toneg;
 
-static i8253 mzpit;            /* MZ-80K PIT static */
-
 static toneg picotone;         /* Tone generator global static */
-static alarm_id_t tone_alarm;  /* We use alarms to start/stop tones */
+
+pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
+static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
 
 static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
 
@@ -80,14 +60,14 @@ void mzpico_clk_init(void)
 /* Return the number of seconds since mzpico_clk_init() was called */
 uint16_t mzpicosecs(void)
 {
-  uint16_t seconds_elapsed;
-  int64_t  us_elapsed;
   absolute_time_t time_now;
+  int64_t  us_elapsed;
+  uint16_t seconds_elapsed;
 
   // Get the current time
   time_now=get_absolute_time();
   // Calculate the number of microseconds between call to mzpico_clk_init()
-  // and now
+  // and the time now
   us_elapsed=absolute_time_diff_us(clockreset,time_now);
   // Convert to seconds and return
   seconds_elapsed=(uint16_t)(us_elapsed/1000000);
@@ -98,6 +78,7 @@ uint16_t mzpicosecs(void)
 /*************************************************************/
 /*                                                           */
 /* Internal 8253 functions to support sound generation       */
+/* PWM direct to gpio                                        */
 /*                                                           */
 /*************************************************************/
 void pico_tone_init()

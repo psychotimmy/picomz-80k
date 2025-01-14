@@ -12,7 +12,7 @@ volatile void* unusedv;
 volatile z80*  unusedz;
 
 /* Write a byte to RAM or an output device */
-void mem_write(void* unusedv, uint16_t addr, uint8_t value)
+void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
 {
   /* Can't write to monitor ROM or into FD ROM space */
   if ((addr < 0x1000) || (addr > 0xEFFF )) return;
@@ -58,7 +58,7 @@ void mem_write(void* unusedv, uint16_t addr, uint8_t value)
 }
 
 /* Read a byte from memory or input device */
-uint8_t mem_read(void* unusedv, uint16_t addr)
+uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 {
   /* Monitor ROM */
   if (addr < 0x1000) return(mzmonitor[addr]);
@@ -110,14 +110,6 @@ uint8_t sio_read(z80* unusedz, uint8_t addr)
   return(0);
 }
 
-/* Turn the LED on the pico on or off */
-void mzpicoled(uint8_t state)
-{
-  // state == 1 is on, 0 is off.
-  gpio_put(PICO_DEFAULT_LED_PIN, state);
-  return;
-}
-
 /* Sharp MZ-80K emulator main loop */
 int main(void) 
 {
@@ -162,6 +154,27 @@ int main(void)
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
+
+#ifdef RC2014RP2040VGA
+
+  // Check for I2C capability on RC2014 RP2040 VGA board
+  init_i2c_bus();
+  if (has_pca9536(i2c_bus)) {
+    SHOW("PCA9536 detected\n");
+    pca9536_output_reset(i2c_bus,0b0011); // preinitialize output at LOW
+    pca9536_setup_io(i2c_bus,IO_0,IO_MODE_OUT); // USB_POWER
+    pca9536_setup_io(i2c_bus,IO_1,IO_MODE_OUT); // ACTIVE BUZZER (not used)
+    pca9536_setup_io(i2c_bus,IO_2,IO_MODE_IN);  // not used
+    pca9536_setup_io(i2c_bus,IO_3,IO_MODE_IN);  // not used 
+
+    pca9536_output_io(i2c_bus,IO_0,true); // Allow output to USB keyboard
+  }
+  else {
+    SHOW("PCA9536 NOT detected\n");
+    deinit_i2c_bus();
+  }
+
+#endif
 
   // Initialise 8253 PIT
   p8253_init();
@@ -220,7 +233,6 @@ int main(void)
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-    
   #if ! defined (USBDIAGOUTPUT) && defined (PICO2)
     busy_wait_us(1);              // Need to slow down a Pico 2 a little more
   #endif
