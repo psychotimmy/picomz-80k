@@ -63,7 +63,7 @@
 
   target_compile_definitions(picomz-80k-rc2014
   PRIVATE
-      RC2014RP2040VGA=1
+      RC2014VGA=1
       PICO1=1
   )
 

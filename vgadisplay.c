@@ -90,14 +90,15 @@ void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
 
   /* If we're beyond the last scanline of the MZ-80K display,
      output the emulator status area. Toggle vblank as required */
-  if (lineNum == 0) vblank = 0;
+  if (lineNum == 0) 
+    vblank = 0;
   if (lineNum >= DLASTLINE)  { 
     dest->data_used = gen_last40_scanlines(buf, buf_length, lineNum);
-    if (lineNum == VGA_LINES-1) vblank = 1; 
+    if (lineNum == VGA_LINES-1) 
+      vblank = 1; 
   }
-  else { 
-      dest->data_used = gen_scanline(buf, buf_length, lineNum);
-  }
+  else
+    dest->data_used = gen_scanline(buf, buf_length, lineNum);
 
   dest->status = SCANLINE_OK;
   return;

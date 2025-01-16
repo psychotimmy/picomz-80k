@@ -83,19 +83,19 @@ uint16_t mzpicosecs(void)
 /*************************************************************/
 void pico_tone_init()
 {
-  // Pico VGA board uses pins 27 and 28 for the pwm stereo output 
-  // defined as PICOTONE1 and PICOTONE2 in sharpmz.h
+  // Pins for pwm (stereo) output.
+  // Initialised as picotone1 and picotone2 in picomz.c
   // The original MZ-80K was mono, of course!
 
   /* Set the gpio pins for pwm sound */
-  gpio_set_function(PICOTONE1, GPIO_FUNC_PWM);
-  gpio_set_function(PICOTONE2, GPIO_FUNC_PWM);
+  gpio_set_function(picotone1, GPIO_FUNC_PWM);
+  gpio_set_function(picotone2, GPIO_FUNC_PWM);
 
   /* Initialise the picotone static structure - stores slices and channels */
-  picotone.slice1=pwm_gpio_to_slice_num(PICOTONE1);
-  picotone.slice2=pwm_gpio_to_slice_num(PICOTONE2);
-  picotone.channel1=pwm_gpio_to_channel(PICOTONE1);
-  picotone.channel2=pwm_gpio_to_channel(PICOTONE2);
+  picotone.slice1=pwm_gpio_to_slice_num(picotone1);
+  picotone.slice2=pwm_gpio_to_slice_num(picotone2);
+  picotone.channel1=pwm_gpio_to_channel(picotone1);
+  picotone.channel2=pwm_gpio_to_channel(picotone2);
 
   /* Set the channel levels */
   pwm_set_chan_level(picotone.slice1, picotone.channel1, 2048);
@@ -129,8 +129,8 @@ void mzpico_tone_on(void)
     pwm_set_clkdiv(picotone.slice2, divider);
     pwm_set_wrap(picotone.slice1, 10000);
     pwm_set_wrap(picotone.slice2, 10000);
-    pwm_set_gpio_level(PICOTONE1, 5000);
-    pwm_set_gpio_level(PICOTONE2, 5000);
+    pwm_set_gpio_level(picotone1, 5000);
+    pwm_set_gpio_level(picotone2, 5000);
     pwm_set_enabled(picotone.slice1, true);
     pwm_set_enabled(picotone.slice2, true);
 
