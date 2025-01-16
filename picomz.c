@@ -1,13 +1,15 @@
-/* Sharp MZ-80K emulator - main program */
+/*  MZ-80K emulator - main program */
 /* Tim Holyoake, August-October 2024    */
 
 #include "picomz.h"
 
-uint8_t mzuserram[URAMSIZE];		// MZ-80K monitor and user RAM
-uint8_t mzvram[VRAMSIZE];		// MZ-80K video RAM
-uint8_t mzemustatus[EMUSSIZE];          // Emulator status area
+uint8_t mzuserram[URAMSIZE];    // MZ-80K monitor and user RAM
+uint8_t mzvram[VRAMSIZE];       // MZ-80K video RAM
+uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
+uint8_t picotone1;              // gpio pins for pwm sound
+uint8_t picotone2;
 
-z80 mzcpu;			        // Z80 CPU context 
+z80 mzcpu;                      // Z80 CPU context 
 volatile void* unusedv;
 volatile z80*  unusedz;
 
@@ -152,8 +154,7 @@ int main(void)
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
 
-#ifdef RC2014RP2040VGA
-
+#ifdef RC2014VGA
   // Check for I2C capability on RC2014 RP2040 VGA board
   init_i2c_bus();
   if (has_pca9536(i2c_bus)) {
@@ -165,12 +166,25 @@ int main(void)
     pca9536_setup_io(i2c_bus,IO_3,IO_MODE_IN);  // not used 
 
     pca9536_output_io(i2c_bus,IO_0,true); // Allow output to USB keyboard
+    // Note that speaker will be attached to GPIOs 23/24 if a RP2040-based
+    // RC2014 VGA terminal is used - define picotone globals here BEFORE
+    // 8253 PIT is initialised.
+    picotone1=23;
+    picotone2=24;
   }
   else {
     SHOW("PCA9536 NOT detected\n");
     deinit_i2c_bus();
+    // Note that speaker will be attached to GPIOs 18/19 if a Pico-based
+    // RC2014 VGA terminal with an sd card backpack is used - define
+    // picotone globals here BEFORE 8253 PIT is initialised.
+    picotone1=18;
+    picotone2=19;
   }
-
+#else
+   // Global definitions for Pimoroni VGA board
+   picotone1=27;
+   picotone2=28;
 #endif
 
   // Initialise 8253 PIT

@@ -1,7 +1,7 @@
 # Pico MZ-80K 
 ## A Sharp MZ-80K Emulator for the Raspberry Pico and Pico 2 Microcontrollers
 
-A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K sold in the UK from 1979, utilising either the Pimoroni VGA demo base or the RC2014 RP2040 VGA card and a backplane.
+A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K sold in the UK from 1979, utilising either the Pimoroni VGA demo base, RC2014 RP2040 VGA card or RC2014 Pi Pico VGA card.
 
 
 ## Documentation
@@ -20,7 +20,7 @@ Flash one of:
 
 ![A picture of a Pimoroni VGA demo base with a Raspberry Pico (with headers) installed.](https://z80.timholyoake.uk/wp-content/uploads/2024/09/20240905_101721-1024x633.jpg)
 
-**picomz-80k-rc2014.uf2** (standard version) for a RC2014 RP2040 VGA card mounted on a RC2014 backplane
+**picomz-80k-rc2014.uf2** (standard version) for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
 
 ![A picture of a RC2014 RP2040 VGA terminal card on a backplane 8](https://z80.timholyoake.uk/wp-content/uploads/2025/01/20250110_093313-1024x642.jpg)
 
@@ -64,7 +64,7 @@ and Pico MZ-80K repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ-80K repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.2.1
+   git clone https://github.com/psychotimmy/picomz-80k.git -b <current version>
 ```
 **or** the latest stable version:
 ```
@@ -99,4 +99,4 @@ There should now be three (Pico) or two (Pico 2) .uf2 files in your build direct
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 11th January 2025.
+### This README was last updated on 16th January 2025.

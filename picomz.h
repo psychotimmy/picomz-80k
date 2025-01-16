@@ -1,7 +1,7 @@
 // A Sharp MZ-80K emulator for the Raspberry Pi Pico
-// Release 1 - Written August - October 2024
+// Release 1.0 - Written August - October 2024
 // Release 1.1 - Written November 2024
-// Initial support for RC2014 RP2040 VGA card added January 2025
+// Release 1.2 - Written January 2025
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -56,8 +56,8 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
-#ifdef RC2014RP2040VGA
-  #include "hardware/i2c.h"  // Required for RC2014 RP2040 VGA card
+#ifdef RC2014VGA
+  #include "hardware/i2c.h"  // Required for RC2014 RP2040/Pico VGA cards
 #endif
 #include "fatfs/ffconf.h"
 #include "fatfs/ff.h"
@@ -73,18 +73,6 @@
   #define SHOW printf
 #else
   #define SHOW //
-#endif
-
-/* GPIO pins for pwm sound generation (see 8253.c) */
-
-#ifdef RC2014RP2040VGA
-  #define PICOTONE1 23   // Requires an external passive buzzer or speaker
-  #define PICOTONE2 24   // connected to the pin(s) on the expansion connector
-                         // On-board buzzer is active and fixed at 2kHz so
-                         // cannot be used by the emulator
-#else
-  #define PICOTONE1 27   // Pimoroni VGA board uses pins 27 & 28 for pwm sound
-  #define PICOTONE2 28
 #endif
 
 /* Sharp MZ-80K memory locations */
@@ -158,6 +146,9 @@ extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
 extern uint8_t mzvram[VRAMSIZE];
 extern uint8_t mzemustatus[EMUSSIZE];
+/* GPIO pins for pwm sound generation (see 8253.c) */
+extern uint8_t picotone1;
+extern uint8_t picotone2;
 
 /* sharpcorp.c */
 extern const uint8_t mzmonitor[MROMSIZE];
@@ -217,8 +208,8 @@ extern void ascii2mzdisplay(uint8_t*, uint8_t*);
 extern uint8_t mzsafefilechar(uint8_t);
 extern uint8_t mzascii2mzdisplay(uint8_t);
 
-/* pca9536.c - used by RC2014 RP2040 VGA card */
-#ifdef RC2014RP2040VGA
+/* pca9536.c - used by RC2014 RP2040/Pico VGA cards */
+#ifdef RC2014VGA
   #define IO_MODE_IN 1
   #define IO_MODE_OUT 0
 
