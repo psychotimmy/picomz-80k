@@ -152,7 +152,9 @@ extern uint8_t picotone2;
 
 /* sharpcorp.c */
 extern const uint8_t mzmonitor[MROMSIZE];
-extern const uint8_t cgrom[CROMSIZE];
+extern const uint8_t cgromuk[CROMSIZE];
+extern const uint8_t cgromjp[CROMSIZE];
+extern bool ukrom;
 
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];
