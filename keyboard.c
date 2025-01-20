@@ -360,6 +360,10 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  blackpix=temp;
                  break;
 
+      case 0x3f: //F6 - Not mapped to an MZ-80K key
+                 ukrom=!ukrom;            // Toggle between UK and JP CGROM
+                 break;
+
       case 0x42: //F9 - no. times keymatrix scanned not used in std versions
                  break;
 
@@ -1302,6 +1306,10 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
                  temp=whitepix;            //Reverse video
                  whitepix=blackpix;
                  blackpix=temp;
+                 break;
+
+      case 0x37: //F6 - Not mapped to an MZ-80K key
+                 ukrom=!ukrom;            // Toggle between UK and JP CGROM
                  break;
 
       default:   break;                    //Ignore unmapped keys

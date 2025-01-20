@@ -31,7 +31,11 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
   // Now work through the display columns to generate the correct scanline
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
-    uint8_t charbits = cgrom[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    uint8_t charbits;
+    if (ukrom) 
+      charbits=cgromuk[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    else
+      charbits=cgromjp[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;
@@ -61,7 +65,11 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
   // Now work through the display columns to generate the correct scanline
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
-    uint8_t charbits = cgrom[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    uint8_t charbits;
+    if (ukrom) 
+      charbits = cgromuk[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    else
+      charbits = cgromjp[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;
