@@ -362,9 +362,10 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
 
       case 0x3f: //F6 - Not mapped to an MZ-80K key
                  ukrom=!ukrom;            // Toggle between UK and JP CGROM
+                 memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
 
-      case 0x42: //F9 - no. times keymatrix scanned not used in std versions
+      case 0x42: //F9 - no. times keymatrix scanned. Not used in std versions
                  break;
 
       case 0x44: mzreaddump();            //F11 - read memory dump
@@ -1310,13 +1311,12 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
 
       case 0x37: //F6 - Not mapped to an MZ-80K key
                  ukrom=!ukrom;            // Toggle between UK and JP CGROM
+                 memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
 
       default:   break;                    //Ignore unmapped keys
     }
   }
-
-
 
   if ((ncodes==5)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&
       (usbc[2]==0x32)&&(usbc[4]==0x7e)) {

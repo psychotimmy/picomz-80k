@@ -64,7 +64,7 @@ and Pico MZ-80K repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ-80K repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.2.3
+   git clone https://github.com/psychotimmy/picomz-80k.git -b <current version>
 ```
 **or** the latest stable version:
 ```

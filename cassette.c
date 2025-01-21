@@ -90,7 +90,11 @@ void mzspinny(uint8_t state)
   }
 
   // Write out value of spinny to the emulator status area
-  ascii2mzdisplay("Tape counter: ",mzstr);
+  if (ukrom)
+    ascii2mzdisplay("Tape counter: ",mzstr);
+  else
+    ascii2mzdisplay("TAPE COUNTER: ",mzstr);  // Avoid lower case
+                                              // for Japanese CGROM
   for (uint8_t i=0;i<14;i++)         // Can't use strlen as space is 0x00!!
     mzemustatus[spos++]=mzstr[i];
   
@@ -311,13 +315,16 @@ int16_t tapeloader(int16_t n)
   // spos: EMULINE0 = start of status area line 0, EMULINE1 = line 1 etc.
 
   memset(mzemustatus+EMULINE1,0x00,40); // Blank line
-  ascii2mzdisplay("Next file is: ",mzstr);
+  if (ukrom)
+    ascii2mzdisplay("Next file is: ",mzstr);
+  else
+    ascii2mzdisplay("NEXT FILE IS: ",mzstr);
   for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
     mzemustatus[spos++]=mzstr[i];
 
   // Tape name terminates with 0x0d or is 17 characters long
   // Stored in header[1] to header[17] - update status area with this
-  // Note - needs converting from MZ 'ASCCI' to MZ display codes
+  // Note - needs converting from MZ 'ASCII' to MZ display codes
   uint8_t hpos=1;
   while ((header[hpos] != 0x0d) && (hpos <= 17))
     mzemustatus[spos++]=mzascii2mzdisplay(header[hpos++]);
@@ -325,7 +332,10 @@ int16_t tapeloader(int16_t n)
   // Update the preloaded tape type in the emulator status area.
   memset(mzemustatus+EMULINE2,0x00,40); // Blank line
   spos=EMULINE2;
-  ascii2mzdisplay("File type is: ",mzstr);
+  if (ukrom)
+    ascii2mzdisplay("File type is: ",mzstr);
+  else
+    ascii2mzdisplay("FILE TYPE IS: ",mzstr);
   for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
     mzemustatus[spos++]=mzstr[i];
 
@@ -333,31 +343,52 @@ int16_t tapeloader(int16_t n)
   // 0x01 = machine code, 0x02 = language (BASIC,Pascal etc.), 0x03 = data
   // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K specific)
   switch (header[0]) {
-    case 0x01: ascii2mzdisplay("Machine code",mzstr);
+    case 0x01: if (ukrom)
+                 ascii2mzdisplay("Machine code",mzstr);
+               else
+                 ascii2mzdisplay("MACHINE CODE",mzstr);
                for (uint8_t i=0; i<12; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x02: ascii2mzdisplay("Sharp BASIC etc.",mzstr);
+    case 0x02: if (ukrom)
+                 ascii2mzdisplay("Sharp BASIC etc.",mzstr);
+               else
+                 ascii2mzdisplay("SHARP BASIC ETC.",mzstr);
                for (uint8_t i=0; i<16; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x03: ascii2mzdisplay("Data file",mzstr);
+    case 0x03: if (ukrom)
+                 ascii2mzdisplay("Data file",mzstr);
+               else
+                 ascii2mzdisplay("DATA FILE",mzstr);
                for (uint8_t i=0; i<9; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x04: ascii2mzdisplay("Zen source",mzstr);
+    case 0x04: if (ukrom)
+                 ascii2mzdisplay("Zen source",mzstr);
+               else
+                 ascii2mzdisplay("ZEN SOURCE",mzstr);
                for (uint8_t i=0; i<10; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x06: ascii2mzdisplay("Chalkwell BASIC",mzstr);
+    case 0x06: if (ukrom)
+                 ascii2mzdisplay("Chalkwell BASIC",mzstr);
+               else
+                 ascii2mzdisplay("CHALKWELL BASIC",mzstr);
                for (uint8_t i=0; i<15; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
-    case 0x20: ascii2mzdisplay("Pico MZ-80K memory dump",mzstr);
+    case 0x20: if (ukrom)
+                 ascii2mzdisplay("Pico MZ-80K memory dump",mzstr);
+               else
+                 ascii2mzdisplay("PICO MZ-80K MEMORY DUMP",mzstr);
                for (uint8_t i=0; i<23; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
-    default:   ascii2mzdisplay("Unknown file type",mzstr);
+    default:   if (ukrom)
+                 ascii2mzdisplay("Unknown file type",mzstr);
+               else
+                 ascii2mzdisplay("UNKNOWN FILE TYPE",mzstr);
                for (uint8_t i=0; i<17; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
