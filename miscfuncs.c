@@ -152,27 +152,34 @@ uint8_t mzsafefilechar(uint8_t sharpchar)
     case 0xa2: asciichar=0x7a; //z
                break;
 
-    /* ! # $ % & ' ( ) and @ are also ok */
+    /* ! and @ are also ok */
 
-    case 0x21: asciichar=0x21;// !
+    case 0x21: asciichar=0x21; // !
                break;
-    case 0x23: asciichar=0x23;// #
+    case 0x40: asciichar=0x40; // @
                break;
-    case 0x24: asciichar=0x24;// $
+
+    /* German characters are ok */
+
+    case 0xa8: asciichar=0x99; // O+umlaut
                break;
-    case 0x25: asciichar=0x25;// %
+    case 0xad: asciichar=0x81; // u+umlaut
                break;
-    case 0x26: asciichar=0x26;// &
+    case 0xae: asciichar=0xe1; // eszett
                break;
-    case 0x27: asciichar=0x27;// '
+    case 0xb2: asciichar=0x9a; // U+umlaut
                break;
-    case 0x28: asciichar=0x28;// (
+    case 0xb9: asciichar=0x8e; // A+umlaut
                break;
-    case 0x29: asciichar=0x29;// )
+    case 0xba: asciichar=0x94; // o+umlaut
                break;
-    case 0x40: asciichar=0x40;// @
+    case 0xbb: asciichar=0x84; // a+umlaut
                break;
   }
+
+  /* # $ % & ' ( ) are ok and contiguous */
+  if ((sharpchar >= 0x23) && (sharpchar <= 0x29))
+    asciichar=sharpchar;
 
   /* Sharp upper case letters are all ok */
   if ((sharpchar >= 0x41) && (sharpchar <= 0x5a))
@@ -294,9 +301,9 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0x7e: displaychar=0xde;
                break;
-    case 0x7f: displaychar=0x20;   //space ??
+    case 0x7f: displaychar=0x00;   //space ??
                break;
-    case 0x80: displaychar=0x20;   //space
+    case 0x80: displaychar=0x00;   //space
                break;
     case 0x81: displaychar=0xbd;   //st george cross
                break;
@@ -376,7 +383,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0xa7: displaychar=0xa1;   //double horiz bar
                break;
-    case 0xa8: displaychar=0xaf;   //O umlaut
+    case 0xa8: displaychar=0xaf;   //O+umlaut
                break;
     case 0xa9: displaychar=0x8b;   //k
                break;
@@ -386,7 +393,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0xac: displaychar=0xa2;   //double vert bar
                break;
-    case 0xad: displaychar=0xab;   //u umlaut
+    case 0xad: displaychar=0xab;   //u+umlaut
                break;
     case 0xae: displaychar=0xaa;   //eszett
                break;
@@ -396,7 +403,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0xb1: displaychar=0xb0;
                break;
-    case 0xb2: displaychar=0xad;   //U umlaut
+    case 0xb2: displaychar=0xad;   //U+umlaut
                break;
     case 0xb3: displaychar=0x8d;   //m
                break;
@@ -410,33 +417,145 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                break;
     case 0xb8: displaychar=0x8c;   //l
                break;
-    case 0xb9: displaychar=0xae;   //A umlaut
+    case 0xb9: displaychar=0xae;   //A+umlaut
                break;
-    case 0xba: displaychar=0xac;   //o umlaut
+    case 0xba: displaychar=0xac;   //o+umlaut
                break;
-    case 0xbb: displaychar=0x9b;   //a umlaut
+    case 0xbb: displaychar=0x9b;   //a+umlaut
+               break;
+    case 0xbc: displaychar=0xc0;
                break;
     case 0xbd: displaychar=0x99;   //y
                break;
     case 0xbe: displaychar=0xbc;   //yen
                break;
+    case 0xbf: displaychar=0xb8;
+               break;
+    case 0xc0: displaychar=0x00;   //space
+               break;
+    case 0xc1: displaychar=0x3b;   //filled half rectangle right
+               break;
+    case 0xc2: displaychar=0x3a;   //filled half rectangle bottom
+               break;
+    case 0xc3: displaychar=0x70;   //line top
+               break;
+    case 0xc4: displaychar=0x3c;   //line bottom
+               break;
+    case 0xc5: displaychar=0x71;   //line left
+               break;
     case 0xc6: displaychar=0x5a;   //right arrow
+               break;
+    case 0xc7: displaychar=0x3d;   //line right
+               break;
+    case 0xc8: displaychar=0x43;   //unfilled square
+               break;
+    case 0xc9: displaychar=0x56;   //half triangle fill bottom
+               break;
+    case 0xca: displaychar=0x3f;   //line left thick
+               break;
+    case 0xcb: displaychar=0x1e;   //lines |-
+               break;
+    case 0xcc: displaychar=0xce;   //white circular blob
+               break;
+    case 0xcd: displaychar=0x1c;   //lines top right quarter
+               break;
+    case 0xce: displaychar=0x5d;   //lines bottom left quarter
+               break;
+    case 0xcf: displaychar=0x3e;   //line bottom thick
+               break;
+    case 0xd0: displaychar=0x5c;   //lines bottom right quarter
+               break;
+    case 0xd1: displaychar=0x1f;   //lines _|_
+               break;
+    case 0xd2: displaychar=0x5f;   //lines T
+               break;
+    case 0xd3: displaychar=0x5e;   //lines -|
+               break;
+    case 0xd4: displaychar=0x37;   //line right thick
+               break;
+    case 0xd5: displaychar=0x7b;   //filled half rectangle left
+               break;
+    case 0xd6: displaychar=0x7f;   //line right 3 thick
+               break;
+    case 0xd7: displaychar=0x36;   //line top thick
+               break;
+    case 0xd8: displaychar=0x7a;   //filled half rectangle top
+               break;
+    case 0xd9: displaychar=0x7e;   //line bottom 3 thick
+               break;
+    case 0xda: displaychar=0x33;   //lines bottom, right
+               break;
+    case 0xdb: displaychar=0x4b;   //quarter circle bottom right
+               break;
+    case 0xdc: displaychar=0x4c;   //quarter circle bottom left
+               break;
+    case 0xdd: displaychar=0x1d;   //lines top left quarter
                break;
     case 0xde: displaychar=0x6c;   //square blobs up 
                break;
     case 0xdf: displaychar=0x5b;   //square blobs down
                break;
+    case 0xe0: displaychar=0x78;   //line middle bottom
+               break;
     case 0xe1: displaychar=0x41;   //spade
+               break;
+    case 0xe2: displaychar=0x35;   //line middle left
+               break;
+    case 0xe3: displaychar=0x33;   //line middle top
+               break;
+    case 0xe4: displaychar=0x74;   //line middle+ top
+               break;
+    case 0xe5: displaychar=0x30;   //line top -1
+               break;
+    case 0xe6: displaychar=0x38;   //line middle- bottom
+               break;
+    case 0xe7: displaychar=0x75;   //line middle- left
+               break;
+    case 0xe8: displaychar=0x39;   //line middle+ right
+               break;
+    case 0xe9: displaychar=0x4d;   //filled half triangle top right
+               break;
+    case 0xea: displaychar=0x6f;   //quarter circle top right
+               break;
+    case 0xeb: displaychar=0x6e;   //quarter circle top left
+               break;
+    case 0xec: displaychar=0x32;   //lines bottom, left
+               break;
+    case 0xed: displaychar=0x77;   //diagonal line top left - bottom right
+               break;
+    case 0xee: displaychar=0x76;   //diagonal line bottom left - top right
+               break;
+    case 0xef: displaychar=0x72;   //lines top, left
+               break;
+    case 0xf0: displaychar=0x73;   //lines top, right
+               break;
+    case 0xf1: displaychar=0x47;   //black blob on white background
+               break;
+    case 0xf2: displaychar=0x7c;   //line off bottom
                break;
     case 0xf3: displaychar=0x53;   //heart
                break;
+    case 0xf4: displaychar=0x31;   //line off left
+               break;
+    case 0xf5: displaychar=0x4e;   //filled triangle top left
+               break;
+    case 0xf6: displaychar=0x7c;   //st andrews cross
+               break;
+    case 0xf7: displaychar=0x48;   //blob outline
+               break;
     case 0xf8: displaychar=0x46;   //club
+               break;
+    case 0xf9: displaychar=0x7d;   //line off right
                break;
     case 0xfa: displaychar=0x44;   //diamond
                break;
     case 0xfb: displaychar=0x1b;   //£
                break;
     case 0xfc: displaychar=0x58;   //down arrow
+               break;
+    case 0xfd: displaychar=0x79;   //vertical line middle right
+               break;
+    case 0xfe: displaychar=0x42;   //filled triangle bottom left
                break;
     case 0xff: displaychar=0x60;   //pi
                break;
