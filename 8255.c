@@ -216,18 +216,22 @@ uint8_t rd8255(uint16_t addr)
              if (idxloop > 0)
                --idxloop;
 #else
+             retval=processkey[idx];
              if (idx < 8) {
-               // Wait for next strobe if shift key pressed
-               if (processkey[8]==0xFE)
+               // Wait for next strobe if a shift key is active AND
+               // we're not scanning rows 8 or 9
+               // 0xFE = left shift, 0xDF = right shift
+               if ((processkey[8]==0xFE) || (processkey[8]==0xDF))
                  retval=0xFF;
-               else
-                 retval=processkey[idx];
              }
              else {
-               retval=processkey[idx];
-               if ((idx == 8) && (processkey[8]==0xFE)) 
-                 // Shift key has been processed - clear it
+               if ((idx == 8) &&
+                   ((processkey[8]==0xFE) || (processkey[8]==0xDF)) &&
+                   (processkey[9]==0xFF)) 
+                 // Shift key has been processed and row 9 is NOT active
                  processkey[idx]=0xFF;
+                 // Wait for next scan to clear shift if row 9 IS active
+                 // before clearing the shift key
              }
 #endif
            }
