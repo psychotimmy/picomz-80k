@@ -1,7 +1,7 @@
 # Pico MZ-80K 
 ## A Sharp MZ-80K Emulator for the Raspberry Pico and Pico 2 Microcontrollers
 
-A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K sold in the UK from 1979, utilising either the Pimoroni VGA demo base, RC2014 RP2040 VGA card or RC2014 Pi Pico VGA card.
+A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K sold in the UK from 1979, utilising any of the Pimoroni VGA demo base, RC2014 RP2040 VGA card or RC2014 Pi Pico VGA card.
 
 
 ## Documentation
@@ -10,7 +10,7 @@ Full user and systems documentation is provided in the [documentation subdirecto
 
 ## Brief user notes
 
-Ensure a microSD card containing one or more Sharp MZ-80K software (.mzf) files is installed. 
+Ensure a microSD card containing one or more Sharp MZ-80K software (.mzf/.mzt/.m12) files is installed. 
 
 Flash one of:
 
@@ -42,7 +42,15 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-The current Pico SDK master branch (2.1.0 plus fixes - latest stable) works successfully with release 1.1.0 (or later) of Pico MZ-80K. Pico MZ-80K release 1.1.0 was the first one to support the Pico 2. Pico MZ-80K release 1.2.0 was the first to support the RC2014 RP2040 VGA card.
+The current Pico SDK master branch (2.1.0 plus fixes - latest stable) works successfully with release 1.1.0 (or later) of Pico MZ-80K. Earlier releases use Pico SDK 1.5.1.
+
+Release 1.1.0 introduced Pico 2 support.
+
+Release 1.2.0 introduced RC2014 RP2040 VGA terminal card support.
+
+Release 1.2.3 introduced RC2014 Pi Pico VGA terminal card support.
+
+Release 1.2.4 introduced the ability (F6 key) to toggle between the UK and Japanese CGROMs. 
 
 ## Instructions for rebuilding Pico MZ-80K (see also the documentation subdirectory)
 
@@ -64,7 +72,7 @@ and Pico MZ-80K repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ-80K repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.2.3
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 1.2.4
 ```
 **or** the latest stable version:
 ```
@@ -99,4 +107,4 @@ There should now be three (Pico) or two (Pico 2) .uf2 files in your build direct
 
 [RetroChallenge 2024/10 project log](https://z80.timholyoake.uk/retrochallenge-2024-10/)
 
-### This README was last updated on 16th January 2025.
+### This README was last updated on 28th January 2025.
