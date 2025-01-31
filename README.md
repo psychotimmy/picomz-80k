@@ -9,7 +9,7 @@ Full user and systems documentation is provided in the [documentation subdirecto
 
 ## Brief user notes
 
-Ensure a microSD card containing one or more Sharp MZ-80K software (.mzf/.mzt/.m12) files is installed.
+Ensure a microSD card containing one or more Sharp MZ-80K or MZ-80A digital software (.mzf/.mzt/.m12) files is installed.
 
 Flash one of:
 
