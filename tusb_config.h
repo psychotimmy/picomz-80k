@@ -1,5 +1,7 @@
-/* TinyUSB settings for Pico MZ-80K */
-/* Tim Holyoake, October 2024.      */
+/* TinyUSB settings for Pico MZ-80K and MZ-80A */
+/* Tim Holyoake, October 2024 - February 2025. */
+
+#pragma once
 
 #define CFG_TUSB_RHPORT0_MODE OPT_MODE_HOST
 

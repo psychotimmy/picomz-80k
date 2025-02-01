@@ -338,7 +338,7 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x2c: processkey[9]=0x02^0xFF; //<SPACE>
                  break;
-      case 0x2d: processkey[6]=0x20^0xFF; //-
+      case 0x2d: processkey[0]=0x20^0xFF; //-
                  break;
       case 0x2e: processkey[2]=0x20^0xFF; //=
                  break;
