@@ -1,14 +1,16 @@
-// A Sharp MZ-80K emulator for the Raspberry Pi Pico
-// Release 1.0 - Written August - October 2024
+// A Sharp MZ-80K & MZ-80A emulator for the Raspberry Pi Pico
+// Release 1.0 - Written August - October 2024   (MZ-80K only)
 // Release 1.1 - Written November 2024
 // Release 1.2 - Written January 2025
+// Release 2.0 - Written February 2025           (MZ-80A support)
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
-// and Raspberry pico libraries. These have compatible open source licenses. 
+// and Raspberry Pi Pico libraries. These have compatible open source licenses. 
 //
-// The contents of the SP-1002 Monitor and Character ROM are Copyright (c)
-// 1979 Sharp Corporation and may be found in the source file sharpcorp.c
+// The contents of the SP-1002, SA-1510 Monitors and Character ROMs are 
+// Copyright (c) 1979 and 1982 Sharp Corporation and may be found in the
+// source file sharpcorp.c
 //
 // This emulator has no other connection with Sharp Corporation.
 //
@@ -74,6 +76,10 @@
 #else
   #define SHOW //
 #endif
+
+/* MZ-80 model definitions */
+#define MZ80K 1
+#define MZ80A 2
 
 /* Sharp MZ-80K memory locations */
 
@@ -144,17 +150,21 @@ typedef struct pit8253 {
 /* picomz.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
-extern uint8_t mzvram[VRAMSIZE];
+extern uint8_t mzvram[VRAMSIZE*2];
 extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
 extern uint8_t picotone2;
+/* MZ model & CGROM types */
+extern uint8_t mzmodel;
+extern bool ukrom;
 
 /* sharpcorp.c */
-extern const uint8_t mzmonitor[MROMSIZE];
-extern const uint8_t cgromuk[CROMSIZE];
-extern const uint8_t cgromjp[CROMSIZE];
-extern bool ukrom;
+extern uint8_t mzmonitor80k[MROMSIZE];
+extern uint8_t mzmonitor80a[MROMSIZE];
+extern const uint8_t cgromuk80k[CROMSIZE];
+extern const uint8_t cgromjp80k[CROMSIZE];
+extern const uint8_t cgromuk80a[CROMSIZE];
 
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];
@@ -162,7 +172,8 @@ extern uint8_t processkey[KBDROWS];
   extern void mzcdcmapkey(int32_t*, int8_t);
 #else
   extern void mzrptkey(void);
-  extern void mzhidmapkey(uint8_t, uint8_t);
+  extern void mzhidmapkey80k(uint8_t, uint8_t);
+  extern void mzhidmapkey80a(uint8_t, uint8_t);
 #endif
 
 /* cassette.c */

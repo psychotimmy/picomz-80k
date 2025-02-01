@@ -18,7 +18,7 @@
 #define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K
 
 // On the MZ-80K, pixels are either white or black
-uint16_t whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);
+uint16_t whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
 uint16_t blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
 
 /* Generate each pixel for the current scanline */
@@ -32,10 +32,12 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
-    if (ukrom) 
-      charbits=cgromuk[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    if ((ukrom == true) && (mzmodel == MZ80K))
+      charbits=cgromuk80k[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    else if ((ukrom == false) && (mzmodel == MZ80K))
+      charbits=cgromjp80k[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     else
-      charbits=cgromjp[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromuk80a[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;
@@ -66,10 +68,12 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
-    if (ukrom) 
-      charbits = cgromuk[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    if ((ukrom == true) && (mzmodel == MZ80K))
+      charbits=cgromuk80k[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    else if ((ukrom == false) && (mzmodel == MZ80K))
+      charbits=cgromjp80k[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     else
-      charbits = cgromjp[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromuk80a[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;

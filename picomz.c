@@ -1,10 +1,10 @@
-/*  MZ-80K emulator - main program */
-/* Tim Holyoake, August-October 2024    */
+/*  MZ-80K & MZ-80A emulator - main program  */
+/* Tim Holyoake, August 2024 - February 2025 */
 
 #include "picomz.h"
 
-uint8_t mzuserram[URAMSIZE];    // MZ-80K monitor and user RAM
-uint8_t mzvram[VRAMSIZE];       // MZ-80K video RAM
+uint8_t mzuserram[URAMSIZE];    // MZ-80 monitor and user RAM
+uint8_t mzvram[VRAMSIZE*2];     // MZ-80 video RAM
 uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
 uint8_t picotone1;              // gpio pins for pwm sound
 uint8_t picotone2;
@@ -12,6 +12,9 @@ uint8_t picotone2;
 z80 mzcpu;                      // Z80 CPU context 
 volatile void* unusedv;
 volatile z80*  unusedz;
+
+uint8_t mzmodel = MZ80A;        // MZ model type - default is MZ-80K
+bool ukrom = true;              // Default is UK CGROM
 
 /* Write a byte to RAM or an output device */
 void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
@@ -27,9 +30,18 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
 
   /* Video RAM */
   /* Now deals with writing outside the real range, rather than returning */
-  /* an error as previously */
-  if (addr < 0xE000) {
-    mzvram[addr&0x03ff] = value;
+  /* an error as previously on the MZ-80K */
+  if ((addr < 0xE000) && (mzmodel == MZ80K)) {
+    mzvram[addr&0x03FF] = value;
+    return;
+  }
+  else if ((addr < 0xE000) && (mzmodel == MZ80A)) {
+    /* Deal with the MZ-80A monitor bug when displaying codes 0x60 - 0x68 */
+    if ((mzcpu.pc > 0x0FFF) || (value < 0xC7) || (value > 0xCF))
+      mzvram[addr&0x7FF] = value;
+    else
+      /* Not sure this is correct, but ... */
+      mzvram[addr&0x7FF] = 0x00;
     return;
   }
 
@@ -51,6 +63,12 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
     return;
   }
 
+  /* Write to the user socket ROM is attempted on startup on the MZ-80A */
+  if ((addr == 0xE800) && (mzmodel == MZ80A)) {
+    SHOW("** Writing 0x%02x to user ROM socket at 0x%04x **\n",value,addr);
+    return;
+  }
+
   /* Unused addresses. Note that a real MZ-80K doesn't decode all the   */
   /* address lines properly, so writes to these addresses can affect    */
   /* others. Poor practice though - and I haven't found any MZ-80K code */
@@ -62,16 +80,22 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
 /* Read a byte from memory or input device */
 uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 {
-  /* Monitor ROM */
-  if (addr < 0x1000) return(mzmonitor[addr]);
+  /* Monitor address space (ROM on 80K, RAM on 80A) */
+  if ((addr < 0x1000) && (mzmodel == MZ80K)) 
+    return(mzmonitor80k[addr]);
+  else if ((addr < 0x1000) && (mzmodel == MZ80A))
+    return(mzmonitor80a[addr]);
 
   /* Monitor and user RAM */
   if (addr < 0xD000) return(mzuserram[addr-0x1000]);
 
   /* Video RAM */
   /* Now reads unused addresses between D400 and E000 as per */
-  /* the real hardware */
-  if (addr < 0xE000) return(mzvram[addr&0x03ff]);
+  /* the real  MZ-80K hardware */
+  if ((addr < 0xE000) && (mzmodel == MZ80K)) 
+    return(mzvram[addr&0x03FF]);
+  else if ((addr < 0xE000) && (mzmodel == MZ80A))
+    return(mzvram[addr&0x07FF]);
 
   /* Intel 8255 */
   if (addr < 0xE004) return(rd8255(addr));
@@ -88,7 +112,20 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
   /* Sound */
   if (addr < 0xE009) return(rdE008());
 
-  /* Unused addresses */
+  /* MZ-80A addresses */
+
+  if ((addr == 0xE200) && (mzmodel == MZ80A)) {
+    SHOW("Reading screen control address 0x%04x\n",addr);
+    return(0xDE);
+  }
+
+  /* MZ-80A user socket ROM - return 0xC7 if not present */
+  if ((addr == 0xE800) && (mzmodel == MZ80A)) {
+    SHOW("Reading user socket ROM address 0x%04x\n",addr);
+    return(0xC7);
+  }
+
+  /* All other unused addresses */
   SHOW("Reading unused address 0x%04x\n",addr);
   return(0xC7);
 }
@@ -150,6 +187,9 @@ int main(void)
 
   // Initialise mzuserram
   memset(mzuserram,0x00,URAMSIZE);
+
+  // Initialise mzvram 
+  memset(mzvram,0x00,VRAMSIZE*2);
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
