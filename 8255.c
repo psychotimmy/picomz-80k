@@ -151,7 +151,8 @@ void wr8255(uint16_t addr, uint8_t data)
                      if (csense && cmotor)
                        cwrite(setbit);
                      break;
-             case 2: // SML/CAP toggle
+             case 2: // SML/CAP toggle on MZ-80K
+                     // Timer interupt masking on MZ-80A
                      if (setbit)
                        portC|=0x04;
                      else
@@ -238,15 +239,16 @@ uint8_t rd8255(uint16_t addr)
              else {
                // MZ-80A
                if (idx != 0) {
-                 // Wait for next strobe if a shift key is active AND
+                 // Wait for next strobe if a shift or CTRL key is active AND
                  // we're not scanning row 0
-                 // 0xFE = shift
-                 if (processkey[0] == 0xFE)
+                 // 0xFE = shift, 0x7F = ctrl
+                 if ((processkey[0] == 0xFE) || (processkey[0] == 0x7F))
                    retval=0xFF;
                }
                else {
-                 if ((idx == 0) && (processkey[0] == 0xFE))
-                   // Shift key has been processed
+                 if ((idx == 0) && 
+                     ((processkey[0] == 0xFE) || (processkey[0] == 0x7F)))
+                   // Shift or Ctrl key has been processed
                    processkey[idx]=0xFF;
                }
              }
