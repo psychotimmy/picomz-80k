@@ -88,7 +88,7 @@
 #define MROMSIZE        4096  //   4   Kbytes Monitor ROM
 #define CROMSIZE        2048  //   2   Kbytes Character ROM
 #define URAMSIZE        49152 //   0.5 Kbytes Monitor + 48 Kbytes User RAM
-#define VRAMSIZE        1024  //   1   Kbyte  Video RAM
+#define VRAMSIZE        2048  //   2   Kbyte  Video RAM (1K used on MZ-80K)
 #define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
 
 /***************************************************/
@@ -152,11 +152,14 @@ typedef struct pit8253 {
 /* picomz.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
-extern uint8_t mzvram[VRAMSIZE*2];
+extern uint8_t mzvram[VRAMSIZE];
 extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
 extern uint8_t picotone2;
+/* Pixel colours */
+extern uint16_t whitepix;
+extern uint16_t blackpix;
 /* MZ model & CGROM types */
 extern uint8_t mzmodel;
 extern bool ukrom;
@@ -193,8 +196,6 @@ extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
 
 /* vgadisplay.c */
-extern uint16_t whitepix;
-extern uint16_t blackpix;
 extern void vga_main(void);
 
 /* 8255.c */

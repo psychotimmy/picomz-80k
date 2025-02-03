@@ -111,8 +111,8 @@ static uint32_t rpttime;             // Time to repeat a key code
 static uint8_t kaddr=0xFF;           // Keyboard address
 static uint8_t kinst;                // Keyboard instance
 
-static uint8_t kleds_now=0xFF;       // Keyboard leds status now
-static uint8_t kleds_prev=0x00;      // Previous keyboard leds status
+static uint8_t kleds_now=0x00;       // Keyboard leds status now
+static uint8_t kleds_prev=0xFF;      // Previous keyboard leds status
 
 static bool numlock;                 // Numlock key status
 static bool numlock_prev_rpt=false;  // Numlock pressed in previous report
@@ -942,11 +942,6 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
                  break;
 
       case 0x28: processkey[7]=0x08^0xFF; //<CR>    (USB return key)
-                 if (smlcapled) {            // If in lower case CR
-                   processkey[0]=0x80^0xFF;  // must revert to upper case
-                   processkey[1]=0x08^0xFF;  // pg 8, MZ-80A owners manual
-                   smlcapled=!smlcapled;
-                 }
                  break;
       case 0x29: processkey[0]=0x02^0xFF; //<GRAPH> toggle (USB ESC key)
                  break;                   
@@ -1291,7 +1286,6 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
 
       case 0x04: processkey[0]=0x80^0xFF; //CTRL A - shift lock toggle
                  processkey[1]=0x08^0xFF; 
-                 smlcapled=!smlcapled;    //Set flag for processing by <CR>
                  break;
       case 0x07: processkey[0]=0x80^0xFF; //CTRL D - display roll up
                  processkey[2]=0x08^0xFF; 
@@ -1302,18 +1296,14 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
       case 0x1d: processkey[0]=0x80^0xFF; //CTRL Z - -> character
                  processkey[1]=0x01^0xFF;
                  break;
-      case 0x1f: processkey[0]=0x80^0xFF; //CTRL @ (actually ')- reverse video
-                 processkey[6]=0x10^0xFF;
-                 uint16_t temp;
-                 temp=whitepix;          
-                 whitepix=blackpix;
-                 blackpix=temp;
-                 break;
       case 0x2f: processkey[0]=0x80^0xFF; //CTRL [ - VRAM = 80K mode
                  processkey[6]=0x20^0xFF;
                  break;
       case 0x30: processkey[0]=0x80^0xFF; //CTRL ] - VRAM = 80A mode
                  processkey[7]=0x04^0xFF;
+                 break;
+      case 0x34: processkey[0]=0x80^0xFF; //CTRL @ (USB ctrl ')- reverse video
+                 processkey[6]=0x10^0xFF;
                  break;
 
       default:   break;

@@ -17,10 +17,6 @@
 #define CHEIGHT         8      // ... and 8 pixels tall
 #define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K
 
-// On the MZ-80K, pixels are either white or black
-uint16_t whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
-uint16_t blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
-
 /* Generate each pixel for the current scanline */
 int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
 {
@@ -36,8 +32,16 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
       charbits=cgromuk80k[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
     else if ((ukrom == false) && (mzmodel == MZ80K))
       charbits=cgromjp80k[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
-    else
+    else if (mzuserram[0x1191-0x1000] == 0xFF) {   /* MZ80-K mode */
+      // Temporary code to distinguish between K (red) and A (green) mode
+      whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);
       charbits=cgromuk80a[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    }
+    else {                                         /* MZ-80A native mode */
+      // Temporary code to distinguish between K (red) and A (green) mode
+      whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
+      charbits=cgromuk80a[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    }
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;

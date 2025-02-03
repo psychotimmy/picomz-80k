@@ -3,9 +3,11 @@
 
 #include "picomz.h"
 
-uint8_t mzuserram[URAMSIZE];    // MZ-80 monitor and user RAM
-uint8_t mzvram[VRAMSIZE*2];     // MZ-80 video RAM
+uint8_t mzuserram[URAMSIZE];    // MZ-80 monitor workspace and user RAM
+uint8_t mzvram[VRAMSIZE];       // MZ-80 video RAM (only 1K used on 80-K)
 uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
+uint16_t whitepix;              // Pixel colours
+uint16_t blackpix;
 uint8_t picotone1;              // gpio pins for pwm sound
 uint8_t picotone2;
 
@@ -19,10 +21,16 @@ bool ukrom = true;              // Default is UK CGROM
 /* Write a byte to RAM or an output device */
 void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
 {
-  /* Can't write to monitor ROM or into FD ROM space */
-  if ((addr < 0x1000) || (addr > 0xEFFF )) return;
+  /* Can't write to monitor space on the MZ-80K */
+  if ((addr < 0x1000) && (mzmodel == MZ80K)) 
+    return;
+  else if (addr < 0x1000) {
+    /* Possible on MZ-80A */
+    mzmonitor80a[addr] = value;
+    return;
+  }
 
-  /* Monitor and user RAM */
+  /* Monitor workspace and user RAM */
   if (addr < 0xD000) {
     mzuserram[addr-0x1000] = value;
     return;
@@ -30,17 +38,18 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
 
   /* Video RAM */
   /* Now deals with writing outside the real range, rather than returning */
-  /* an error as previously on the MZ-80K */
+  /* an error as previously on the MZ-80K. 0x03FF masks to 1k VRAM */
   if ((addr < 0xE000) && (mzmodel == MZ80K)) {
     mzvram[addr&0x03FF] = value;
     return;
   }
-  else if ((addr < 0xE000) && (mzmodel == MZ80A)) {
+  else if (addr < 0xE000) {
     /* Deal with the MZ-80A monitor bug when displaying codes 0x60 - 0x68 */
+    /* Not sure this is correct, but ... */
+    /* 0x07FF masks to 2k VRAM */
     if ((mzcpu.pc > 0x0FFF) || (value < 0xC7) || (value > 0xCF))
       mzvram[addr&0x7FF] = value;
     else
-      /* Not sure this is correct, but ... */
       mzvram[addr&0x7FF] = 0x00;
     return;
   }
@@ -58,7 +67,7 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
   }
 
   /* Write to the speaker (and other peripherals not implemented) */
-  if (addr<0xE009) {
+  if (addr == 0xE008) {
     wrE008(value);
     return;
   }
@@ -72,7 +81,9 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
   /* Unused addresses. Note that a real MZ-80K doesn't decode all the   */
   /* address lines properly, so writes to these addresses can affect    */
   /* others. Poor practice though - and I haven't found any MZ-80K code */
-  /* in the 'wild' yet that relies on this side effect. */
+  /* in the 'wild' yet that relies on this side effect.                 */
+  /* Currently this trap includes the FD ROM space for MZ-80K & MZ-80A  */
+
   SHOW("** Writing 0x%02x to unused address 0x%04x **\n",value,addr);
   return;
 }
@@ -110,13 +121,53 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
   }
 
   /* Sound */
-  if (addr < 0xE009) return(rdE008());
+  if (addr == 0xE008) return(rdE008());
 
-  /* MZ-80A addresses */
+  /* MZ-80A specific addresses follow */
+  if (mzmodel == MZ80A) {
 
-  if ((addr == 0xE200) && (mzmodel == MZ80A)) {
-    SHOW("Reading screen control address 0x%04x\n",addr);
-    return(0xDE);
+    /* Memory swap - Monitor code goes to 0xC000 */
+    if (addr == 0xE00C) {
+      SHOW("MZ-80A monitor swapped out to 0xC000\n");
+      for (uint8_t i=0; i<MROMSIZE; i++)
+        mzuserram[(addr-0x1000)+i]=mzmonitor80a[i];
+      return(0xC7);
+    }
+
+    /* Memory swap - 0xC000+4K goes to 0x0000 */
+    if (addr == 0xE010) {
+      SHOW("MZ-80A 0xC000 swapped into to monitor space\n");
+      for (uint8_t i=0; i<MROMSIZE; i++)
+        mzmonitor80a[i]=mzuserram[(addr-0x1000)+i];
+      return(0xC7);
+    }
+
+    /* Normal video */
+    if (addr == 0xE014) {
+      SHOW("MZ-80A normal video\n");
+      whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
+      blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
+      /* Return value doesn't seem to be used, but 0x00 stored at 0x1190 */
+      /* when normal video is selected */
+      return(0x00);
+    }
+
+    /* Reverse video */
+    if (addr == 0xE015) {
+      SHOW("MZ-80A reverse video\n");
+      whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
+      blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
+      /* Return value doesn't seem to be used, but 0xFF stored at 0x1190 */ 
+      /* when reverse video is selected */
+      return(0xFF);
+    }
+
+    /* Roll screen up / down */
+    if ((addr >= 0xE200) && (addr <=0xE2FF)) {
+      SHOW("MZ-80A display command read at 0x%04x \n",addr);
+      return(0xDE);
+    }
+
   }
 
   /* MZ-80A user socket ROM - return 0xC7 if not present */
@@ -189,7 +240,7 @@ int main(void)
   memset(mzuserram,0x00,URAMSIZE);
 
   // Initialise mzvram 
-  memset(mzvram,0x00,VRAMSIZE*2);
+  memset(mzvram,0x00,VRAMSIZE);
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
@@ -275,6 +326,13 @@ int main(void)
     }
   }
   SHOW("microSD card mounted ok\n");
+
+  // Define default pixel colours
+  blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
+  if (mzmodel == MZ80K)
+    whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);
+  else
+    whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
 
   // Start VGA output on the second core
   multicore_launch_core1(vga_main);
