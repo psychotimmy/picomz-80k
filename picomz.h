@@ -110,6 +110,10 @@
 /* 0xF000 - 0xFFFF  FD controller ROM (if present) */
 /*  61440 - 65535      Only first 1 Kbytes used    */
 /*                                                 */
+/*                                                 */
+/* Sharp MZ-80A memory map summary                 */
+/*                                                 */
+/* TO DO                                           */
 /***************************************************/
 
 /* MZ-80K keyboard */

@@ -118,7 +118,7 @@ static bool numlock;                 // Numlock key status
 static bool numlock_prev_rpt=false;  // Numlock pressed in previous report
 static bool numlock_this_rpt=false;  // Numlock pressed in this report
 
-// Used to send a repeating key to the MZ-80K
+// Used to send a repeating key to the MZ-80K/A
 // and set status of NUM LOCK led
 void mzrptkey(void)
 {
@@ -133,7 +133,7 @@ void mzrptkey(void)
 
     // Deal with repeating keys
     if (rptcode && (to_ms_since_boot(get_absolute_time()) > rpttime)) {
-      // Send the repeating key to the MZ-80K and update next repeat time
+      // Send the repeating key to the MZ-80K/A and update next repeat time
       if (mzmodel == MZ80K)
         mzhidmapkey80k(rptcode,rptmodifier);
       else

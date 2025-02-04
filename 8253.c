@@ -1,15 +1,15 @@
-/* A vastly simplified 8253 Programmable Interval Timer implementation */
-/* Sharp MZ-80K emulator, Tim Holyoake, September - October 2024. */
+/* A vastly simplified 8253 Programmable Interval Timer implementation   */
+/* Sharp MZ-80K/A emulator, Tim Holyoake, September 2024 - February 2025 */
 
 #include "picomz.h"
 
-// MZ-80K Implementation notes
+// MZ-80K/A Implementation notes
 
 // Address E007 - PIT control word. (Write only - can't read this address.)
-// This implementation ignores it entirely. The MZ-80K usage of the 8253 is
+// This implementation ignores it entirely. The MZ-80K/A usage of the 8253 is
 // very limited and never changes, so we can safely ignore control words.
 
-// Counter 2 (address E006) MZ-80K clock, 1 second resolution.
+// Counter 2 (address E006) MZ-80K/A clock, 1 second resolution.
 // Counts down from 43,200 seconds unless reset. At zero, triggers /INT
 // to Z80 to toggle AM/PM flag in the monitor workarea (Mode 0).
 // This is NOT initialised by the SP-1002 monitor at startup, but is used
@@ -38,19 +38,19 @@ typedef struct toneg {    /* Tone generator structure for sound  */
 
 static toneg picotone;         /* Tone generator global static */
 
-pit8253 mzpit;                 /* MZ-80K 8253 PIT global */
+pit8253 mzpit;                 /* MZ-80K/A 8253 PIT global */
 static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
 
-static absolute_time_t clockreset; /* Latest timestamp of MZ-80K clock reset */
+static absolute_time_t clockreset; /* Last timestamp of MZ-80K/A clock reset */
 
-/*************************************************************/
-/*                                                           */
-/* Internal 8253 functions to support the Sharp MZ-80K clock */
-/*                                                           */
-/*************************************************************/
+/***************************************************************/
+/*                                                             */
+/* Internal 8253 functions to support the Sharp MZ-80K/A clock */
+/*                                                             */
+/***************************************************************/
 void mzpico_clk_init(void)
 {
-  // Store the absoltue time in the clockreset global. The MZ-80K
+  // Store the absoltue time in the clockreset global. The MZ-80K/A
   // clock will count seconds from here.
 
   clockreset=get_absolute_time();
@@ -85,7 +85,7 @@ void pico_tone_init()
 {
   // Pins for pwm (stereo) output.
   // Initialised as picotone1 and picotone2 in picomz.c
-  // The original MZ-80K was mono, of course!
+  // The original MZ-80K/A was mono, of course!
 
   /* Set the gpio pins for pwm sound */
   gpio_set_function(picotone1, GPIO_FUNC_PWM);
@@ -135,10 +135,9 @@ void mzpico_tone_on(void)
     pwm_set_enabled(picotone.slice2, true);
 
     if (tone_alarm) cancel_alarm(tone_alarm);
-    // The delay of 20s below is arbitrary as the longest possible
-    // duration of a note on the MZ-80K is 7 seconds (7000ms).
-    // The alarm will always be cancelled before this value is reached.
-    tone_alarm=add_alarm_in_ms(20000,mzpico_tone_off,unused,true);
+    // The delay of 2000s below is arbitrary
+    // The alarm will always (?!) be cancelled before this value is reached.
+    tone_alarm=add_alarm_in_ms(2000000,mzpico_tone_off,unused,true);
   }
 }
 
@@ -151,13 +150,14 @@ void p8253_init(void)
   pico_tone_init();
   mzpit.e008call = 0x00;   // Used as a return value when E008 is read
 
-  // MZ-80K time
+  // MZ-80K/A time
   mzpit.counter2 = 0x0000;
   mzpit.msb2 = 0;
   mzpit.c2start = 0x0000;
 }
 
-// Note - latching is currently ignored - unlikely to be crucial to the MZ-80K emulator's operation
+// Note - latching is currently ignored - unlikely to be crucial to 
+// the MZ-80K/A emulator's operation
 uint8_t rd8253(uint16_t addr) 
 {
   if (addr == 0xE006) {
@@ -195,7 +195,7 @@ void wr8253(uint16_t addr, uint8_t val)
 
   // E004 is used for generating tones
   if (addr == 0xE004) {
-    // The 8253 on the MZ-80K is fed with a 1MHz pulse
+    // The 8253 on the MZ-80K/A is fed with a 1MHz pulse
     // A 16 bit value is sent LSB, MSB to this address to divide
     // the base frequency to get the desired frequency.
     if (!mzpit.msb0) {
@@ -218,7 +218,7 @@ void wr8253(uint16_t addr, uint8_t val)
     /* E006 - write the countdown value to counter 2 */
     /* This is a 16bit value, sent LSB, MSB */
     if (!mzpit.msb2) {
-      mzpico_clk_init(); // Reset the start time for the MZ-80K clock
+      mzpico_clk_init(); // Reset the start time for the MZ-80K/A clock
       mzpit.out2=true;   // Set output pin high to allow counter to decrement
       mzpit.counter2=val;
       mzpit.msb2=1;

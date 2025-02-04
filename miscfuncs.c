@@ -1,6 +1,6 @@
-/* Sharp MZ-80K emulator                             */
+/* Sharp MZ-80K  & MZ-80A emulators                  */
 /* Status LED and miscellaneous conversion functions */
-/* Tim Holyoake, November 2024 - January 2025        */
+/* Tim Holyoake, November 2024 - February 2025       */
 
 #include "picomz.h"
 
@@ -15,6 +15,7 @@ void mzpicoled(uint8_t state)
 /* Convert a standard ASCII string to MZ display string. */
 /* Deals with A-Z, a-z, 0-9, space plus some symbols.    */
 /* Unrecognised ASCII codes are returned as a space.     */
+/* TO DO - MZ80A revisons ?                              */
 void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 {
   // Set converted to mz display code spaces - 0x00
@@ -90,6 +91,7 @@ void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 /* Convert a Sharp 'ASCII' tape file name character to an 'ASCII'   */
 /* character that will form part of a legal FAT (sd card) file name */
 /* Incomplete coverage, but good enough for most purposes.          */
+/* TO DO - revisions for MZ-80A ??                                  */
 uint8_t mzsafefilechar(uint8_t sharpchar)
 {
   uint8_t asciichar=0x2d; /* Default anything not in if or switch to a dash */
@@ -187,7 +189,7 @@ uint8_t mzsafefilechar(uint8_t sharpchar)
 }
 
 /* Convert a Sharp 'ASCII' character to a display character */
-/* Incomplete, but good enough for version 1!               */
+/* TODO -- revisions for MZ-80A required ??                 */
 uint8_t mzascii2mzdisplay(uint8_t ascii)
 {
   uint8_t displaychar = 0x00;            // space returned for anything not

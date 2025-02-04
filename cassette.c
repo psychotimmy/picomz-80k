@@ -1,5 +1,5 @@
-/* Sharp MZ-80K tape handling        */
-/* Tim Holyoake, August-October 2024 */
+/*    Sharp MZ-80K & MZ-80A tape handling    */
+/* Tim Holyoake, August 2024 - February 2025 */
 
 #include "picomz.h"
 
@@ -8,7 +8,7 @@
 
 #define READPT   400     /* Elapsed time in microseconds that on a tape  */
                          /* write a pulse is treated as a 1 rather than  */
-                         /* than a 0. The real MZ-80K read point is      */
+                         /* than a 0. The real MZ-80K/A read point is    */
                          /* after 368us, but 400 is safe in the emulator */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
@@ -38,7 +38,7 @@ uint8_t body[TAPEBODYMAXSIZE]; // Maximum storage is 47.5K - 48640 bytes
 
 static FATFS fs;         // File system pointer for sd card
 
-/* MZ-80K tapes always have a 128 byte header, followed by a body */
+/* MZ-80K/A tapes always have a 128 byte header, followed by a body */
 
 // Tape format is as follows: 
 
@@ -122,7 +122,7 @@ FRESULT tapeinit(void)
   return(res);
 }
 
-/* Save MZ-80K user RAM to a file */
+/* Save MZ-80K/A user RAM to a file */
 FRESULT mzsavedump(void)
 {
   FIL fp;                           // File pointer
@@ -134,7 +134,7 @@ FRESULT mzsavedump(void)
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
   uramheader[0] = 0x20;             // Use 0x20 as the header identifier
-                                    // (0x20 not used by real MZ-80K tapes)
+                                    // (0x20 not used by real MZ-80K/A tapes)
   uramheader[1] = 0x4d;             // M
   uramheader[2] = 0x92;             // e
   uramheader[3] = 0xb3;             // m
@@ -181,7 +181,7 @@ FRESULT mzsavedump(void)
   return(FR_OK);
 }
 
-/* Read MZ-80K memory dump        */
+/* Read MZ-80K/A memory dump        */
 FRESULT mzreaddump(void)
 {
   FIL fp;                           // File pointer
@@ -288,7 +288,7 @@ int16_t tapeloader(int16_t n)
     return(-1);
   }
   
-  // MZ-80K tape headers are always 128 bytes
+  // MZ-80K/A tape headers are always 128 bytes
   f_read(&fp,header,TAPEHEADERSIZE,&bytesread);
   if (bytesread != TAPEHEADERSIZE) {
     SHOW("Header error - only read %d of 128 bytes\n",bytesread);
@@ -341,7 +341,7 @@ int16_t tapeloader(int16_t n)
 
   // Type of tape is stored in the header
   // 0x01 = machine code, 0x02 = language (BASIC,Pascal etc.), 0x03 = data
-  // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K specific)
+  // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K/A specific)
   switch (header[0]) {
     case 0x01: if (ukrom)
                  ascii2mzdisplay("Machine code",mzstr);
@@ -379,9 +379,9 @@ int16_t tapeloader(int16_t n)
                  mzemustatus[spos++]=mzstr[i];
                break;
     case 0x20: if (ukrom)
-                 ascii2mzdisplay("Pico MZ-80K memory dump",mzstr);
+                 ascii2mzdisplay("Pico MZ-80K/A memory dump",mzstr);
                else
-                 ascii2mzdisplay("PICO MZ-80K MEMORY DUMP",mzstr);
+                 ascii2mzdisplay("PICO MZ-80K/A MEMORY DUMP",mzstr);
                for (uint8_t i=0; i<23; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
@@ -474,18 +474,18 @@ void reset_tape(void)
   return;
 }
 
-/* Read an MZ-80K format tape one bit at a time */
-/* Pseudo finite state machine implementation   */
-/* If the header and body are read successfully */
-/* at the first attempt, the read process ends  */
-/* and the second copy is not read. This impl.  */
-/* assumes that the first read is ALWAYS good,  */
-/* as we're using .mzf files rather than a real */
-/* cassette tape.                               */
+/* Read an MZ-80K/A format tape one bit at a time */
+/* Pseudo finite state machine implementation     */
+/* If the header and body are read successfully   */
+/* at the first attempt, the read process ends    */
+/* and the second copy is not read. This impl.    */
+/* assumes that the first read is ALWAYS good,    */
+/* as we're using .mzf files rather than a real   */
+/* cassette tape.                                 */
 uint8_t cread(void)
 {
                              // Used to calculate the bit to output from tape
-  uint8_t bitshift;          // to the MZ-80K when reading the header or body
+  uint8_t bitshift;          // to the MZ-80K/A when reading the header or body
   static uint16_t chkbits;   // Tracks number of long pulses sent in the header
                              // or body to enable the checksum to be calculated
                              // MUST be a 16 bit unsigned value
@@ -731,8 +731,8 @@ uint8_t cread(void)
   return(LONGPULSE);
 }
 
-/* Write an MZ-80K format tape one bit at a time */
-/* Pseudo finite state machine implementation    */
+/* Write an MZ-80K/A format tape one bit at a time */
+/* Pseudo finite state machine implementation      */
 void cwrite(uint8_t nextbit)
 {
   /* Note: cwrite() can only ever be called if the motor and sense are on */

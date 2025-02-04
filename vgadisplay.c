@@ -1,5 +1,5 @@
-/* Sharp MZ-80K emulator - vga output */
-/* Tim Holyoake, August-October 2024  */
+/* Sharp MZ-80K  & MZ-80A emulator - vga output */
+/*  Tim Holyoake, August 2024 - February 2025   */
 
 #include "picomz.h"
 
@@ -10,12 +10,12 @@
 #define VGA_LINES 240
 #define MIN_RUN 3
 
-// MZ-80K display buffer (VRAM) is 40 chars x 25 lines
+// MZ-80K/A visible screen is 40 chars x 25 lines
 #define DWIDTH          40
 #define DLINES          25
-#define CWIDTH          8      // MZ-80K characters are 8 pixels wide
+#define CWIDTH          8      // MZ-80K/A characters are 8 pixels wide
 #define CHEIGHT         8      // ... and 8 pixels tall
-#define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K
+#define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K/A
 
 /* Generate each pixel for the current scanline */
 int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
@@ -105,7 +105,7 @@ void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
   size_t buf_length = dest->data_max;
   int lineNum = scanvideo_scanline_number(dest->scanline_id);
 
-  /* If we're beyond the last scanline of the MZ-80K display,
+  /* If we're beyond the last scanline of the MZ-80K/A display,
      output the emulator status area. Toggle vblank as required */
   if (lineNum == 0) 
     vblank = 0;

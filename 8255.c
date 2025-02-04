@@ -3,7 +3,7 @@
 
 #include "picomz.h"
 
-// 8255 address to port mapping for the MZ-80K / A
+// 8255 address to port mapping for the MZ-80K/A
 // The ports are all 8 bits wide 
 // Note that the MZ-80K and A only uses the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
@@ -106,7 +106,7 @@ void wr8255(uint16_t addr, uint8_t data)
                                      // Bits 0-3 are used by keyboard
            portA=data;               // Keeps state in portA static
            break;
-    case 1:// Write to portB - this should never happen on an MZ-80K,
+    case 1:// Write to portB - this should never happen on an MZ-80K/A,
            // so nothing should change if a program tries to do it.
            break;
     case 2:// Overwrite the lower 4 bits of port C.
@@ -116,7 +116,7 @@ void wr8255(uint16_t addr, uint8_t data)
            portC = (portC&0xF0)|(data&0x0F);
            break;
     case 3:// Control port code
-           // If mode set is chosen, do nothing as the MZ-80K must never
+           // If mode set is chosen, do nothing as the MZ-80K/A must never
            // change the way the 8255 ports are configured after the 
            // monitor issues it with 8A on start up.
            uint8_t portCbit, setbit;

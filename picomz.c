@@ -383,7 +383,7 @@ int main(void)
           sleep_ms(2);
           ++ncodes;
         }
-      mzcdcmapkey(usbc,ncodes);   // Map usb code(s) to MZ-80K keyboard
+      mzcdcmapkey(usbc,ncodes);   // Map usb code(s) to MZ keyboard
       memset(usbc,-1,USBKBDBUF);  // Reset USB keyboard buffer to empty
     }
   #else
