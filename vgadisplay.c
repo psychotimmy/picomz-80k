@@ -21,26 +21,27 @@
 int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
 {
   uint16_t *pixels = (uint16_t *) buf;
-  int vramrow = lineNum/CHEIGHT;     // Find the row of the VRAM we're using
-  int cpixrow = lineNum%CHEIGHT;     // Find the pixel row in the character
-                                     // ROM we need
+  int vrr = lineNum/CHEIGHT;           // Find the row of the VRAM we're using
+  int cpr = lineNum%CHEIGHT;           // Find the pixel row in the character
+                                       // ROM we need
   // Now work through the display columns to generate the correct scanline
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
     if ((ukrom == true) && (mzmodel == MZ80K))
-      charbits=cgromuk80k[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromuk80k[mzvram[vrr*DWIDTH+colidx]*CWIDTH+cpr];
     else if ((ukrom == false) && (mzmodel == MZ80K))
-      charbits=cgromjp80k[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
-    else if (mzuserram[0x1191-0x1000] == 0xFF) {   /* MZ80-K mode */
-      // Temporary code to distinguish between K (red) and A (green) mode
-      whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);
-      charbits=cgromuk80a[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromjp80k[mzvram[vrr*DWIDTH+colidx]*CWIDTH+cpr];
+    else if (mzuserram[0x0191] == 0xFF) {   /* MZ80-K mode */
+      charbits=cgromuk80a[mzvram[vrr*DWIDTH+colidx]*CWIDTH+cpr];
     }
-    else {                                         /* MZ-80A native mode */
-      // Temporary code to distinguish between K (red) and A (green) mode
-      whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
-      charbits=cgromuk80a[mzvram[vramrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+    else {                                  /* MZ-80A native mode */
+      // In this mode the full 2K VRAM is used, so need to work out where
+      // the top of the screen is in the VRAM. Use monitor workarea addresses
+      // 0x117D and 0x117E (4477 & 4478 decimal) to do this, and allow VRAM
+      // to wrap around by masking the calculated address with 0x7FF (2048).
+      int offset=(((mzuserram[0x017E]<<8)&0xFF00)|mzuserram[0x017D])-0xD000;
+      charbits=cgromuk80a[mzvram[(vrr*DWIDTH+colidx+offset)&0x7FF]*CWIDTH+cpr];
     }
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;

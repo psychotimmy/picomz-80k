@@ -15,7 +15,7 @@ z80 mzcpu;                      // Z80 CPU context
 volatile void* unusedv;
 volatile z80*  unusedz;
 
-uint8_t mzmodel = MZ80A;        // MZ model type - default is MZ-80K
+uint8_t mzmodel;                // MZ model type - default is MZ-80K
 bool ukrom = true;              // Default is UK CGROM
 
 /* Write a byte to RAM or an output device */
@@ -43,24 +43,27 @@ void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t valu
     mzvram[addr&0x03FF] = value;
     return;
   }
-  else if (addr < 0xE000) {
-    /* Deal with the MZ-80A monitor bug when displaying codes 0x60 - 0x68 */
-    /* Not sure this is correct, but ... */
-    /* 0x07FF masks to 2k VRAM */
-    if ((mzcpu.pc > 0x0FFF) || (value < 0xC7) || (value > 0xCF))
-      mzvram[addr&0x7FF] = value;
-    else
-      mzvram[addr&0x7FF] = 0x00;
+  else if ((addr < 0xD800) && (mzmodel == MZ80A)) {
+    /* 0x07FF masks to 2k VRAM. The monitor writes 0xCF (207) to higher   */
+    /* 0xDxxx addresses on startup, which corrupts the display if the     */
+    /* MZ-80K method of dealing with these addresses is used. These are   */
+    /* treated as unused addresses instead. Maybe Sharp's plan was to     */
+    /* have an 'A' model with colour video at some point? The MZ-700 did. */
+    mzvram[addr&0x7FF] = value;
+    return;
+  }
+  else if ((addr < 0xE000) && (mzmodel == MZ80A)) {
+    //SHOW("** Writing 0x%02x to unused address 0x%04x **\n",value,addr);
     return;
   }
 
-  /* Write to the Intel 8255 */
+  /* Write to the Intel 8255  (0xE000 - 0xE003) */
   if (addr<0xE004) {
     wr8255(addr,value);
     return;
   }
 
-  /* Write to the Intel 8253 */
+  /* Write to the Intel 8253  (0xE004 - 0xE007) */
   if (addr<0xE008) {
     wr8253(addr,value);
     return;
@@ -98,21 +101,28 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
     return(mzmonitor80a[addr]);
 
   /* Monitor and user RAM */
-  if (addr < 0xD000) return(mzuserram[addr-0x1000]);
+  if (addr < 0xD000) 
+    return(mzuserram[addr-0x1000]);
 
   /* Video RAM */
-  /* Now reads unused addresses between D400 and E000 as per */
-  /* the real  MZ-80K hardware */
   if ((addr < 0xE000) && (mzmodel == MZ80K)) 
+    /* Reads and maps unused addresses between 0xD400 and 0xE000 as per */
+    /* the real MZ-80K hardware */
     return(mzvram[addr&0x03FF]);
-  else if ((addr < 0xE000) && (mzmodel == MZ80A))
+  else if ((addr < 0xD800) && (mzmodel == MZ80A))
+    /* MZ-80A fully decodes the 0xDxxx space even though only the first */
+    /* 2Kbytes is used ... perhaps a colour upgrade was once intended?  */
     return(mzvram[addr&0x07FF]);
+  else if ((addr < 0xE000) && (mzmodel == MZ80A))
+    return(0xC7);
 
   /* Intel 8255 */
-  if (addr < 0xE004) return(rd8255(addr));
+  if (addr < 0xE004) 
+    return(rd8255(addr));
 
   /* Intel 8253 */
-  if (addr < 0xE007) return(rd8253(addr));
+  if (addr < 0xE007) 
+    return(rd8253(addr));
 
   /* Unused address */
   if (addr < 0xE008) {
@@ -121,7 +131,8 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
   }
 
   /* Sound */
-  if (addr == 0xE008) return(rdE008());
+  if (addr == 0xE008) 
+    return(rdE008());
 
   /* MZ-80A specific addresses follow */
   if (mzmodel == MZ80A) {
@@ -131,7 +142,7 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
       SHOW("MZ-80A monitor swapped out to 0xC000\n");
       for (uint8_t i=0; i<MROMSIZE; i++)
         mzuserram[(addr-0x1000)+i]=mzmonitor80a[i];
-      return(0xC7);
+      return(0xFF);
     }
 
     /* Memory swap - 0xC000+4K goes to 0x0000 */
@@ -139,7 +150,7 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
       SHOW("MZ-80A 0xC000 swapped into to monitor space\n");
       for (uint8_t i=0; i<MROMSIZE; i++)
         mzmonitor80a[i]=mzuserram[(addr-0x1000)+i];
-      return(0xC7);
+      return(0xFF);
     }
 
     /* Normal video */
@@ -162,10 +173,10 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
       return(0xFF);
     }
 
-    /* Roll screen up / down */
+    /* Scroll screen up / down */
     if ((addr >= 0xE200) && (addr <=0xE2FF)) {
       SHOW("MZ-80A display command read at 0x%04x \n",addr);
-      return(0xDE);
+      return(addr&0xFF);
     }
 
   }
@@ -184,7 +195,7 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 /* SIO write to device */
 void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 {
-  /* SIO not used by MZ-80K, so should never get here */
+  /* SIO not used by MZ-80K/A, so should never get here */
   SHOW("Error: In sio_write at 0x%04x with value 0x%02x\n",addr,val);
   return;
 }
@@ -192,12 +203,12 @@ void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 /* SIO read from device */
 uint8_t sio_read(z80* unusedz, uint8_t addr)
 {
-  /* SIO not used by MZ-80K, so should never get here */
+  /* SIO not used by MZ-80K/A, so should never get here */
   SHOW("Error: In sio_read at 0x%04x\n",addr);
   return(0);
 }
 
-/* Sharp MZ-80K emulator main loop */
+/* Sharp MZ-80K/A emulator main loop */
 int main(void) 
 {
   uint8_t toggle;          // Used to toggle the pico's led for error
@@ -235,6 +246,21 @@ int main(void)
 
   SHOW("\nHello! My friend\n");
   SHOW("Hello! My computer\n\n");
+
+  // If button A on the Pico's carrier board is pressed, run the emulator 
+  // as a MZ-80A rather than as a MZ-80K.
+
+  gpio_init(0);
+  gpio_set_dir(0,GPIO_IN);
+  gpio_pull_down(0);
+  if (gpio_get(0)) {
+    mzmodel=MZ80A;
+    SHOW("MZ-80A emulation selected\n");
+  }
+  else {
+    mzmodel=MZ80K;
+    SHOW("MZ-80K emulation selected\n");
+  }
 
   // Initialise mzuserram
   memset(mzuserram,0x00,URAMSIZE);

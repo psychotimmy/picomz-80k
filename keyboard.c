@@ -1037,10 +1037,10 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
       case 0x50: processkey[0]=0x01^0xFF; //cursor right
                  processkey[7]=0x20^0xFF;
                  break;
-      case 0x51: processkey[7]=0x10^0xFF; //cursor down
-                 break;
-      case 0x52: processkey[0]=0x01^0xFF; //cursor up
+      case 0x51: processkey[0]=0x01^0xFF; //cursor up
                  processkey[7]=0x10^0xFF;
+                 break;
+      case 0x52: processkey[7]=0x10^0xFF; //cursor down
                  break;
 
       // 0x53 - NUM LOCK -  is dealt with before this function is called
