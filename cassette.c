@@ -6,10 +6,11 @@
 #define LONGPULSE  1     /* cread() returns high for a long pulse */
 #define SHORTPULSE 0     /*                 low for a short pulse */
 
-#define READPT   400     /* Elapsed time in microseconds that on a tape  */
-                         /* write a pulse is treated as a 1 rather than  */
-                         /* than a 0. The real MZ-80K/A read point is    */
-                         /* after 368us, but 400 is safe in the emulator */
+#define READPT 420       /* Elapsed time in microseconds that on a tape      */
+                         /* write a pulse is treated as a 1 rather than a 0. */
+                         /* The real MZ-80K/A read point is after 386us, but */
+                         /* 420us is safe in the emulator (increased from    */
+                         /* 400us during the MZ-80A implementation).         */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
 #define WBGAP_L 22000    /* Big tape gap length in bits - write */
