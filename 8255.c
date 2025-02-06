@@ -204,12 +204,17 @@ uint8_t rd8255(uint16_t addr)
 
 #ifdef USBDIAGOUTPUT
              /* Copy processkey if at start of scan and ready for a new */
-             /* key - we may not be if scantimes > 1                    */
-             if ((idxloop == 0) && (idx == 9)) {
+             /* key - we may not be if scantimes > 1 (K and A differ)   */
+             if ((idxloop == 0) && (idx == 9) && (mzmodel == MZ80K)) {
                memcpy(newkey,processkey,KBDROWS);
                memset(processkey,0xFF,KBDROWS);
                idxloop=KBDROWS*scantimes-1;
-             }
+             } 
+             if ((idxloop == 0) && (idx == 0) && (mzmodel == MZ80A)) {
+               memcpy(newkey,processkey,KBDROWS);
+               memset(processkey,0xFF,KBDROWS);
+               idxloop=KBDROWS*scantimes+1;
+             } 
 
              /* Return the current row of the keyboard matrix */
              retval=newkey[idx];

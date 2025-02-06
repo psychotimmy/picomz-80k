@@ -178,7 +178,8 @@ extern const uint8_t cgromuk80a[CROMSIZE];
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];
 #ifdef USBDIAGOUTPUT
-  extern void mzcdcmapkey(int32_t*, int8_t);
+  extern void mzcdcmapkey80k(int32_t*, int8_t);
+  extern void mzcdcmapkey80a(int32_t*, int8_t);
 #else
   extern void mzrptkey(void);
   extern void mzhidmapkey80k(uint8_t, uint8_t);
