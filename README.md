@@ -61,7 +61,7 @@ Release 1.2.3 introduced RC2014 Pi Pico VGA terminal card support.
 
 Release 1.2.4 introduced the ability (F6 key) to toggle between the UK and Japanese CGROMs on the MZ-80K. 
 
-Release 2.0.0 introduced MZ-80A emulation (selected by holding down button A at power on)
+Release 2.0.0 introduced MZ-80A emulation (select by holding down button A at power on).
 
 ## Instructions for rebuilding the Pico MZ-80K/A (see also the documentation subdirectory)
 
@@ -116,6 +116,6 @@ There should now be three (Pico) or two (Pico 2) .uf2 files in your build direct
 
 ## Project Background
 
-[The Pico MZ-80K](https://z80.timholyoake.uk/the-pico-mz-80k/)
+[The Pico MZ-80K and MZ-80A](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 4th February 2025.
+### This README was last updated on 7th February 2025.
