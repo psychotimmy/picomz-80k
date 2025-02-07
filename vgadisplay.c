@@ -18,22 +18,23 @@
 #define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K/A
 
 /* Generate each pixel for the current scanline */
-int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
+int32_t __not_in_flash_func 
+        (gen_scanline) (uint32_t *buf, size_t buf_length, int lineNum)
 {
   uint16_t *pixels = (uint16_t *) buf;
-  int vrr = lineNum/CHEIGHT;           // Find the row of the VRAM we're using
-  int cpr = lineNum%CHEIGHT;           // Find the pixel row in the character
+  int vrr = (lineNum/CHEIGHT)*DWIDTH;  // Find the row of the VRAM we're using
+  int cpr = (lineNum%CHEIGHT);         // Find the pixel row in the character
                                        // ROM we need
   // Now work through the display columns to generate the correct scanline
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
     if ((ukrom == true) && (mzmodel == MZ80K))
-      charbits=cgromuk80k[mzvram[vrr*DWIDTH+colidx]*CWIDTH+cpr];
+      charbits=cgromuk80k[mzvram[vrr+colidx]*CWIDTH+cpr];
     else if ((ukrom == false) && (mzmodel == MZ80K))
-      charbits=cgromjp80k[mzvram[vrr*DWIDTH+colidx]*CWIDTH+cpr];
+      charbits=cgromjp80k[mzvram[vrr+colidx]*CWIDTH+cpr];
     else if (mzuserram[0x0191] == 0xFF) {   /* MZ80-K mode */
-      charbits=cgromuk80a[mzvram[vrr*DWIDTH+colidx]*CWIDTH+cpr];
+      charbits=cgromuk80a[mzvram[vrr+colidx]*CWIDTH+cpr];
     }
     else {                                  /* MZ-80A native mode */
       // In this mode the full 2K VRAM is used, so need to work out where
@@ -41,7 +42,7 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
       // 0x117D and 0x117E (4477 & 4478 decimal) to do this, and allow VRAM
       // to wrap around by masking the calculated address with 0x7FF (2048).
       int offset=(((mzuserram[0x017E]<<8)&0xFF00)|mzuserram[0x017D])-0xD000;
-      charbits=cgromuk80a[mzvram[(vrr*DWIDTH+colidx+offset)&0x7FF]*CWIDTH+cpr];
+      charbits=cgromuk80a[mzvram[(vrr+colidx+offset)&0x7FF]*CWIDTH+cpr];
     }
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
@@ -63,10 +64,12 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
 }
 
 /* The bottom 40 scanlines are used for emulator status messages */
-int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
+int32_t __not_in_flash_func 
+        (gen_last40_scanlines) (uint32_t *buf, size_t buf_len, int lineNum)
 {
   uint16_t *pixels = (uint16_t *) buf;
-  int emusrow = (lineNum-DLASTLINE)/CHEIGHT;  // Find row of the emulator status
+  int emusrow = ((lineNum-DLASTLINE)/CHEIGHT)*DWIDTH;  // Find row of the 
+                                                       // emulator status area
   int cpixrow = (lineNum-DLASTLINE)%CHEIGHT;  // Find pixel row in the character
                                               // ROM we need
   // Now work through the display columns to generate the correct scanline
@@ -74,11 +77,11 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
     if ((ukrom == true) && (mzmodel == MZ80K))
-      charbits=cgromuk80k[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromuk80k[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
     else if ((ukrom == false) && (mzmodel == MZ80K))
-      charbits=cgromjp80k[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromjp80k[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
     else
-      charbits=cgromuk80a[mzemustatus[emusrow*DWIDTH+colidx]*CWIDTH+cpixrow];
+      charbits=cgromuk80a[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
     *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;
@@ -99,7 +102,8 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
 }
 
 /* Output the composed scanline to the display */
-void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
+void __not_in_flash_func 
+     (render_scanline) (struct scanvideo_scanline_buffer *dest, int core)
 {
   uint32_t *buf = dest->data;
   size_t buf_length = dest->data_max;
@@ -122,7 +126,7 @@ void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
 }
 
 /* Prepare the next scanline and send it for display on core 1 */
-void render_loop(void)
+void __not_in_flash_func (render_loop) (void)
 {
   int core_num = get_core_num();
 
