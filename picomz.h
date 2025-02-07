@@ -92,28 +92,41 @@
 #define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
 
 /***************************************************/
-/* Sharp MZ-80K memory map summary                 */
+/* Sharp MZ-80K and MZ-80A memory map summary      */
 /*                                                 */
-/* 0x0000 - 0x0FFF  Monitor ROM SP-1002 (or other) */
+/* 0x0000 - 0x0FFF  Monitor SP-1002 (MZ-80K)       */
+/*                  Monitor SA-1510 (MZ-80A)       */
 /*      0 - 4095    4096 bytes                     */
 /* 0x1000 - 0x11FF  Monitor stack and work area    */
 /*   4096 - 4607    512 bytes                      */
 /* 0x1200 - 0xCFFF  User program area (inc. langs) */
 /*   4608 - 53247   48640 bytes                    */
+/*                  On the MZ-80A, the monitor can */
+/*                  be relocated to 0xC000, but    */
+/*                  will not operate correctly.    */
 /* 0xD000 - 0xDFFF  Video device control area      */
-/*  53248 -  57343     First 1024 bytes is VRAM    */
-/*                     1000 bytes used for display */
-/*                     Remaining 24 bytes "spare"  */
-/*                     0xD400-0xDFFF unused addrs  */
+/*  53248 -  57343  1024 (K) or 2048 (A) bytes     */
+/*                                                 */
+/*  MZ-80K: First 1000 bytes used for display, so  */
+/*          remaining 24 bytes is "spare". 0xD400  */
+/*          to 0xDFFF unused, but not decoded so   */
+/*          wrap back onto 0xD000 - 0xD3FF.        */
+/*  MZ-80A: First 2048 bytes is VRAM, 1000 bytes   */
+/*          used for display. This can scroll in   */
+/*          native 'A' mode, so no "spare" bytes.  */
+/*          In 'K' mode display is fixed in VRAM   */
+/*          from 0xD000, so 1048 bytes "spare".    */
+/*          Memory is fully decoded on the MZ-80A, */
+/*          so does not wrap, unlike the MZ-80K.   */
 /* 0xE000 - 0xEFFF  8255/8253 device control area  */
 /*  57344 - 61439      Only first few addrs used   */
+/*                     On MZ-80A 0xE800 - 0xEFFF   */
+/*                     is reserved for a user ROM  */
+/*                     e.g. Sharp's DYBUG          */
 /* 0xF000 - 0xFFFF  FD controller ROM (if present) */
-/*  61440 - 65535      Only first 1 Kbytes used    */
+/*  61440 - 65535      First 1024 bytes on MZ-80K  */
+/*                     First 2048 bytes on MZ-80A  */
 /*                                                 */
-/*                                                 */
-/* Sharp MZ-80A memory map summary                 */
-/*                                                 */
-/* TO DO                                           */
 /***************************************************/
 
 /* MZ-80K keyboard */
