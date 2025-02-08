@@ -1,14 +1,16 @@
-// A Sharp MZ-80K emulator for the Raspberry Pi Pico
-// Release 1.0 - Written August - October 2024
+// A Sharp MZ-80K & MZ-80A emulator for the Raspberry Pi Pico
+// Release 1.0 - Written August - October 2024   (MZ-80K only)
 // Release 1.1 - Written November 2024
 // Release 1.2 - Written January 2025
+// Release 2.0 - Written February 2025           (MZ-80A support)
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
-// and Raspberry pico libraries. These have compatible open source licenses. 
+// and Raspberry Pi Pico libraries. These have compatible open source licenses. 
 //
-// The contents of the SP-1002 Monitor and Character ROM are Copyright (c)
-// 1979 Sharp Corporation and may be found in the source file sharpcorp.c
+// The contents of the SP-1002, SA-1510 Monitors and Character ROMs are 
+// Copyright (c) 1979 and 1982 Sharp Corporation and may be found in the
+// source file sharpcorp.c
 //
 // This emulator has no other connection with Sharp Corporation.
 //
@@ -34,6 +36,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,32 +79,53 @@
   #define SHOW //
 #endif
 
+/* MZ-80 model definitions */
+#define MZ80K 1
+#define MZ80A 2
+
 /* Sharp MZ-80K memory locations */
 
 #define MROMSIZE        4096  //   4   Kbytes Monitor ROM
 #define CROMSIZE        2048  //   2   Kbytes Character ROM
 #define URAMSIZE        49152 //   0.5 Kbytes Monitor + 48 Kbytes User RAM
-#define VRAMSIZE        1024  //   1   Kbyte  Video RAM
+#define VRAMSIZE        2048  //   2   Kbyte  Video RAM (1K used on MZ-80K)
 #define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
 
 /***************************************************/
-/* Sharp MZ-80K memory map summary                 */
+/* Sharp MZ-80K and MZ-80A memory map summary      */
 /*                                                 */
-/* 0x0000 - 0x0FFF  Monitor ROM SP-1002 (or other) */
+/* 0x0000 - 0x0FFF  Monitor SP-1002 (MZ-80K)       */
+/*                  Monitor SA-1510 (MZ-80A)       */
 /*      0 - 4095    4096 bytes                     */
 /* 0x1000 - 0x11FF  Monitor stack and work area    */
 /*   4096 - 4607    512 bytes                      */
 /* 0x1200 - 0xCFFF  User program area (inc. langs) */
 /*   4608 - 53247   48640 bytes                    */
+/*                  On the MZ-80A, the monitor can */
+/*                  be relocated to 0xC000, but    */
+/*                  will not operate correctly.    */
 /* 0xD000 - 0xDFFF  Video device control area      */
-/*  53248 -  57343     First 1024 bytes is VRAM    */
-/*                     1000 bytes used for display */
-/*                     Remaining 24 bytes "spare"  */
-/*                     0xD400-0xDFFF unused addrs  */
+/*  53248 -  57343  1024 (K) or 2048 (A) bytes     */
+/*                                                 */
+/*  MZ-80K: First 1000 bytes used for display, so  */
+/*          remaining 24 bytes is "spare". 0xD400  */
+/*          to 0xDFFF unused, but not decoded so   */
+/*          wrap back onto 0xD000 - 0xD3FF.        */
+/*  MZ-80A: First 2048 bytes is VRAM, 1000 bytes   */
+/*          used for display. This can scroll in   */
+/*          native 'A' mode, so no "spare" bytes.  */
+/*          In 'K' mode display is fixed in VRAM   */
+/*          from 0xD000, so 1048 bytes "spare".    */
+/*          Memory is fully decoded on the MZ-80A, */
+/*          so does not wrap, unlike the MZ-80K.   */
 /* 0xE000 - 0xEFFF  8255/8253 device control area  */
 /*  57344 - 61439      Only first few addrs used   */
+/*                     On MZ-80A 0xE800 - 0xEFFF   */
+/*                     is reserved for a user ROM  */
+/*                     e.g. Sharp's DYBUG          */
 /* 0xF000 - 0xFFFF  FD controller ROM (if present) */
-/*  61440 - 65535      Only first 1 Kbytes used    */
+/*  61440 - 65535      First 1024 bytes on MZ-80K  */
+/*                     First 2048 bytes on MZ-80A  */
 /*                                                 */
 /***************************************************/
 
@@ -149,20 +174,29 @@ extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
 extern uint8_t picotone2;
+/* Pixel colours */
+extern uint16_t whitepix;
+extern uint16_t blackpix;
+/* MZ model & CGROM types */
+extern uint8_t mzmodel;
+extern bool ukrom;
 
 /* sharpcorp.c */
-extern const uint8_t mzmonitor[MROMSIZE];
-extern const uint8_t cgromuk[CROMSIZE];
-extern const uint8_t cgromjp[CROMSIZE];
-extern bool ukrom;
+extern uint8_t mzmonitor80k[MROMSIZE];
+extern uint8_t mzmonitor80a[MROMSIZE];
+extern const uint8_t cgromuk80k[CROMSIZE];
+extern const uint8_t cgromjp80k[CROMSIZE];
+extern const uint8_t cgromuk80a[CROMSIZE];
 
 /* keyboard.c */
 extern uint8_t processkey[KBDROWS];
 #ifdef USBDIAGOUTPUT
-  extern void mzcdcmapkey(int32_t*, int8_t);
+  extern void mzcdcmapkey80k(int32_t*, int8_t);
+  extern void mzcdcmapkey80a(int32_t*, int8_t);
 #else
   extern void mzrptkey(void);
-  extern void mzhidmapkey(uint8_t, uint8_t);
+  extern void mzhidmapkey80k(uint8_t, uint8_t);
+  extern void mzhidmapkey80a(uint8_t, uint8_t);
 #endif
 
 /* cassette.c */
@@ -180,8 +214,6 @@ extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
 
 /* vgadisplay.c */
-extern uint16_t whitepix;
-extern uint16_t blackpix;
 extern void vga_main(void);
 
 /* 8255.c */

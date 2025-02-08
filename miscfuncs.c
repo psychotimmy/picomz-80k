@@ -1,6 +1,6 @@
-/* Sharp MZ-80K emulator                             */
+/* Sharp MZ-80K  & MZ-80A emulators                  */
 /* Status LED and miscellaneous conversion functions */
-/* Tim Holyoake, November 2024 - January 2025        */
+/* Tim Holyoake, November 2024 - February 2025       */
 
 #include "picomz.h"
 
@@ -15,6 +15,7 @@ void mzpicoled(uint8_t state)
 /* Convert a standard ASCII string to MZ display string. */
 /* Deals with A-Z, a-z, 0-9, space plus some symbols.    */
 /* Unrecognised ASCII codes are returned as a space.     */
+/* MZ-80K has a yen symbol; MZ-80A does not (UK CGROMs)  */
 void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 {
   // Set converted to mz display code spaces - 0x00
@@ -78,7 +79,8 @@ void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 
         case 0xa3: converted[i]=0x1b;              // £
                    break;
-        case 0xa5: converted[i]=0xbc;              // Yen
+        case 0xa5: if (mzmodel == MZ80K)
+                     converted[i]=0xbc;            // Yen
                    break;
       }
     }
@@ -187,7 +189,6 @@ uint8_t mzsafefilechar(uint8_t sharpchar)
 }
 
 /* Convert a Sharp 'ASCII' character to a display character */
-/* Incomplete, but good enough for version 1!               */
 uint8_t mzascii2mzdisplay(uint8_t ascii)
 {
   uint8_t displaychar = 0x00;            // space returned for anything not
@@ -213,7 +214,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
     displaychar=ascii+0x60;        // grey shapes, degree symbol
   }
   else if ((ascii >= 0x93) && (ascii <= 0x95)) {
-    displaychar=ascii+0x11;        // hatching
+    displaychar=ascii+0x11;        // hatching (MZ-80K) and ` ~ (MZ-80A)
   }
   else if ((ascii >= 0xb4) && (ascii <= 0xb6)) {
     displaychar=ascii-0x0d;
@@ -295,7 +296,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                  break;
       case 0x8a: displaychar=0xba;   //curve bottom
                  break;
-      case 0x8b: displaychar=0xbe;   //nose
+      case 0x8b: displaychar=0xbe;   //nose (MZ-80K) ^ (MZ-80A)
                  break;
       case 0x8c: displaychar=0x9f;
                  break;
@@ -306,7 +307,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
       case 0x8f: displaychar=0xbb;
                  break;
 
-      case 0x90: displaychar=0xbf;   //eye
+      case 0x90: displaychar=0xbf;   //eye (MZ-80K) _ (MZ-80A)
                  break;
       case 0x91: displaychar=0xa3;   //vertical hatching
                  break;
@@ -388,12 +389,12 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
                  break;
       case 0xbd: displaychar=0x99;   //y
                  break;
-      case 0xbe: displaychar=0xbc;   //yen
+      case 0xbe: displaychar=0xbc;   //yen (MZ-80K) { (MZ-80A)
                  break;
       case 0xbf: displaychar=0xb8;
                  break;
 
-      case 0xc0: displaychar=0x00;   //space
+      case 0xc0: displaychar=0x00;   //space (MZ-80K) } (MZ-80A)
                  break;
       case 0xc1: displaychar=0x3b;   //filled half rectangle right
                  break;

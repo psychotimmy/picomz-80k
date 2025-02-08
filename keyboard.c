@@ -1,5 +1,5 @@
-/* Sharp MZ-80K emulator - keyboard    */
-/* Tim Holyoake, August - October 2024 */
+/* Sharp MZ-80K & MZ-80A emulator - keyboard */
+/* Tim Holyoake, August 2024 - February 2025 */
 
 #include "picomz.h"
 
@@ -46,12 +46,51 @@
 // Design decision 1 - map usb lower case keys to upper case
 // to better mimic the way the MZ-80K keyboard works.
 
+// The Sharp MZ-80A keyboard map is completely different to that of the
+// MZ-80K. Diagram below based on section 3.1.2 (page 167) of the MZ-80A manual 
+// and a SUC magazine article from July 2001. Row 9 of the keyboard layout
+// completed (unshifted keys missing from SUC article).
+
+// Key data bit  0   1   2   3   4   5   6   7  
+//          hex  01  02  04  08  10  20  40  80
+//             The key data bit is 0 if pressed
+
+//                       --- --- --- --- --- BRK
+// Row 0         SHF GPH --- --- --- --- --- CTL
+
+//                   --- INS             !   "
+// Row 1         Z   --- DEL A   Q   W   1   2 
+
+//                                       #   $
+// Row 2         C   X   S   D   E   R   3   4  
+
+//                                       %   &
+// Row 3         B   V   F   G   T   Y   5   6
+
+//                                       '   (
+// Row 4         SPC N   H   J   U   I   7   8                           
+
+//                   <                   )   _
+// Row 5         M   ,   K   L   O   P   9   0
+
+//               >   <-- +   *   `   {   =   ~
+// Row 6         .   /   ;   :   @   [   -   ^
+
+//               up^ --- }   CR  UP  RC  |   CLR
+// Row 7         ?   --- ]   ENT DWN LC  \   HOM
+
+//               NP  NP  NP  NP  NP  NP  NP  NP
+// Row 8         0   00  1   2   4   5   7   8  
+
+//               NP  --- NP  --- NP  NP  NP  NP
+// Row 9         .   --- 3   --- 6   -   9   +  
+
 uint8_t processkey[KBDROWS];            // Return keyboard characters
                                         // All 0xFF means no key to process
 
-static uint8_t smlcapled = 0;           // SML/CAPS toggle 
-static int16_t tfno = 0;                // Current tape file number
-static bool tfwd = true;                // Tape direction - true = forwards
+static uint8_t smlcapled=0;             // SML/CAPS toggle 
+static int16_t tfno=0;                  // Current tape file number
+static bool tfwd=true;                  // Tape direction - true = forwards
                                         // false = backwards
 
 #ifndef USBDIAGOUTPUT
@@ -75,11 +114,11 @@ static uint8_t kinst;                // Keyboard instance
 static uint8_t kleds_now=0x00;       // Keyboard leds status now
 static uint8_t kleds_prev=0xFF;      // Previous keyboard leds status
 
-static bool numlock=false;           // Numlock key status
+static bool numlock;                 // Numlock key status
 static bool numlock_prev_rpt=false;  // Numlock pressed in previous report
 static bool numlock_this_rpt=false;  // Numlock pressed in this report
 
-// Used to send a repeating key to the MZ-80K
+// Used to send a repeating key to the MZ-80K/A
 // and set status of NUM LOCK led
 void mzrptkey(void)
 {
@@ -94,8 +133,11 @@ void mzrptkey(void)
 
     // Deal with repeating keys
     if (rptcode && (to_ms_since_boot(get_absolute_time()) > rpttime)) {
-      // Send the repeating key to the MZ-80K and update next repeat time
-      mzhidmapkey(rptcode,rptmodifier);
+      // Send the repeating key to the MZ-80K/A and update next repeat time
+      if (mzmodel == MZ80K)
+        mzhidmapkey80k(rptcode,rptmodifier);
+      else
+        mzhidmapkey80a(rptcode,rptmodifier);
       rpttime += MZ_KEY_REPEAT_INTERVAL;
     }
 
@@ -117,7 +159,7 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
   }
 
   // Did the status of the Num Lock key change ?
-  if (report->keycode[0] == 0x53)
+  if (report->keycode[0] == 0x53) 
     numlock_this_rpt=true;
   else
     numlock_this_rpt=false;
@@ -140,8 +182,11 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
                                     // Repeat key if initially held for 
                                     // MZ_KEY_REPEAT_INIT milliseconds
     }
-    // We have a keypress to pass to the MZ-80K
-    mzhidmapkey(report->keycode[0],report->modifier);
+    // We have a keypress to pass to the MZ-80K / MZ-80A
+    if (mzmodel == MZ80K)
+      mzhidmapkey80k(report->keycode[0],report->modifier);
+    else
+      mzhidmapkey80a(report->keycode[0],report->modifier);
   }
   else {
     // We have a key up - clear processkey array
@@ -174,6 +219,16 @@ void tuh_hid_mount_cb(uint8_t addr, uint8_t inst,
     toggle=!toggle;
   } 
 
+  // Set NUM LOCK ON to start with on the MZ-80A (off on MZ-80K to conform
+  // with version 1.x behaviour of the emulator)
+  if (mzmodel == MZ80A) {
+    kleds_now=KEYBOARD_LED_NUMLOCK;
+    tuh_hid_set_report(kaddr, kinst, 0, HID_REPORT_TYPE_OUTPUT, 
+                       &kleds_now, sizeof(kleds_now));
+    kleds_prev=kleds_now;
+    numlock=true;
+  }
+
   return;
 }
 
@@ -201,18 +256,17 @@ void tuh_hid_umount_cb(uint8_t addr, uint8_t inst)
   return;
 }
 
-/* Real USB Keyboard - used by non-diagnostic version picomz-80k.uf2 */
+/* Real USB Keyboard - used by non-diagnostic versions               */
 /* Convert USB HID key press to the MZ-80K keyboard map,             */
 /* then store in the processkey[] global (read on portB by the 8255) */
-void mzhidmapkey(uint8_t usbk0, uint8_t modifier) 
+void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
     switch (usbk0) {
-      case 0x00: memset(processkey,0xFF,KBDROWS); // Key up - clear buffer
-                 break;
+
       case 0x04: processkey[4]=0x01^0xFF; //A  
                  break;
       case 0x05: processkey[6]=0x04^0xFF; //B  
@@ -318,7 +372,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
       case 0x38: processkey[7]=0x10^0xFF; ///
                  break;
 
-      case 0x3a: //F1 - Not mapped to an MZ-80K key
+      case 0x3a: //F1 - Not mapped to a MZ-80K key
                  if (!tfwd) {             // Reverse if tape not going forward
                    tfwd=true;
                    tfno++;
@@ -332,7 +386,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                    tftemp=tapeloader(tfno);
                  }
                  break;
-      case 0x3b: //F2 - Not mapped to an MZ-80K key
+      case 0x3b: //F2 - Not mapped to a MZ-80K key
                  if (tfwd) {              // Reverse if tape not going back
                    tfwd=false;
                    tfno--;
@@ -346,21 +400,21 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                    tfno=tapeloader(tfno);
                  }
                  break;
-      case 0x3c: //F3 - Not mapped to an MZ-80K key
+      case 0x3c: //F3 - Not mapped to a MZ-80K key
                  mzspinny(0);             // Reset tape counter
                  break;
-      case 0x3d: //F4 - Not mapped to an MZ-80K key
+      case 0x3d: //F4 - Not mapped to a MZ-80K key
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
                  
-      case 0x3e: //F5 - Not mapped to an MZ-80K key
+      case 0x3e: //F5 - Not mapped to a MZ-80K key
                  uint16_t temp;
                  temp=whitepix;           // Reverse video
                  whitepix=blackpix;
                  blackpix=temp;
                  break;
 
-      case 0x3f: //F6 - Not mapped to an MZ-80K key
+      case 0x3f: //F6 - Not mapped to a MZ-80K key
                  ukrom=!ukrom;            // Toggle between UK and JP CGROM
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
@@ -392,13 +446,13 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
                  reset_tape(); 
                  break;
 
-      case 0x4f: processkey[8]=0x08^0xFF; //left arrow
+      case 0x4f: processkey[8]=0x08^0xFF; //cursor left
                  break;
-      case 0x50: processkey[8]=0x09^0xFF; //right arrow
+      case 0x50: processkey[8]=0x09^0xFF; //cursor right
                  break;
-      case 0x51: processkey[9]=0x04^0xFF; //down arrow
+      case 0x51: processkey[9]=0x04^0xFF; //cursor down
                  break;
-      case 0x52: processkey[8]=0x01^0xFF; //up arrow
+      case 0x52: processkey[8]=0x01^0xFF; //cursor up
                  processkey[9]=0x04^0xFF;
                  break;
 
@@ -427,7 +481,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
       case 0x5a: if (numlock) 
                    processkey[1]=0x01^0xFF; //2  
                  else
-                   processkey[9]=0x04^0xFF; //down arrow
+                   processkey[9]=0x04^0xFF; //cursor down
                  break;
       case 0x5b: if (numlock) 
                    processkey[0]=0x02^0xFF; //3  
@@ -437,7 +491,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
       case 0x5c: if (numlock) 
                    processkey[1]=0x02^0xFF; //4  
                  else
-                   processkey[8]=0x09^0xFF; //left arrow
+                   processkey[8]=0x09^0xFF; //cursor left
                  break;
       case 0x5d: if (numlock) 
                    processkey[0]=0x04^0xFF; //5  
@@ -445,7 +499,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
       case 0x5e: if (numlock) 
                    processkey[1]=0x04^0xFF; //6  
                  else
-                   processkey[8]=0x08^0xFF; //right arrow
+                   processkey[8]=0x08^0xFF; //cursor right
                  break;
       case 0x5f: if (numlock) 
                    processkey[0]=0x08^0xFF; //7  
@@ -455,7 +509,7 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
       case 0x60: if (numlock) 
                    processkey[1]=0x08^0xFF; //8  
                  else {
-                   processkey[8]=0x01^0xFF; //up arrow
+                   processkey[8]=0x01^0xFF; //cursor up
                    processkey[9]=0x04^0xFF;
                  }
                  break;
@@ -802,12 +856,540 @@ void mzhidmapkey(uint8_t usbk0, uint8_t modifier)
   return;
 }
 
+/* Real USB Keyboard - used by non-diagnostic versions               */
+/* Convert USB HID key press to the MZ-80A keyboard map,             */
+/* then store in the processkey[] global (read on portB by the 8255) */
+void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier) 
+{
+  int16_t tftemp;                         // Temporary tape file variable
+
+  /* Unshifted USB keys */
+  if (modifier == 0x00) {
+    switch (usbk0) {
+
+      case 0x04: processkey[1]=0x08^0xFF; //A  
+                 break;
+      case 0x05: processkey[3]=0x01^0xFF; //B  
+                 break;
+      case 0x06: processkey[2]=0x01^0xFF; //C  
+                 break;
+      case 0x07: processkey[2]=0x08^0xFF; //D
+                 break;
+      case 0x08: processkey[2]=0x10^0xFF; //E
+                 break;
+      case 0x09: processkey[3]=0x04^0xFF; //F
+                 break;
+      case 0x0a: processkey[3]=0x08^0xFF; //G
+                 break;
+      case 0x0b: processkey[4]=0x04^0xFF; //H
+                 break;
+      case 0x0c: processkey[4]=0x20^0xFF; //I
+                 break;
+      case 0x0d: processkey[4]=0x08^0xFF; //J
+                 break;
+      case 0x0e: processkey[5]=0x04^0xFF; //K
+                 break;
+      case 0x0f: processkey[5]=0x08^0xFF; //L
+                 break;
+      case 0x10: processkey[5]=0x01^0xFF; //M
+                 break;
+      case 0x11: processkey[4]=0x02^0xFF; //N
+                 break;
+      case 0x12: processkey[5]=0x10^0xFF; //O
+                 break;
+      case 0x13: processkey[5]=0x20^0xFF; //P
+                 break;
+      case 0x14: processkey[1]=0x10^0xFF; //Q
+                 break;
+      case 0x15: processkey[2]=0x20^0xFF; //R
+                 break;
+      case 0x16: processkey[2]=0x04^0xFF; //S
+                 break;
+      case 0x17: processkey[3]=0x10^0xFF; //T
+                 break;
+      case 0x18: processkey[4]=0x10^0xFF; //U
+                 break;
+      case 0x19: processkey[3]=0x02^0xFF; //V
+                 break;
+      case 0x1a: processkey[1]=0x20^0xFF; //W
+                 break;
+      case 0x1b: processkey[2]=0x02^0xFF; //X
+                 break;
+      case 0x1c: processkey[3]=0x20^0xFF; //Y
+                 break;
+      case 0x1d: processkey[1]=0x01^0xFF; //Z
+                 break;
+
+      case 0x1e: processkey[1]=0x40^0xFF; //1  
+                 break;
+      case 0x1f: processkey[1]=0x80^0xFF; //2  
+                 break;
+      case 0x20: processkey[2]=0x40^0xFF; //3  
+                 break;
+      case 0x21: processkey[2]=0x80^0xFF; //4  
+                 break;
+      case 0x22: processkey[3]=0x40^0xFF; //5  
+                 break;
+      case 0x23: processkey[3]=0x80^0xFF; //6  
+                 break;
+      case 0x24: processkey[4]=0x40^0xFF; //7  
+                 break;
+      case 0x25: processkey[4]=0x80^0xFF; //8  
+                 break;
+      case 0x26: processkey[5]=0x40^0xFF; //9  
+                 break;
+      case 0x27: processkey[5]=0x80^0xFF; //0  
+                 break;
+
+      case 0x28: processkey[7]=0x08^0xFF; //<CR>    (USB return key)
+                 break;
+      case 0x29: processkey[0]=0x02^0xFF; //<GRAPH> toggle (USB ESC key)
+                 break;                   
+      case 0x2a: processkey[1]=0x04^0xFF; //<DEL>   (USB backspace)
+                 break;
+      case 0x2c: processkey[4]=0x01^0xFF; //<SPACE>
+                 break;
+      case 0x2d: processkey[6]=0x40^0xFF; //-
+                 break;
+      case 0x2e: processkey[0]=0x01^0xFF; //=
+                 processkey[6]=0x40^0xFF;
+                 break;
+      case 0x2f: processkey[6]=0x20^0xFF; //[
+                 break;
+      case 0x30: processkey[7]=0x04^0xFF; //]
+                 break;
+      case 0x32: processkey[0]=0x01^0xFF; //#
+                 processkey[2]=0x40^0xFF;
+                 break;
+      case 0x33: processkey[6]=0x04^0xFF; //;
+                 break;
+      case 0x34: processkey[0]=0x01^0xFF; //'
+                 processkey[4]=0x40^0xFF;
+                 break;
+      case 0x35: processkey[0]=0x01^0xFF; //`
+                 processkey[6]=0x10^0xFF;
+                 break;
+      case 0x36: processkey[5]=0x02^0xFF; //,
+                 break;
+      case 0x37: processkey[6]=0x01^0xFF; //.
+                 break;
+      case 0x38: processkey[6]=0x02^0xFF; ///
+                 break;
+
+      case 0x3a: //F1 - Not mapped to a MZ-80A key
+                 if (!tfwd) {             // Reverse if tape not going forward
+                   tfwd=true;
+                   tfno++;
+                 }
+                 tftemp=tapeloader(tfno);      
+                 if (tftemp >= 0) {       // If not at end of tape, increment
+                   ++tfno;                // the tape file number
+                 }
+                 else {                   // Otherwise step back 1 file
+                   --tfno;                // and preload it to memory again
+                   tftemp=tapeloader(tfno);
+                 }
+                 break;
+      case 0x3b: //F2 - Not mapped to a MZ-80A key
+                 if (tfwd) {              // Reverse if tape not going back
+                   tfwd=false;
+                   tfno--;
+                 }
+                 if (tfno > 0) {          // Step back one file if not at
+                   --tfno;                // first file on tape.
+                 }
+                 tftemp=tapeloader(tfno); // Preload the file
+                 if (tfno < 0) {          // Oh - we're off the other end!!
+                   tfno=0;                // Shouldn't happen ... but ...
+                   tfno=tapeloader(tfno);
+                 }
+                 break;
+      case 0x3c: //F3 - Not mapped to a MZ-80A key
+                 mzspinny(0);             // Reset tape counter
+                 break;
+      case 0x3d: //F4 - Not mapped to a MZ-80A key
+                 memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
+                 break;
+      case 0x43: mzcpu.pc=0x0000;         //F10 - MZ-80A reset button
+                 reset_tape(); 
+                 break;
+      case 0x44: mzreaddump();            //F11 - read memory dump
+                 break;
+      case 0x45: mzsavedump();            //F12 - save memory dump
+                 break;
+
+      case 0x49: processkey[0]=0x01^0xFF; //<INS>  (USB Insert)
+                 processkey[1]=0x04^0xFF;
+                 break;
+      case 0x4a: processkey[7]=0x80^0xFF; //<HOME> (USB Home)
+                 break;
+      case 0x4b: processkey[0]=0x81^0xFF; //Shift BREAK (USB PgUp)
+                 // Shift break always resets the cassette deck states 
+                 reset_tape(); 
+                 break;
+      case 0x4c: processkey[1]=0x04^0xFF; //<DEL> (USB Delete forward)
+                 break;
+      case 0x4d: processkey[0]=0x01^0xFF; //<CLR> (USB End)
+                 processkey[7]=0x80^0xFF;
+                 break;
+      case 0x4e: processkey[0]=0x81^0xFF; //Shift BREAK (USB PgDn)
+                 // Shift break always resets the cassette deck states 
+                 reset_tape(); 
+                 break;
+      case 0x4f: processkey[7]=0x20^0xFF; //cursor left
+                 break;
+      case 0x50: processkey[0]=0x01^0xFF; //cursor right
+                 processkey[7]=0x20^0xFF;
+                 break;
+      case 0x51: processkey[0]=0x01^0xFF; //cursor up
+                 processkey[7]=0x10^0xFF;
+                 break;
+      case 0x52: processkey[7]=0x10^0xFF; //cursor down
+                 break;
+
+      // 0x53 - NUM LOCK -  is dealt with before this function is called
+
+      case 0x54: processkey[0]=0x01^0xFF; // up arrow (USB keypad /)
+                 processkey[7]=0x01^0xFF;
+                 break;
+      case 0x55: processkey[8]=0x02^0xFF; // *, but assigned to 00
+                 break;
+      case 0x56: processkey[9]=0x20^0xFF; //-
+                 break;
+      case 0x57: processkey[9]=0x80^0xFF; //+
+                 break;
+      case 0x58: processkey[7]=0x08^0xFF; //<CR>  (USB keypad Enter)
+                 break;
+
+      case 0x59: if (numlock) 
+                   processkey[8]=0x04^0xFF; //1  
+                 else {
+                   processkey[0]=0x01^0xFF; //<CLR> (USB End)
+                   processkey[7]=0x80^0xFF;
+                 }
+                 break;
+      case 0x5a: if (numlock) 
+                   processkey[8]=0x08^0xFF; //2  
+                 else {
+                   processkey[0]=0x01^0xFF; //cursor up
+                   processkey[7]=0x10^0xFF;
+                 }
+                 break;
+      case 0x5b: if (numlock) 
+                   processkey[9]=0x04^0xFF; //3  
+                 else {
+                   processkey[0]=0x01^0xFF; //shifted ? = up arrow (USB PgDn)
+                   processkey[7]=0x01^0xFF; 
+                 }
+                 break;
+      case 0x5c: if (numlock) 
+                   processkey[8]=0x10^0xFF; //4  
+                 else {
+                   processkey[0]=0x01^0xFF; //cursor left
+                   processkey[7]=0x20^0xFF;
+                 }
+                 break;
+      case 0x5d: if (numlock) 
+                   processkey[8]=0x20^0xFF; //5  
+                 break;
+      case 0x5e: if (numlock) 
+                   processkey[9]=0x10^0xFF; //6  
+                 else 
+                   processkey[7]=0x20^0xFF; //cursor right
+                 break;
+      case 0x5f: if (numlock) 
+                   processkey[8]=0x40^0xFF; //7  
+                 else
+                   processkey[7]=0x80^0xFF; //home (HOME)
+                 break;
+      case 0x60: if (numlock) 
+                   processkey[8]=0x80^0xFF; //8  
+                 else
+                   processkey[7]=0x10^0xFF; //cursor down
+                 break;
+      case 0x61: if (numlock) 
+                   processkey[9]=0x40^0xFF; //9  
+                 else
+                   processkey[0]=0x81^0xFF; //Shift BREAK (USB PgUp)
+                 break;
+      case 0x62: if (numlock) 
+                   processkey[8]=0x01^0xFF; //0  
+                 else {
+                   processkey[8]=0x01^0xFF; //insert (INS)
+                   processkey[1]=0x04^0xFF;
+                 }
+                 break;
+      case 0x63: if (numlock) 
+                   processkey[9]=0x01^0xFF; //.
+                 else
+                   processkey[1]=0x04^0xFF; //delete (DEL)
+                 break;
+
+      case 0x64: processkey[7]=0x40^0xFF; //backslash (non US USB key 102)
+                 break;
+
+      default:   break;                   // Ignore unmapped keys
+
+    }
+  }
+
+  /* Shifted USB keys */
+  if ((modifier == 0x02) || (modifier == 0x20)) {
+    switch (usbk0) {
+
+      case 0x04: processkey[0]=0x01^0xFF; //a
+                 processkey[1]=0x08^0xFF;
+                 break;
+      case 0x05: processkey[0]=0x01^0xFF; //b
+                 processkey[3]=0x01^0xFF;
+                 break;
+      case 0x06: processkey[0]=0x01^0xFF; //c
+                 processkey[2]=0x01^0xFF;
+                 break;
+      case 0x07: processkey[0]=0x01^0xFF; //d
+                 processkey[2]=0x08^0xFF;
+                 break;
+      case 0x08: processkey[0]=0x01^0xFF; //e
+                 processkey[2]=0x10^0xFF;
+                 break;
+      case 0x09: processkey[0]=0x01^0xFF; //f
+                 processkey[3]=0x04^0xFF;
+                 break;
+      case 0x0a: processkey[0]=0x01^0xFF; //g
+                 processkey[3]=0x08^0xFF;
+                 break;
+      case 0x0b: processkey[0]=0x01^0xFF; //h
+                 processkey[4]=0x04^0xFF;
+                 break;
+      case 0x0c: processkey[0]=0x01^0xFF; //i
+                 processkey[4]=0x20^0xFF;
+                 break;
+      case 0x0d: processkey[0]=0x01^0xFF; //j
+                 processkey[4]=0x08^0xFF;
+                 break;
+      case 0x0e: processkey[0]=0x01^0xFF; //k
+                 processkey[5]=0x04^0xFF;
+                 break;
+      case 0x0f: processkey[0]=0x01^0xFF; //l
+                 processkey[5]=0x08^0xFF;
+                 break;
+      case 0x10: processkey[0]=0x01^0xFF; //m
+                 processkey[5]=0x01^0xFF;
+                 break;
+      case 0x11: processkey[0]=0x01^0xFF; //n
+                 processkey[4]=0x02^0xFF;
+                 break;
+      case 0x12: processkey[0]=0x01^0xFF; //o
+                 processkey[5]=0x10^0xFF;
+                 break;
+      case 0x13: processkey[0]=0x01^0xFF; //p
+                 processkey[5]=0x20^0xFF;
+                 break;
+      case 0x14: processkey[0]=0x01^0xFF; //q
+                 processkey[1]=0x10^0xFF;
+                 break;
+      case 0x15: processkey[0]=0x01^0xFF; //r
+                 processkey[2]=0x20^0xFF;
+                 break;
+      case 0x16: processkey[0]=0x01^0xFF; //s
+                 processkey[2]=0x04^0xFF;
+                 break;
+      case 0x17: processkey[0]=0x01^0xFF; //t
+                 processkey[3]=0x10^0xFF;
+                 break;
+      case 0x18: processkey[0]=0x01^0xFF; //u
+                 processkey[4]=0x10^0xFF;
+                 break;
+      case 0x19: processkey[0]=0x01^0xFF; //v
+                 processkey[3]=0x02^0xFF;
+                 break;
+      case 0x1a: processkey[0]=0x01^0xFF; //w
+                 processkey[1]=0x20^0xFF;
+                 break;
+      case 0x1b: processkey[0]=0x01^0xFF; //x
+                 processkey[2]=0x02^0xFF;
+                 break;
+      case 0x1c: processkey[0]=0x01^0xFF; //y
+                 processkey[3]=0x20^0xFF;
+                 break;
+      case 0x1d: processkey[0]=0x01^0xFF; //z
+                 processkey[1]=0x01^0xFF;
+                 break;
+      case 0x1e: processkey[0]=0x01^0xFF; //!
+                 processkey[1]=0x40^0xFF;
+                 break;
+      case 0x1f: processkey[0]=0x01^0xFF; //"
+                 processkey[1]=0x80^0xFF;
+                 break;
+      case 0x20: processkey[0]=0x01^0xFF; //£ (Generates # on MZ-80A)
+                 processkey[2]=0x40^0xFF;
+                 break;
+      case 0x21: processkey[0]=0x01^0xFF; //$
+                 processkey[2]=0x80^0xFF;
+                 break;
+      case 0x22: processkey[0]=0x01^0xFF; //%
+                 processkey[3]=0x40^0xFF;
+                 break;
+      case 0x23: processkey[6]=0x80^0xFF; //^ (shifted 6 - ^ on USB kbd)
+                 break;
+      case 0x24: processkey[0]=0x01^0xFF; //&
+                 processkey[3]=0x80^0xFF;
+                 break;
+      case 0x25: processkey[0]=0x01^0xFF; //*
+                 processkey[6]=0x08^0xFF;
+                 break;
+      case 0x26: processkey[0]=0x01^0xFF; //(
+                 processkey[4]=0x80^0xFF;
+                 break;
+      case 0x27: processkey[0]=0x01^0xFF; //)
+                 processkey[5]=0x40^0xFF;
+                 break;
+      case 0x2d: processkey[0]=0x01^0xFF; //_
+                 processkey[5]=0x80^0xFF;
+                 break;
+      case 0x2e: processkey[0]=0x01^0xFF; //+
+                 processkey[6]=0x04^0xFF;
+                 break;
+      case 0x2f: processkey[0]=0x01^0xFF; //{
+                 processkey[6]=0x20^0xFF;
+                 break;
+      case 0x30: processkey[0]=0x01^0xFF; //}
+                 processkey[7]=0x04^0xFF;
+                 break;
+      case 0x32: processkey[0]=0x01^0xFF;  //~
+                 processkey[6]=0x80^0xFF;  
+                 break;
+      case 0x33: processkey[6]=0x08^0xFF; //:
+                 break;
+      case 0x34: processkey[6]=0x10^0xFF; //@
+                 break;
+      case 0x36: processkey[0]=0x01^0xFF; //< 
+                 processkey[5]=0x02^0xFF;
+                 break;
+      case 0x37: processkey[0]=0x01^0xFF; //>
+                 processkey[6]=0x01^0xFF;
+                 break;
+      case 0x38: processkey[7]=0x01^0xFF; //?
+                 break;
+
+      /* Non-standard MZ-80K keys need to be somewhere ! */
+
+      case 0x54: processkey[0]=0x01^0xFF; // <- (USB keypad shift /)
+                 processkey[6]=0x02^0xFF;
+                 break;
+
+      case 0x64: processkey[0]=0x01^0xFF; //|
+                 processkey[7]=0x40^0xFF;
+                 break;
+      default:   break;
+    }
+  }
+
+  /* Ctrl keys  - CTRL key on MZ-80A keyboard mapped to USB Ctrls */
+  if ((modifier == 0x01) || (modifier == 0x10)) {
+    switch (usbk0) {
+
+      case 0x04: processkey[0]=0x80^0xFF; //CTRL A - shift lock toggle
+                 processkey[1]=0x08^0xFF; 
+                 break;
+      case 0x05: processkey[0]=0x80^0xFF; //CTRL B
+                 processkey[3]=0x01^0xFF; 
+                 break;
+      case 0x06: processkey[0]=0x80^0xFF; //CTRL C
+                 processkey[2]=0x01^0xFF; 
+                 break;
+      case 0x07: processkey[0]=0x80^0xFF; //CTRL D - display roll up
+                 processkey[2]=0x08^0xFF; 
+                 break;
+      case 0x08: processkey[0]=0x80^0xFF; //CTRL E - display roll down
+                 processkey[2]=0x10^0xFF;
+                 break;
+      case 0x09: processkey[0]=0x80^0xFF; //CTRL F
+                 processkey[3]=0x04^0xFF;
+                 break;
+      case 0x0a: processkey[0]=0x80^0xFF; //CTRL G
+                 processkey[3]=0x08^0xFF;
+                 break;
+      case 0x0b: processkey[0]=0x80^0xFF; //CTRL H
+                 processkey[4]=0x04^0xFF;
+                 break;
+      case 0x0c: processkey[0]=0x80^0xFF; //CTRL I
+                 processkey[4]=0x20^0xFF;
+                 break;
+      case 0x0d: processkey[0]=0x80^0xFF; //CTRL J
+                 processkey[2]=0x08^0xFF;
+                 break;
+      case 0x0e: processkey[0]=0x80^0xFF; //CTRL K
+                 processkey[5]=0x04^0xFF;
+                 break;
+      case 0x0f: processkey[0]=0x80^0xFF; //CTRL L
+                 processkey[5]=0x08^0xFF;
+                 break;
+      case 0x10: processkey[0]=0x80^0xFF; //CTRL M
+                 processkey[5]=0x01^0xFF;
+                 break;
+      case 0x11: processkey[0]=0x80^0xFF; //CTRL N
+                 processkey[4]=0x02^0xFF;
+                 break;
+      case 0x12: processkey[0]=0x80^0xFF; //CTRL O
+                 processkey[5]=0x10^0xFF;
+                 break;
+      case 0x13: processkey[0]=0x80^0xFF; //CTRL P
+                 processkey[5]=0x20^0xFF;
+                 break;
+      case 0x14: processkey[0]=0x80^0xFF; //CTRL Q - cursor down
+                 processkey[1]=0x10^0xFF; 
+                 break;
+      case 0x15: processkey[0]=0x80^0xFF; //CTRL R - cursor up
+                 processkey[2]=0x20^0xFF;
+                 break;
+      case 0x16: processkey[0]=0x80^0xFF; //CTRL S - cursor right
+                 processkey[2]=0x04^0xFF;
+                 break;
+      case 0x17: processkey[0]=0x80^0xFF; //CTRL T - cursor left
+                 processkey[3]=0x10^0xFF;
+                 break;
+      case 0x18: processkey[0]=0x80^0xFF; //CTRL U - cursor home
+                 processkey[4]=0x10^0xFF;
+                 break;
+      case 0x19: processkey[0]=0x80^0xFF; //CTRL V - cursor home & clear screen
+                 processkey[3]=0x02^0xFF;
+                 break;
+      case 0x1a: processkey[0]=0x80^0xFF; //CTRL W 
+                 processkey[1]=0x20^0xFF;
+                 break;
+      case 0x1b: processkey[0]=0x80^0xFF; //CTRL X 
+                 processkey[2]=0x02^0xFF;
+                 break;
+      case 0x1c: processkey[0]=0x80^0xFF; //CTRL Y 
+                 processkey[3]=0x20^0xFF;
+                 break;
+      case 0x1d: processkey[0]=0x80^0xFF; //CTRL Z - -> character
+                 processkey[1]=0x01^0xFF;
+                 break;
+      case 0x2f: processkey[0]=0x80^0xFF; //CTRL [ - VRAM = 80K mode
+                 processkey[6]=0x20^0xFF;
+                 break;
+      case 0x30: processkey[0]=0x80^0xFF; //CTRL ] - VRAM = 80A mode
+                 processkey[7]=0x04^0xFF;
+                 break;
+      case 0x34: processkey[0]=0x80^0xFF; //CTRL @ (USB ctrl ')- reverse video
+                 processkey[6]=0x10^0xFF;
+                 break;
+
+      default:   break;
+    }
+  }
+
+  return;
+}
+
 #else
 
-/* Only used by the diagnostic version - picomz-80k-diag.uf2         */
+/* Only used by the diagnostic versions - MZ-80K version.            */
 /* Convert (minicom) key press to the MZ-80K keyboard map,           */
 /* then store in the processkey[] global (read on portB by the 8255) */
-void mzcdcmapkey(int32_t *usbc, int8_t ncodes) 
+void mzcdcmapkey80k(int32_t *usbc, int8_t ncodes) 
 {
   int16_t tftemp;                         // Temporary tape file variable
 
@@ -1238,7 +1820,7 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
                    break;
         case 0x4d: processkey[8]=0x10^0xFF;  //Num keypad enter = CR
                    break;
-        case 0x50: //F1 - Not mapped to an MZ-80K key
+        case 0x50: //F1 - Not mapped to a MZ-80K key
                    if (!tfwd) {             // Reverse if tape not going forward
                      tfwd=true;
                      tfno++;
@@ -1252,7 +1834,7 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
                      tftemp=tapeloader(tfno);
                    }
                    break;
-        case 0x51: //F2 - Not mapped to an MZ-80K key
+        case 0x51: //F2 - Not mapped to a MZ-80K key
                    if (tfwd) {              // Reverse if tape not going back
                      tfwd=false;
                      tfno--;
@@ -1266,10 +1848,10 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
                      tfno=tapeloader(tfno);
                    }
                    break;
-        case 0x52: //F3 - Not mapped to an MZ-80K key
+        case 0x52: //F3 - Not mapped to a MZ-80K key
                    mzspinny(0);
                    break;
-        case 0x53: //F4 - Not mapped to an MZ-80K key
+        case 0x53: //F4 - Not mapped to a MZ-80K key
                    memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                    break;
 
@@ -1302,14 +1884,14 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
   if ((ncodes==5)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&
       (usbc[2]==0x31)&&(usbc[4]==0x7e)) {
     switch (usbc[3]) {
-      case 0x36: //F5 - Not mapped to an MZ-80K key
+      case 0x36: //F5 - Not mapped to a MZ-80K key
                  uint16_t temp;
                  temp=whitepix;            //Reverse video
                  whitepix=blackpix;
                  blackpix=temp;
                  break;
 
-      case 0x37: //F6 - Not mapped to an MZ-80K key
+      case 0x37: //F6 - Not mapped to a MZ-80K key
                  ukrom=!ukrom;            // Toggle between UK and JP CGROM
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
@@ -1336,4 +1918,478 @@ void mzcdcmapkey(int32_t *usbc, int8_t ncodes)
   return;
 }
 
+/* Only used by the diagnostic versions - MZ-80A version.            */
+/* Convert (minicom) key press to the MZ-80A keyboard map,           */
+/* then store in the processkey[] global (read on portB by the 8255) */
+void mzcdcmapkey80a(int32_t *usbc, int8_t ncodes) 
+{
+  int16_t tftemp;                         // Temporary tape file variable
+
+  if (ncodes==1) {
+    switch (usbc[0]) {
+
+      /* Note - in diag mode 80a CTRL keys are ALT keys to avoid problems */ 
+
+      case 0x08: processkey[1]=0x04^0xFF; //<DEL> (USB backspace)
+                 break;
+      case 0x0c: processkey[0]=0x01^0xFF; //left <SHIFT> 
+                 break;
+      case 0x0d: processkey[7]=0x08^0xFF; //<CR> 
+                 break;
+      case 0x12: processkey[0]=0x01^0xFF; //right <SHIFT>
+                 break;
+      case 0x1b: processkey[0]=0x02^0xFF; //GRPH (USB Esc)
+                 break;
+      case 0x20: processkey[4]=0x01^0xFF; //<SPACE>
+                 break;
+      case 0x21: processkey[0]=0x01^0xFF; //!
+                 processkey[1]=0x40^0xFF;
+                 break;
+      case 0x22: processkey[0]=0x01^0xFF; //"
+                 processkey[1]=0x80^0xFF;
+                 break;
+      case 0x23: processkey[0]=0x01^0xFF; //#
+                 processkey[2]=0x40^0xFF;
+                 break;
+      case 0x24: processkey[0]=0x01^0xFF; //$
+                 processkey[2]=0x80^0xFF;
+                 break;
+      case 0x25: processkey[0]=0x01^0xFF; //%
+                 processkey[3]=0x40^0xFF;
+                 break;
+      case 0x26: processkey[0]=0x01^0xFF; //&
+                 processkey[3]=0x80^0xFF;
+                 break;
+      case 0x27: processkey[0]=0x01^0xFF; //'
+                 processkey[4]=0x40^0xFF;
+                 break;
+      case 0x28: processkey[0]=0x01^0xFF; //(
+                 processkey[4]=0x80^0xFF;
+                 break;
+      case 0x29: processkey[0]=0x01^0xFF; //)
+                 processkey[5]=0x40^0xFF;
+                 break;
+      case 0x2a: processkey[0]=0x01^0xFF; //*
+                 processkey[6]=0x08^0xFF;
+                 break;
+      case 0x2b: processkey[0]=0x01^0xFF; //+
+                 processkey[6]=0x04^0xFF;
+                 break;
+      case 0x2c: processkey[5]=0x02^0xFF; //,
+                 break;
+      case 0x2d: processkey[6]=0x40^0xFF; //-
+                 break;
+      case 0x2e: processkey[6]=0x01^0xFF; //.
+                 break;
+      case 0x2f: processkey[6]=0x02^0xFF; ///
+                 break;
+      case 0x30: processkey[5]=0x80^0xFF; //0  
+                 break;
+      case 0x31: processkey[1]=0x40^0xFF; //1  
+                 break;
+      case 0x32: processkey[1]=0x80^0xFF; //2  
+                 break;
+      case 0x33: processkey[2]=0x40^0xFF; //3  
+                 break;
+      case 0x34: processkey[2]=0x80^0xFF; //4  
+                 break;
+      case 0x35: processkey[3]=0x40^0xFF; //5  
+                 break;
+      case 0x36: processkey[3]=0x80^0xFF; //6  
+                 break;
+      case 0x37: processkey[4]=0x40^0xFF; //7  
+                 break;
+      case 0x38: processkey[4]=0x80^0xFF; //8  
+                 break;
+      case 0x39: processkey[5]=0x40^0xFF; //9  
+                 break;
+
+      case 0x3a: processkey[6]=0x08^0xFF; //:
+                 break;
+      case 0x3b: processkey[6]=0x04^0xFF; //;
+                 break;
+      case 0x3c: processkey[0]=0x01^0xFF; //<
+                 processkey[5]=0x02^0xFF;
+                 break;
+      case 0x3d: processkey[0]=0x01^0xFF; //=
+                 processkey[6]=0x40^0xFF;
+                 break;
+      case 0x3e: processkey[0]=0x01^0xFF; //>
+                 processkey[6]=0x01^0xFF;
+                 break;
+      case 0x3f: processkey[7]=0x01^0xFF; //?
+                 break;
+      case 0x40: processkey[6]=0x10^0xFF; //@
+                 break;
+
+      case 0x41: processkey[0]=0x01^0xFF; //a
+                 processkey[1]=0x08^0xFF;
+                 break;
+      case 0x42: processkey[0]=0x01^0xFF; //b
+                 processkey[3]=0x01^0xFF;
+                 break;
+      case 0x43: processkey[0]=0x01^0xFF; //c
+                 processkey[2]=0x01^0xFF;
+                 break;
+      case 0x44: processkey[0]=0x01^0xFF; //d
+                 processkey[2]=0x08^0xFF;
+                 break;
+      case 0x45: processkey[0]=0x01^0xFF; //e
+                 processkey[2]=0x10^0xFF;
+                 break;
+      case 0x46: processkey[0]=0x01^0xFF; //f
+                 processkey[3]=0x04^0xFF;
+                 break;
+      case 0x47: processkey[0]=0x01^0xFF; //g
+                 processkey[3]=0x08^0xFF;
+                 break;
+      case 0x48: processkey[0]=0x01^0xFF; //h
+                 processkey[4]=0x04^0xFF;
+                 break;
+      case 0x49: processkey[0]=0x01^0xFF; //i
+                 processkey[4]=0x20^0xFF;
+                 break;
+      case 0x4a: processkey[0]=0x01^0xFF; //j
+                 processkey[4]=0x08^0xFF;
+                 break;
+      case 0x4b: processkey[0]=0x01^0xFF; //k
+                 processkey[5]=0x04^0xFF;
+                 break;
+      case 0x4c: processkey[0]=0x01^0xFF; //l
+                 processkey[5]=0x08^0xFF;
+                 break;
+      case 0x4d: processkey[0]=0x01^0xFF; //m
+                 processkey[5]=0x01^0xFF;
+                 break;
+      case 0x4e: processkey[0]=0x01^0xFF; //n
+                 processkey[4]=0x02^0xFF;
+                 break;
+      case 0x4f: processkey[0]=0x01^0xFF; //o
+                 processkey[5]=0x10^0xFF;
+                 break;
+      case 0x50: processkey[0]=0x01^0xFF; //p
+                 processkey[5]=0x20^0xFF;
+                 break;
+      case 0x51: processkey[0]=0x01^0xFF; //q
+                 processkey[1]=0x10^0xFF;
+                 break;
+      case 0x52: processkey[0]=0x01^0xFF; //r
+                 processkey[2]=0x20^0xFF;
+                 break;
+      case 0x53: processkey[0]=0x01^0xFF; //s
+                 processkey[2]=0x04^0xFF;
+                 break;
+      case 0x54: processkey[0]=0x01^0xFF; //t
+                 processkey[3]=0x10^0xFF;
+                 break;
+      case 0x55: processkey[0]=0x01^0xFF; //u
+                 processkey[4]=0x10^0xFF;
+                 break;
+      case 0x56: processkey[0]=0x01^0xFF; //v
+                 processkey[3]=0x02^0xFF;
+                 break;
+      case 0x57: processkey[0]=0x01^0xFF; //w
+                 processkey[1]=0x20^0xFF;
+                 break;
+      case 0x58: processkey[0]=0x01^0xFF; //x
+                 processkey[2]=0x02^0xFF;
+                 break;
+      case 0x59: processkey[0]=0x01^0xFF; //y
+                 processkey[3]=0x20^0xFF;
+                 break;
+      case 0x5a: processkey[0]=0x01^0xFF; //z
+                 processkey[1]=0x01^0xFF;
+                 break;
+      case 0x5b: processkey[6]=0x20^0xFF; //[
+                 break;
+      case 0x5c: processkey[7]=0x40^0xFF; //backslash
+                 break;
+      case 0x5d: processkey[7]=0x04^0xFF; //]
+                 break;
+      case 0x5e: processkey[6]=0x80^0xFF; //^
+                 break;
+      case 0x5f: processkey[0]=0x01^0xFF; //_
+                 processkey[5]=0x80^0xFF;
+                 break;
+
+      /* Unshifted keys - letters */
+      case 0x60: processkey[0]=0x01^0xFF; //`
+                 processkey[6]=0x10^0xFF;
+                 break;
+      case 0x61: processkey[1]=0x08^0xFF; //A  
+                 break;
+      case 0x62: processkey[3]=0x01^0xFF; //B  
+                 break;
+      case 0x63: processkey[2]=0x01^0xFF; //C  
+                 break;
+      case 0x64: processkey[2]=0x08^0xFF; //D
+                 break;
+      case 0x65: processkey[2]=0x10^0xFF; //E
+                 break;
+      case 0x66: processkey[3]=0x04^0xFF; //F
+                 break;
+      case 0x67: processkey[3]=0x08^0xFF; //G
+                 break;
+      case 0x68: processkey[4]=0x04^0xFF; //H
+                 break;
+      case 0x69: processkey[4]=0x20^0xFF; //I
+                 break;
+      case 0x6a: processkey[4]=0x08^0xFF; //J
+                 break;
+      case 0x6b: processkey[5]=0x04^0xFF; //K
+                 break;
+      case 0x6c: processkey[5]=0x08^0xFF; //L
+                 break;
+      case 0x6d: processkey[5]=0x01^0xFF; //M
+                 break;
+      case 0x6e: processkey[4]=0x02^0xFF; //N
+                 break;
+      case 0x6f: processkey[5]=0x10^0xFF; //O
+                 break;
+      case 0x70: processkey[5]=0x20^0xFF; //P
+                 break;
+      case 0x71: processkey[1]=0x10^0xFF; //Q
+                 break;
+      case 0x72: processkey[2]=0x20^0xFF; //R
+                 break;
+      case 0x73: processkey[2]=0x04^0xFF; //S
+                 break;
+      case 0x74: processkey[3]=0x10^0xFF; //T
+                 break;
+      case 0x75: processkey[4]=0x10^0xFF; //U
+                 break;
+      case 0x76: processkey[3]=0x02^0xFF; //V
+                 break;
+      case 0x77: processkey[1]=0x20^0xFF; //W
+                 break;
+      case 0x78: processkey[2]=0x02^0xFF; //X
+                 break;
+      case 0x79: processkey[3]=0x20^0xFF; //Y
+                 break;
+      case 0x7a: processkey[1]=0x01^0xFF; //Z
+                 break;
+      case 0x7b: processkey[0]=0x01^0xFF; //{
+                 processkey[6]=0x20^0xFF;
+                 break;
+      case 0x7c: processkey[0]=0x01^0xFF; //|
+                 processkey[7]=0x40^0xFF;
+                 break;
+      case 0x7d: processkey[0]=0x01^0xFF; //}
+                 processkey[7]=0x04^0xFF;
+                 break;
+      case 0x7e: processkey[0]=0x01^0xFF; //~
+                 processkey[6]=0x80^0xFF;
+                 break;
+
+      default:   break;                   // Ignore unmapped keys
+    }
+  }
+
+  if ((ncodes==2)&&(usbc[0]==0xc2)) {
+    switch (usbc[1]) {
+      case 0xa3: processkey[0]=0x01^0xFF; //£ (renders as #)
+                 processkey[2]=0x40^0xFF;
+                 break;
+      default:   break;                   //Ignore unmapped keys
+    }
+  }
+
+  /* Deal with problem CTRL codes by making them ALT codes */
+  if ((ncodes==2)&&(usbc[0]==0x1b)) {
+    switch (usbc[1]) {
+      case 0x27: processkey[0]=0x80^0xFF; //CTRL @ (actually ') - reverse video
+                 processkey[6]=0x10^0xFF;
+                 break;
+      case 0x5b: processkey[0]=0x80^0xFF; //CTRL [ - VRAM = 80K mode
+                 processkey[6]=0x20^0xFF;
+                 break;
+      case 0x5d: processkey[0]=0x80^0xFF; //CTRL ] - VRAM = 80A mode
+                 processkey[7]=0x04^0xFF;
+                 break;
+      case 0x61: processkey[0]=0x80^0xFF; //CTRL A - shift lock toggle
+                 processkey[1]=0x08^0xFF; 
+                 break;
+      case 0x62: processkey[0]=0x80^0xFF; //CTRL B
+                 processkey[3]=0x01^0xFF; 
+                 break;
+      case 0x63: processkey[0]=0x80^0xFF; //CTRL C
+                 processkey[2]=0x01^0xFF; 
+                 break;
+      case 0x64: processkey[0]=0x80^0xFF; //CTRL D - display roll up
+                 processkey[2]=0x08^0xFF; 
+                 break;
+      case 0x65: processkey[0]=0x80^0xFF; //CTRL E - display roll down
+                 processkey[2]=0x10^0xFF;
+                 break;
+      case 0x66: processkey[0]=0x80^0xFF; //CTRL F
+                 processkey[3]=0x04^0xFF;
+                 break;
+      case 0x67: processkey[0]=0x80^0xFF; //CTRL G
+                 processkey[3]=0x08^0xFF;
+                 break;
+      case 0x68: processkey[0]=0x80^0xFF; //CTRL H
+                 processkey[4]=0x04^0xFF;
+                 break;
+      case 0x69: processkey[0]=0x80^0xFF; //CTRL I
+                 processkey[4]=0x20^0xFF;
+                 break;
+      case 0x6a: processkey[0]=0x80^0xFF; //CTRL J
+                 processkey[2]=0x08^0xFF;
+                 break;
+      case 0x6b: processkey[0]=0x80^0xFF; //CTRL K
+                 processkey[5]=0x04^0xFF;
+                 break;
+      case 0x6c: processkey[0]=0x80^0xFF; //CTRL L
+                 processkey[5]=0x08^0xFF;
+                 break;
+      case 0x6d: processkey[0]=0x80^0xFF; //CTRL M
+                 processkey[5]=0x01^0xFF;
+                 break;
+      case 0x6e: processkey[0]=0x80^0xFF; //CTRL N
+                 processkey[4]=0x02^0xFF;
+                 break;
+      case 0x6f: processkey[0]=0x80^0xFF; //CTRL O
+                 processkey[5]=0x10^0xFF;
+                 break;
+      case 0x70: processkey[0]=0x80^0xFF; //CTRL P
+                 processkey[5]=0x20^0xFF;
+                 break;
+      case 0x71: processkey[0]=0x80^0xFF; //CTRL Q - cursor down
+                 processkey[1]=0x10^0xFF; 
+                 break;
+      case 0x72: processkey[0]=0x80^0xFF; //CTRL R - cursor up
+                 processkey[2]=0x20^0xFF;
+                 break;
+      case 0x73: processkey[0]=0x80^0xFF; //CTRL S - cursor right
+                 processkey[2]=0x04^0xFF;
+                 break;
+      case 0x74: processkey[0]=0x80^0xFF; //CTRL T - cursor left
+                 processkey[3]=0x10^0xFF;
+                 break;
+      case 0x75: processkey[0]=0x80^0xFF; //CTRL U - cursor home
+                 processkey[4]=0x10^0xFF;
+                 break;
+      case 0x76: processkey[0]=0x80^0xFF; //CTRL V - cursor home & clear screen
+                 processkey[3]=0x02^0xFF;
+                 break;
+      case 0x77: processkey[0]=0x80^0xFF; //CTRL W 
+                 processkey[1]=0x20^0xFF;
+                 break;
+      case 0x78: processkey[0]=0x80^0xFF; //CTRL X 
+                 processkey[2]=0x02^0xFF;
+                 break;
+      case 0x79: processkey[0]=0x80^0xFF; //CTRL Y 
+                 processkey[3]=0x20^0xFF;
+                 break;
+      case 0x7a: processkey[0]=0x80^0xFF; //CTRL Z - -> character
+                 processkey[1]=0x01^0xFF;
+                 break;
+      default:   break;                   //Ignore unmapped keys
+    }
+  }
+
+  if ((ncodes==3)&&(usbc[0]==0x1b)) {
+    if (usbc[1]==0x5b) {
+      switch (usbc[2]) {
+        case 0x41: processkey[7]=0x10^0xFF; //cursor up
+                   break;
+        case 0x42: processkey[0]=0x01^0xFF; //cursor down
+                   processkey[7]=0x10^0xFF;
+                   break;
+        case 0x43: processkey[7]=0x20^0xFF; //cursor right
+                   break;
+        case 0x44: processkey[0]=0x01^0xFF; //cursor left
+                   processkey[7]=0x20^0xFF;
+                   break;
+        default:   break;                   //Ignore unmapped keys
+      }
+    }
+    if (usbc[1]==0x4f) {
+      switch (usbc[2]) {
+        case 0x46: processkey[0]=0x01^0xFF;  //clear screen (CLR) 
+                   processkey[7]=0x80^0xFF;
+                   break;
+        case 0x4d: processkey[7]=0x08^0xFF;  //Num keypad enter = <CR>
+                   break;
+        case 0x50: //F1 - Not mapped to a MZ-80A key
+                   if (!tfwd) {             // Reverse if tape not going forward
+                     tfwd=true;
+                     tfno++;
+                   }
+                   tftemp=tapeloader(tfno);      
+                   if (tftemp >= 0) {       // If not at end of tape, increment
+                     ++tfno;                // the tape file number
+                   }
+                   else {                   // Otherwise step back 1 file
+                     --tfno;                // and preload it to memory again
+                     tftemp=tapeloader(tfno);
+                   }
+                   break;
+        case 0x51: //F2 - Not mapped to a MZ-80A key
+                   if (tfwd) {              // Reverse if tape not going back
+                     tfwd=false;
+                     tfno--;
+                   }
+                   if (tfno > 0) {          // Step back one file if not at
+                     --tfno;                // first file on tape.
+                   }
+                   tftemp=tapeloader(tfno); // Preload the file
+                   if (tfno < 0) {          // Oh - we're off the other end!!
+                     tfno=0;                // Shouldn't happen ... but ...
+                     tfno=tapeloader(tfno);
+                   }
+                   break;
+        case 0x52: //F3 - Not mapped to a MZ-80A key
+                   mzspinny(0);
+                   break;
+        case 0x53: //F4 - Not mapped to a MZ-80A key
+                   memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
+                   break;
+
+        default:   break;                    // Ignore unmapped keys
+      }
+    }
+  }
+
+  if ((ncodes==4)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&(usbc[3]==0x7e)) {
+    switch (usbc[2]) {
+      case 0x31: processkey[7]=0x80^0xFF;  //home (HOME)
+                 break;
+      case 0x32: processkey[0]=0x01^0xFF;  //insert (INS)
+                 processkey[1]=0x04^0xFF;
+                 break;
+      case 0x33: processkey[1]=0x04^0xFF;  //delete (DEL)
+                 break;
+      case 0x35: processkey[0]=0x81^0xFF;  //Shift BREAK
+                 // Shift break always resets the cassette deck states 
+                 reset_tape(); 
+                 break;
+      case 0x36: processkey[0]=0x81^0xFF;  //Shift BREAK
+                 // Break always resets the cassette deck states 
+                 reset_tape(); 
+                 break;
+      default:   break;                    //Ignore unmapped keys
+    }
+  }
+
+  if ((ncodes==5)&&(usbc[0]==0x1b)&&(usbc[1]==0x5b)&&
+      (usbc[2]==0x32)&&(usbc[4]==0x7e)) {
+    switch (usbc[3]) {
+      case 0x30: if ((++scantimes) > 3)    //F9 - no. times keymatrix scanned
+                   scantimes=1;            //     per keypress. Default=1
+                 mzemustatus[EMULINE4-1]=0x20+scantimes;
+                 break;
+      case 0x31: mzcpu.pc=0x0000;          //F10 - MZ-80A reset button
+                 reset_tape(); 
+                 break;
+      case 0x33: mzreaddump();             //F11 - read memory dump
+                 break;
+      case 0x34: mzsavedump();             //F12 - save memory dump
+                 break;
+      default:   break;                    //Ignore unmapped keys
+    }
+  }
+
+  return;
+}
 #endif

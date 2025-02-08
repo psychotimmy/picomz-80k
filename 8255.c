@@ -1,11 +1,11 @@
-/* Sharp MZ-80K 8255 implementation  */
-/* Tim Holyoake, August-October 2024 */
+/* Sharp MZ-80K & MZ-80A 8255 implementation */
+/* Tim Holyoake, August 2024 - February 2025 */
 
 #include "picomz.h"
 
-// 8255 address to port mapping for the MZ-80K 
+// 8255 address to port mapping for the MZ-80K/A
 // The ports are all 8 bits wide 
-// Note that the MZ-80K only uses the 8255 in mode 0,
+// Note that the MZ-80K and A only uses the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
 static uint8_t portA;           /* 0xE000 - port A */
@@ -14,9 +14,9 @@ uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
 
 uint8_t cmotor=1;               /* Cassette motor off (0) or on (1) */
-                                /* Toggled to 0 during MZ-80K startup */
+                                /* Toggled to 0 during MZ-80K/A startup */
 uint8_t csense=1;               /* Cassette sense toggle */
-                                /* Toggled to 0 during MZ-80K startup */
+                                /* Toggled to 0 during MZ-80K/A startup */
                                 /* Note - the emulator currently ties the */
                                 /* cmotor & csense signals together. A more */
                                 /* faithful version would have */
@@ -53,7 +53,7 @@ static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 // Bit 6 -    -"-              - 0         1         1
 // Bit 7 - Mode/port C bit flag- 1=mode set active, 0=bit set active
 
-// The SP-1002 monitor writes the value 0x8A to the control port
+// The SP-1002 / SA-1510 monitors write the value 0x8A to the control port
 // on startup - 1001010 binary. This sets portC lower as output,
 // portC upper as input, portB as input and portA as output.
 
@@ -106,7 +106,7 @@ void wr8255(uint16_t addr, uint8_t data)
                                      // Bits 0-3 are used by keyboard
            portA=data;               // Keeps state in portA static
            break;
-    case 1:// Write to portB - this should never happen on an MZ-80K,
+    case 1:// Write to portB - this should never happen on an MZ-80K/A,
            // so nothing should change if a program tries to do it.
            break;
     case 2:// Overwrite the lower 4 bits of port C.
@@ -116,7 +116,7 @@ void wr8255(uint16_t addr, uint8_t data)
            portC = (portC&0xF0)|(data&0x0F);
            break;
     case 3:// Control port code
-           // If mode set is chosen, do nothing as the MZ-80K must never
+           // If mode set is chosen, do nothing as the MZ-80K/A must never
            // change the way the 8255 ports are configured after the 
            // monitor issues it with 8A on start up.
            uint8_t portCbit, setbit;
@@ -151,7 +151,8 @@ void wr8255(uint16_t addr, uint8_t data)
                      if (csense && cmotor)
                        cwrite(setbit);
                      break;
-             case 2: // SML/CAP toggle
+             case 2: // SML/CAP toggle on MZ-80K
+                     // Timer interupt masking on MZ-80A
                      if (setbit)
                        portC|=0x04;
                      else
@@ -203,12 +204,17 @@ uint8_t rd8255(uint16_t addr)
 
 #ifdef USBDIAGOUTPUT
              /* Copy processkey if at start of scan and ready for a new */
-             /* key - we may not be if scantimes > 1                    */
-             if ((idxloop == 0) && (idx == 9)) {
+             /* key - we may not be if scantimes > 1 (K and A differ)   */
+             if ((idxloop == 0) && (idx == 9) && (mzmodel == MZ80K)) {
                memcpy(newkey,processkey,KBDROWS);
                memset(processkey,0xFF,KBDROWS);
                idxloop=KBDROWS*scantimes-1;
-             }
+             } 
+             if ((idxloop == 0) && (idx == 0) && (mzmodel == MZ80A)) {
+               memcpy(newkey,processkey,KBDROWS);
+               memset(processkey,0xFF,KBDROWS);
+               idxloop=KBDROWS*scantimes+1;
+             } 
 
              /* Return the current row of the keyboard matrix */
              retval=newkey[idx];
@@ -217,21 +223,39 @@ uint8_t rd8255(uint16_t addr)
                --idxloop;
 #else
              retval=processkey[idx];
-             if (idx < 8) {
-               // Wait for next strobe if a shift key is active AND
-               // we're not scanning rows 8 or 9
-               // 0xFE = left shift, 0xDF = right shift
-               if ((processkey[8]==0xFE) || (processkey[8]==0xDF))
-                 retval=0xFF;
+             if (mzmodel == MZ80K) {
+               if (idx < 8) {
+                 // Wait for next strobe if a shift key is active AND
+                 // we're not scanning rows 8 or 9
+                 // 0xFE = left shift, 0xDF = right shift
+                 if ((processkey[8]==0xFE) || (processkey[8]==0xDF))
+                   retval=0xFF;
+               }
+               else {
+                 if ((idx == 8) &&
+                     ((processkey[8]==0xFE) || (processkey[8]==0xDF)) &&
+                     (processkey[9]==0xFF)) 
+                   // Shift key has been processed and row 9 is NOT active
+                   processkey[idx]=0xFF;
+                   // Wait for next scan to clear shift if row 9 IS active
+                   // before clearing the shift key
+               }
              }
              else {
-               if ((idx == 8) &&
-                   ((processkey[8]==0xFE) || (processkey[8]==0xDF)) &&
-                   (processkey[9]==0xFF)) 
-                 // Shift key has been processed and row 9 is NOT active
-                 processkey[idx]=0xFF;
-                 // Wait for next scan to clear shift if row 9 IS active
-                 // before clearing the shift key
+               // MZ-80A
+               if (idx != 0) {
+                 // Wait for next strobe if a shift or CTRL key is active AND
+                 // we're not scanning row 0
+                 // 0xFE = shift, 0x7F = ctrl
+                 if ((processkey[0] == 0xFE) || (processkey[0] == 0x7F))
+                   retval=0xFF;
+               }
+               else {
+                 if ((idx == 0) && 
+                     ((processkey[0] == 0xFE) || (processkey[0] == 0x7F)))
+                   // Shift or Ctrl key has been processed
+                   processkey[idx]=0xFF;
+               }
              }
 #endif
            }
