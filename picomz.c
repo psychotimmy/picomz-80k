@@ -19,7 +19,8 @@ uint8_t mzmodel;                // MZ model type - default is MZ-80K
 bool ukrom = true;              // Default is UK CGROM
 
 /* Write a byte to RAM or an output device */
-void __not_in_flash_func (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
+void __not_in_flash_func 
+     (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
 {
   /* Can't write to monitor space on the MZ-80K */
   if ((addr < 0x1000) && (mzmodel == MZ80K)) 
@@ -365,11 +366,23 @@ int main(void)
   SHOW("VGA output started on second core\n\n");
 
   // Main emulator loop
+  #if !defined (USBDIAGOUTPUT)
+  uint8_t delay=0;
+  #endif
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-  #if ! defined (USBDIAGOUTPUT) && defined (PICO2)
-    busy_wait_us(1);              // Need to slow down a Pico 2 a little more
+  #if !defined (USBDIAGOUTPUT) && defined (PICO1)
+    if (++delay == 3) {
+      busy_wait_us(1);            // Need to slow down the Pico a little
+      delay=0;
+    }
+  #endif
+  #if !defined (USBDIAGOUTPUT) && defined (PICO2)
+    if (++delay == 2) {
+      busy_wait_us(2);            // Need to slow down the Pico 2 a little
+      delay=0;
+    }
   #endif
 
   #ifdef USBDIAGOUTPUT

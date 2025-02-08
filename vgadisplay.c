@@ -41,7 +41,7 @@ int32_t __not_in_flash_func
       // the top of the screen is in the VRAM. Use monitor workarea addresses
       // 0x117D and 0x117E (4477 & 4478 decimal) to do this, and allow VRAM
       // to wrap around by masking the calculated address with 0x7FF (2048).
-      int offset=(((mzuserram[0x017E]<<8)&0xFF00)|mzuserram[0x017D])-0xD000;
+      int offset=((mzuserram[0x017E]<<8)|mzuserram[0x017D])-0xD000;
       charbits=cgromuk80a[mzvram[(vrr+colidx+offset)&0x7FF]*CWIDTH+cpr];
     }
     *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
