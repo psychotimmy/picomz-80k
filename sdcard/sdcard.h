@@ -3,9 +3,9 @@
 #define SDCARD_PIO        pio1
 #define SDCARD_PIO_SM        0
 
-#ifdef RC2014RP2040VGA
+#ifdef RC2014VGA
 
-  /* SPI pin assignment for RC2014 RP2040 VGA card */
+  /* SPI pin assignment for RC2014 RP2040 & Pi Pico VGA cards */
 
   #define SDCARD_PIN_SPI0_CS    5
   #define SDCARD_PIN_SPI0_SCK  26
