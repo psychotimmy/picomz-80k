@@ -51,7 +51,11 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-The current Pico SDK master branch (2.1.0 plus fixes - latest stable) works successfully with release 1.1.0 (or later) of Pico MZ-80K/A. Earlier releases use Pico SDK 1.5.1.
+The current Pico SDK 2.1.1 master branch (latest stable) works with Pico MZ-80K/A version 2.0.1
+
+(Pico SDK 2.1.0 works with releases 1.1.0 to 2.0.1 of Pico MZ-80K/A. Earlier releases use Pico SDK 1.5.1)
+
+### Release chronology
 
 Release 1.1.0 introduced Pico 2 support.
 
@@ -83,7 +87,7 @@ and Pico MZ-80K/A repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ-80K/A repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 2.0.0
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 2.0.1
 ```
 **or** the latest stable version:
 ```
@@ -118,4 +122,4 @@ There should now be three (Pico) or two (Pico 2) .uf2 files in your build direct
 
 [The Pico MZ-80K and MZ-80A](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 7th February 2025.
+### This README was last updated on 16th April 2025.
