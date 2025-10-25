@@ -149,6 +149,8 @@ FRESULT mzsavedump(void)
   uramheader[11]= 0x9e;             // p
   uramheader[12]= 0x0d;             // <end of name>
 
+#ifndef MZ700EMULATOR
+
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res) {
@@ -179,6 +181,8 @@ FRESULT mzsavedump(void)
   // Close the file and return
   f_close(&fp);
 
+#endif
+
   return(FR_OK);
 }
 
@@ -191,6 +195,8 @@ FRESULT mzreaddump(void)
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
   uint8_t dumpfile[11] =            // Memory dump filename
   { 'M','Z','D','U','M','P','.','M','Z','F','\0' };
+
+#ifndef MZ700EMULATOR
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
@@ -241,6 +247,8 @@ FRESULT mzreaddump(void)
 
   // Success - close file
   f_close(&fp);
+
+#endif
 
   return(FR_OK);
 }

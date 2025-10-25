@@ -3,6 +3,7 @@
 // Release 1.1 - Written November 2024
 // Release 1.2 - Written January 2025
 // Release 2.0 - Written February 2025           (MZ-80A support)
+// Release 3.0 - Written October 2025            (MZ-700 support)
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -11,6 +12,10 @@
 // The contents of the SP-1002, SA-1510 Monitors and Character ROMs are 
 // Copyright (c) 1979 and 1982 Sharp Corporation and may be found in the
 // source file sharpcorp.c
+//
+// The contents of the 1Z-013A Monitor and MZ-700 Character ROMs are 
+// Copyright (c) 1982 Sharp Corporation and may be found in the
+// source file sharpcorp700.c
 //
 // This emulator has no other connection with Sharp Corporation.
 //
@@ -82,14 +87,17 @@
 /* MZ-80 model definitions */
 #define MZ80K 1
 #define MZ80A 2
+#define MZ700 3
 
-/* Sharp MZ-80K memory locations */
+/* Sharp MZ memory locations */
 
 #define MROMSIZE        4096  //   4   Kbytes Monitor ROM
-#define CROMSIZE        2048  //   2   Kbytes Character ROM
+#define CROMSIZE        2048  //   2   Kbytes Character ROM (MZ-80K and MZ-80A)
+#define CROMSIZE700     4096  //   4   Kbytes Character ROM (MZ-700)
 #define URAMSIZE        49152 //   0.5 Kbytes Monitor + 48 Kbytes User RAM
 #define VRAMSIZE        2048  //   2   Kbyte  Video RAM (1K used on MZ-80K)
 #define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
+#define MEMORYSIZE      65536 //   64  Kbytes - Full MZ-700 memory size
 
 /***************************************************/
 /* Sharp MZ-80K and MZ-80A memory map summary      */
@@ -129,7 +137,7 @@
 /*                                                 */
 /***************************************************/
 
-/* MZ-80K keyboard */
+/* MZ-80K, MZ-80A and MZ-700 keyboard */
 #define KBDROWS 10     // There are 10 rows sensed on the keyboard
 
 /* USB keyboard buffer */
@@ -166,10 +174,15 @@ typedef struct pit8253 {
 
 } pit8253;
 
-/* picomz.c */
+/* picomz.c  and picomz700.c */
 extern z80 mzcpu;
-extern uint8_t mzuserram[URAMSIZE];
-extern uint8_t mzvram[VRAMSIZE];
+#ifndef MZ700EMULATOR
+  extern uint8_t mzuserram[URAMSIZE];
+  extern uint8_t mzvram[VRAMSIZE];
+#endif
+#ifdef MZ700EMULATOR
+  extern uint8_t mzmemory[MEMORYSIZE];
+#endif
 extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
@@ -177,26 +190,38 @@ extern uint8_t picotone2;
 /* Pixel colours */
 extern uint16_t whitepix;
 extern uint16_t blackpix;
+#ifdef MZ700EMULATOR
+  extern uint16_t colourpix[8];
+#endif
 /* MZ model & CGROM types */
 extern uint8_t mzmodel;
 extern bool ukrom;
 
-/* sharpcorp.c */
-extern uint8_t mzmonitor80k[MROMSIZE];
-extern uint8_t mzmonitor80a[MROMSIZE];
-extern const uint8_t cgromuk80k[CROMSIZE];
-extern const uint8_t cgromjp80k[CROMSIZE];
-extern const uint8_t cgromuk80a[CROMSIZE];
+/* sharpcorp.c and sharpcorp700.c */
+#ifndef MZ700EMULATOR
+  extern uint8_t mzmonitor80k[MROMSIZE];
+  extern uint8_t mzmonitor80a[MROMSIZE];
+  extern const uint8_t cgromuk80k[CROMSIZE];
+  extern const uint8_t cgromjp80k[CROMSIZE];
+  extern const uint8_t cgromuk80a[CROMSIZE];
+#else
+  extern uint8_t mzmonitor700[MROMSIZE];
+  extern const uint8_t cgromuk700[CROMSIZE700];
+#endif
 
-/* keyboard.c */
+/* keyboard.c and keyboard700.c */
 extern uint8_t processkey[KBDROWS];
 #ifdef USBDIAGOUTPUT
   extern void mzcdcmapkey80k(int32_t*, int8_t);
   extern void mzcdcmapkey80a(int32_t*, int8_t);
 #else
   extern void mzrptkey(void);
-  extern void mzhidmapkey80k(uint8_t, uint8_t);
-  extern void mzhidmapkey80a(uint8_t, uint8_t);
+  #ifndef MZ700EMULATOR
+    extern void mzhidmapkey80k(uint8_t, uint8_t);
+    extern void mzhidmapkey80a(uint8_t, uint8_t);
+  #else
+    extern void mzhidmapkey700(uint8_t, uint8_t);
+  #endif
 #endif
 
 /* cassette.c */
@@ -213,7 +238,7 @@ extern FRESULT mzsavedump(void);
 extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
 
-/* vgadisplay.c */
+/* vgadisplay.c and vgadisplay700.c */
 extern void vga_main(void);
 
 /* 8255.c */

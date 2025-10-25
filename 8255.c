@@ -1,11 +1,11 @@
-/* Sharp MZ-80K & MZ-80A 8255 implementation */
-/* Tim Holyoake, August 2024 - February 2025 */
+/* Sharp MZ-80K, MZ-80A 8255 & MZ-700 implementation */
+/*      Tim Holyoake, August 2024 - October 2025     */
 
 #include "picomz.h"
 
-// 8255 address to port mapping for the MZ-80K/A
+// 8255 address to port mapping for the MZ-80K/A/700
 // The ports are all 8 bits wide 
-// Note that the MZ-80K and A only uses the 8255 in mode 0,
+// Note that the MZ-80K/A/700 only use the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
 static uint8_t portA;           /* 0xE000 - port A */
@@ -14,9 +14,9 @@ uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
 
 uint8_t cmotor=1;               /* Cassette motor off (0) or on (1) */
-                                /* Toggled to 0 during MZ-80K/A startup */
+                                /* Toggled to 0 during MZ startup */
 uint8_t csense=1;               /* Cassette sense toggle */
-                                /* Toggled to 0 during MZ-80K/A startup */
+                                /* Toggled to 0 during MZ startup */
                                 /* Note - the emulator currently ties the */
                                 /* cmotor & csense signals together. A more */
                                 /* faithful version would have */
@@ -53,7 +53,7 @@ static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 // Bit 6 -    -"-              - 0         1         1
 // Bit 7 - Mode/port C bit flag- 1=mode set active, 0=bit set active
 
-// The SP-1002 / SA-1510 monitors write the value 0x8A to the control port
+// The MZ monitors write the value 0x8A to the control port
 // on startup - 1001010 binary. This sets portC lower as output,
 // portC upper as input, portB as input and portA as output.
 
@@ -106,7 +106,7 @@ void wr8255(uint16_t addr, uint8_t data)
                                      // Bits 0-3 are used by keyboard
            portA=data;               // Keeps state in portA static
            break;
-    case 1:// Write to portB - this should never happen on an MZ-80K/A,
+    case 1:// Write to portB - this should never happen on a MZ,
            // so nothing should change if a program tries to do it.
            break;
     case 2:// Overwrite the lower 4 bits of port C.
@@ -116,7 +116,7 @@ void wr8255(uint16_t addr, uint8_t data)
            portC = (portC&0xF0)|(data&0x0F);
            break;
     case 3:// Control port code
-           // If mode set is chosen, do nothing as the MZ-80K/A must never
+           // If mode set is chosen, do nothing as the MZ must never
            // change the way the 8255 ports are configured after the 
            // monitor issues it with 8A on start up.
            uint8_t portCbit, setbit;
@@ -223,6 +223,8 @@ uint8_t rd8255(uint16_t addr)
                --idxloop;
 #else
              retval=processkey[idx];
+             // No kludging required for the MZ700 as keyboard scanning
+             // just works!!
              if (mzmodel == MZ80K) {
                if (idx < 8) {
                  // Wait for next strobe if a shift key is active AND
@@ -241,8 +243,7 @@ uint8_t rd8255(uint16_t addr)
                    // before clearing the shift key
                }
              }
-             else {
-               // MZ-80A
+             else if (mzmodel == MZ80A) {
                if (idx != 0) {
                  // Wait for next strobe if a shift or CTRL key is active AND
                  // we're not scanning row 0
