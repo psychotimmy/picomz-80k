@@ -5,8 +5,6 @@
 
 uint8_t mzmemory[MEMORYSIZE];   // MZ-700 memory - 64Kbytes
 uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
-uint16_t whitepix;              // Pixel colours
-uint16_t blackpix;
 uint16_t colourpix[8];          // Pixel colour array
 uint8_t picotone1;              // gpio pins for pwm sound
 uint8_t picotone2;
@@ -91,27 +89,17 @@ int main(void)
 {
   uint8_t toggle;          // Used to toggle the pico's led for error
                            // conditions found on startup
-#ifdef USBDIAGOUTPUT
-  int32_t usbc[USBKBDBUF]; // USB keyboard buffer
-  int8_t  ncodes;          // No. codes to process in usb keyboard buffer
-#endif
 
-#if defined (USBDIAGOUTPUT) && defined (PICO1)
-  // Set system clock to 175MHz if in diag mode on a rp2040
+#if defined (PICO1)
+  // Set system clock to 220MHz
   // See also CMakeLists.txt
-  set_sys_clock_pll(1050000000,6,1);
+  set_sys_clock_pll(1350000000,6,1);
 #endif
 
-#if defined (USBDIAGOUTPUT) && defined (PICO2)
-  // Set system clock to 125MHz if in diag mode on a rp2350
+#if defined (PICO2)
+  // Set system clock to 125MHz
   // See also CMakeLists.txt
   set_sys_clock_pll(1500000000,6,2);
-#endif
-
-#if ! defined (USBDIAGOUTPUT) && defined (PICO2)
-  // Set system clock to 100MHz if in normal mode on a rp2350
-  // See also CMakeLists.txt
-  set_sys_clock_pll(1500000000,5,3);
 #endif
 
   stdio_init_all();
@@ -186,19 +174,10 @@ int main(void)
   // Initialise USB keyboard
   memset(processkey,0xFF,KBDROWS);
 
-#ifdef USBDIAGOUTPUT
-  toggle=1;
-  mzpicoled(toggle);
-  while (!tud_cdc_connected()) { 
-    // Pico onboard led flashes if no keyboard via terminal emulator found
-    sleep_ms(200); 
-    toggle=!toggle;  
-    mzpicoled(toggle);
-  }
-#else
   tusb_init();
-#endif
+
   SHOW("USB keyboard connected\n");
+
   mzpicoled(0);
 
   // Mount the sd card to act as a tape source
@@ -220,42 +199,24 @@ int main(void)
   SHOW("microSD card mounted ok\n");
 
   // Define pixel colours - 8 used by the MZ-700
-  blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
-  whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);
-  colourpix[0]=blackpix;                                     //black
+  colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
   colourpix[1]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,255);      //blue
   colourpix[2]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);      //red
   colourpix[3]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,255);    //magenta
   colourpix[4]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);      //green
   colourpix[5]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,255);    //cyan
   colourpix[6]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,0);    //yellow
-  colourpix[7]=whitepix;                                     //white
+  colourpix[7]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);  //white
 
   // Start VGA output on the second core
   multicore_launch_core1(vga_main);
   SHOW("VGA output started on second core\n\n");
 
   // Main emulator loop
-  #if !defined (USBDIAGOUTPUT)
-  uint8_t delay=0;
-  #endif
+
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-
-  #if !defined (USBDIAGOUTPUT) && defined (PICO1)
-    if (++delay == 3) {
-      busy_wait_us(1);            // Need to slow down the Pico a little
-      delay=0;
-    }
-  #endif
-
-  #if !defined (USBDIAGOUTPUT) && defined (PICO2)
-    if (++delay == 2) {
-      busy_wait_us(2);            // Need to slow down the Pico 2 a little
-      delay=0;
-    }
-  #endif
 
     tuh_task();                   // Check for new keyboard events
     mzrptkey();                   // Check for a repeating key event

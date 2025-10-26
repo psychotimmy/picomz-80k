@@ -89,6 +89,10 @@
 
   target_compile_definitions(picomz-700-pimoroni
   PRIVATE
+      PLL_SYS_REFDIV=1
+      PLL_SYS_VCO_FREQ_HZ=1320000000
+      PLL_SYS_POSTDIV1=6
+      PLL_SYS_POSTDIV2=1
       PICO1=1
       MZ700EMULATOR=1
   )
@@ -184,9 +188,9 @@ else()
   target_compile_definitions(pico2mz-700-pimoroni
   PRIVATE
       PLL_SYS_REFDIV=1
-      PLL_SYS_VCO_FREQ_HZ=1440000000
-      PLL_SYS_POSTDIV1=4
-      PLL_SYS_POSTDIV2=4
+      PLL_SYS_VCO_FREQ_HZ=1500000000
+      PLL_SYS_POSTDIV1=6
+      PLL_SYS_POSTDIV2=2
       PICO2=1
       MZ700EMULATOR=1
   )

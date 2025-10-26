@@ -96,11 +96,15 @@ static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 
 void wr8255(uint16_t addr, uint8_t data)
 {
-  static uint8_t ps555=0;            // Pseudo 555 timer for cursor blink
+  static uint8_t ps55x=0;            // Pseudo 555/556 timer for cursor blink
   switch (addr&0x0003) {             // addr is between 0xE000 and 0xE003
     case 0:// Write to portA static
-           if ((data&0x80) && (++ps555 > 50)) {
-             ps555=0;                // A simple 555 timer emulation 
+         #ifndef MZ700EMULATOR
+           if ((data&0x80) && (++ps55x > 50)) {
+         #else
+           if ((data&0x80) && (++ps55x > 12)) {
+         #endif
+             ps55x=0;                // A simple 555/556 timer emulation 
              ++cblink;               // Bit 7 controls cursor blink
            } 
                                      // Bits 0-3 are used by keyboard

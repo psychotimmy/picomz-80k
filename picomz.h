@@ -188,10 +188,11 @@ extern uint8_t mzemustatus[EMUSSIZE];
 extern uint8_t picotone1;
 extern uint8_t picotone2;
 /* Pixel colours */
-extern uint16_t whitepix;
-extern uint16_t blackpix;
 #ifdef MZ700EMULATOR
   extern uint16_t colourpix[8];
+#else
+  extern uint16_t whitepix;
+  extern uint16_t blackpix;
 #endif
 /* MZ model & CGROM types */
 extern uint8_t mzmodel;

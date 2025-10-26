@@ -78,14 +78,14 @@ int32_t __not_in_flash_func
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
     charbits=cgromuk700[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
-    *(++pixels) = (charbits & 0x80) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x40) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x20) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x10) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x08) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x04) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x02) ? whitepix : blackpix;
-    *(++pixels) = (charbits & 0x01) ? whitepix : blackpix;
+    *(++pixels) = (charbits & 0x80) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x40) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x20) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x10) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x08) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x04) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x02) ? colourpix[7] : colourpix[0];
+    *(++pixels) = (charbits & 0x01) ? colourpix[7] : colourpix[0];
   }
   *(++pixels) = 0;
   *(++pixels) = COMPOSABLE_EOL_ALIGN;
