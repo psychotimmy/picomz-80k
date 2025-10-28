@@ -380,6 +380,13 @@ int16_t tapeloader(int16_t n)
                for (uint8_t i=0; i<10; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
+    case 0x05: if (ukrom)
+                 ascii2mzdisplay("Sharp S-BASIC",mzstr);
+               else
+                 ascii2mzdisplay("SHARP S-BASIC",mzstr);
+               for (uint8_t i=0; i<13; i++)
+                 mzemustatus[spos++]=mzstr[i];
+               break;
     case 0x06: if (ukrom)
                  ascii2mzdisplay("Chalkwell BASIC",mzstr);
                else
