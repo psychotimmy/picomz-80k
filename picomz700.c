@@ -3,7 +3,10 @@
 
 #include "picomz.h"
 
-uint8_t mzmemory[MEMORYSIZE];   // MZ-700 memory - 64Kbytes
+uint8_t mzbank4[BANK4SIZE];     // Bank switched RAM 0x0000 - 0x0FFF
+uint8_t mzbank12[BANK12SIZE];   // Bank switched RAM 0xD000 - 0xFFFF
+uint8_t mzuserram[URAMSIZE];    // RAM from 0x1000 - 0xCFFF
+uint8_t mzvram[VRAMSIZE700];    // VRAM from 0xD000 - 0xDFFF
 uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
 uint16_t colourpix[8];          // Pixel colour array
 uint8_t picotone1;              // gpio pins for pwm sound
@@ -16,13 +19,41 @@ volatile z80*  unusedz;
 uint8_t mzmodel;                // MZ model type - MZ700 = 3
 bool ukrom = true;              // Default is UK CGROM
 
+/* Memory bank switching variables */
+bool bank4k;                    // 0x0000 - 0x0FFF is ROM at switch on
+bool bank12k;                   // 0xD000 - 0xFFFF is VRAM at switch on
+bool bank12klck;                // 0xD000 - 0xFFFF not inhibited at switch on
+
 /* Write a byte to RAM or an output device */
 void __not_in_flash_func 
      (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
 {
-  /* Write to RAM below 0xE000  and above 0xE008 */
-  if ((addr < 0xE000) || (addr > 0xE008)) {
-    mzmemory[addr] = value;
+  /* Write to 0x0000 - 0x0FFF only if RAM has been switched in */
+  if (addr < 0x1000) {
+    if (bank4k)
+      mzbank4[addr] = value;
+    return;
+  }
+
+  /* Write to RAM between 0x1000 and 0xCFFF */
+  if (addr < 0xD000) {
+    mzuserram[addr-0x1000] = value;
+    return;
+  }
+
+  /* Don't write to any address above 0xD000 if it has been inhibited */
+  if (bank12klck) 
+    return;
+
+  /* Write to 12K banked RAM if bank12k true */
+  if (bank12k) {
+    mzbank12[addr-0xD000] = value;
+    return;
+  }
+
+  /* Write to VRAM */
+  if (addr < 0xE000) {
+    mzvram[addr-0xD000] = value;
     return;
   }
 
@@ -43,43 +74,90 @@ void __not_in_flash_func
     wrE008(value);
     return;
   }
+      
+  return; /* Nothing to write to above 0xE008 in this mode */
 
-  return;
 }
 
 /* Read a byte from memory or input device */
 uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 {
 
-  if ((addr < 0xE000) || (addr > 0xE008) || (addr == 0xE007))
-    return(mzmemory[addr]);
+  /* Read from ROM or RAM at 0x0000 - 0x0FFF */
+  if (addr < 0x1000) {
+    if (bank4k)
+      return(mzbank4[addr]);
+    else
+      return(mzmonitor700[addr]);
+  }
 
-  /* Intel 8255 */
-  if (addr < 0xE004) 
+  /* Read from RAM between 0x1000 and 0xCFFF */
+  if (addr < 0xD000)
+    return(mzuserram[addr-0x1000]);
+
+  /* Don't read any address above 0xD000 if it has been inhibited */
+  if (bank12klck) 
+    return(0xC7);
+
+  /* Read from 12K banked RAM if bank12k true */
+  if (bank12k) 
+    return(mzbank12[addr-0xD000]);
+
+  /* Read from VRAM (bank12k false)*/
+  if (addr < 0xE000) 
+    return(mzvram[addr-0xD000]);
+
+  /* Read from the Intel 8255  (0xE000 - 0xE003) */
+  if (addr<0xE004) 
     return(rd8255(addr));
 
-  /* Intel 8253 */
-  if (addr < 0xE007) 
+  /* Read from the Intel 8253  (0xE004 - 0xE007) */
+  if (addr<0xE008)
     return(rd8253(addr));
 
   /* Sound */
   if (addr == 0xE008) 
     return(rdE008());
 
+  /* Nothing to read - return 0xC7 */
+  return(0xC7);
 }
 
 /* SIO write to device */
 void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 {
-  /* SIO not used by MZ-700, so should never get here */
-  SHOW("Error: In sio_write at 0x%04x with value 0x%02x\n",addr,val);
+  /* Used by MZ-700 to control memory bank switching */
+
+  if (addr == 0xE0) 
+    bank4k=true;
+
+  if (addr == 0xE1) 
+    bank12k=true;
+
+  if (addr == 0xE2) 
+    bank4k=false;
+
+  if (addr == 0xE3) 
+    bank12k=false;
+ 
+  if (addr == 0xE4) {
+    bank4k=false;
+    bank12k=false;
+  }
+
+  if (addr == 0xE5) 
+    bank12klck=true;
+
+  if (addr == 0xE6) 
+    bank12klck=false;
+
   return;
 }
 
 /* SIO read from device */
 uint8_t sio_read(z80* unusedz, uint8_t addr)
 {
-  /* SIO not used by MZ-700, so should never get here */
+  /* Not used by MZ-700, so should never get here */
   SHOW("Error: In sio_read at 0x%04x\n",addr);
   return(0);
 }
@@ -104,7 +182,7 @@ int main(void)
 
   stdio_init_all();
 
-  busy_wait_ms(1250);              // Wait for inits to complete before
+  busy_wait_ms(1000);              // Wait for inits to complete before
                                    // outputting diagnostics etc.
 
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
@@ -115,12 +193,18 @@ int main(void)
 
   mzmodel=MZ700;
 
-  // Initialise MZ-700 memory (64K)
-  memset(mzmemory,0x00,MEMORYSIZE);
+  // Set banked memory to inactive - changed by calls to sio_write
+  bank4k=false;
+  bank12k=false;
+  bank12klck=false;
 
-  // Copy monitor ROM to 0x0000 onwards
-  for (int cprom=0; cprom < MROMSIZE; cprom++)
-    mzmemory[cprom]=mzmonitor700[cprom];
+  // Initialise MZ-700 user memory (48K) and VRAM (4K)
+  memset(mzuserram,0x00,URAMSIZE);
+  memset(mzvram,0x00,VRAMSIZE700);
+
+  // Initialise MZ-700 banked RAM (4K and 12K) - inactive at switch on */
+  memset(mzbank4,0x00,BANK4SIZE);
+  memset(mzbank12,0x00,BANK12SIZE);
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);

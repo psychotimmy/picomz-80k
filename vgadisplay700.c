@@ -33,17 +33,17 @@ int32_t __not_in_flash_func
     // The full 2K VRAM is used, so need to work out where
     // the top of the screen is in the VRAM. Use monitor workarea addresses
     // 0x117D and 0x117E (4477 & 4478 decimal) to do this
-    //int offset=((mzmemory[0x017E]<<8)|mzmemory[0x017D]);
+    //int offset=((mzmonitor700[0x017E]<<8)|mzmonitor700[0x017D]);
     int offset=0;
 
     /* If the 7th bit of the colour VRAM that belongs to the character is */
     /* set, then add 0xFF to the character index (2nd character set used) */
-    tb=(mzmemory[0xD800+vrr+colidx+offset]>>7)&0x01;
-    charbits=cgromuk700[mzmemory[0xD000+vrr+colidx+offset]*CWIDTH+cpr+tb*0xFF];
+    tb=(mzvram[0x0800+vrr+colidx+offset]>>7)&0x01;
+    charbits=cgromuk700[mzvram[vrr+colidx+offset]*CWIDTH+cpr+tb*0xFF];
 
     /* Background colour of character is in bits 0-2, foreground in bits 4-6 */
-    fgpix=colourpix[((mzmemory[0xD800+vrr+colidx+offset])>>4)&0x07];
-    bgpix=colourpix[(mzmemory[0xD800+vrr+colidx+offset])&0x07];
+    fgpix=colourpix[((mzvram[0x0800+vrr+colidx+offset])>>4)&0x07];
+    bgpix=colourpix[(mzvram[0x0800+vrr+colidx+offset])&0x07];
 
     *(++pixels) = (charbits & 0x80) ? fgpix : bgpix;
     *(++pixels) = (charbits & 0x40) ? fgpix : bgpix;

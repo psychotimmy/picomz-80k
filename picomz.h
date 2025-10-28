@@ -94,10 +94,12 @@
 #define MROMSIZE        4096  //   4   Kbytes Monitor ROM
 #define CROMSIZE        2048  //   2   Kbytes Character ROM (MZ-80K and MZ-80A)
 #define CROMSIZE700     4096  //   4   Kbytes Character ROM (MZ-700)
-#define URAMSIZE        49152 //   0.5 Kbytes Monitor + 48 Kbytes User RAM
+#define URAMSIZE        49152 //   48  Kbytes Monitor RAM + User RAM
 #define VRAMSIZE        2048  //   2   Kbyte  Video RAM (1K used on MZ-80K)
+#define VRAMSIZE700     4096  //   4   Kbytes Video RAM (2K + 2K colour)
 #define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
-#define MEMORYSIZE      65536 //   64  Kbytes - Full MZ-700 memory size
+#define BANK4SIZE       12288 //   4   Kbytes Banked RAM (MZ-700)
+#define BANK12SIZE      12288 //   12  Kbytes Banked RAM (MZ-700)
 
 /***************************************************/
 /* Sharp MZ-80K and MZ-80A memory map summary      */
@@ -134,6 +136,10 @@
 /* 0xF000 - 0xFFFF  FD controller ROM (if present) */
 /*  61440 - 65535      First 1024 bytes on MZ-80K  */
 /*                     First 2048 bytes on MZ-80A  */
+/*                                                 */
+/***************************************************/
+/*                                                 */
+/* Sharp MZ-700 memory map summary                 */
 /*                                                 */
 /***************************************************/
 
@@ -174,14 +180,15 @@ typedef struct pit8253 {
 
 } pit8253;
 
-/* picomz.c  and picomz700.c */
+/* picomz.c and picomz700.c */
 extern z80 mzcpu;
-#ifndef MZ700EMULATOR
-  extern uint8_t mzuserram[URAMSIZE];
-  extern uint8_t mzvram[VRAMSIZE];
-#endif
+extern uint8_t mzuserram[URAMSIZE];
 #ifdef MZ700EMULATOR
-  extern uint8_t mzmemory[MEMORYSIZE];
+  extern uint8_t mzvram[VRAMSIZE700];
+  extern uint8_t mzbank4[BANK4SIZE];
+  extern uint8_t mzbank12[BANK12SIZE];
+#else
+  extern uint8_t mzvram[VRAMSIZE];
 #endif
 extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
@@ -197,17 +204,23 @@ extern uint8_t picotone2;
 /* MZ model & CGROM types */
 extern uint8_t mzmodel;
 extern bool ukrom;
+/* Memory bank swtiching for MZ-700 only
+#ifdef MZ700EMULATOR
+  extern bool bank4k;
+  extern bool bank12k;
+  extern bool bank12klck;
+#endif
 
 /* sharpcorp.c and sharpcorp700.c */
-#ifndef MZ700EMULATOR
+#ifdef MZ700EMULATOR
+  extern uint8_t mzmonitor700[MROMSIZE];
+  extern const uint8_t cgromuk700[CROMSIZE700];
+#else
   extern uint8_t mzmonitor80k[MROMSIZE];
   extern uint8_t mzmonitor80a[MROMSIZE];
   extern const uint8_t cgromuk80k[CROMSIZE];
   extern const uint8_t cgromjp80k[CROMSIZE];
   extern const uint8_t cgromuk80a[CROMSIZE];
-#else
-  extern uint8_t mzmonitor700[MROMSIZE];
-  extern const uint8_t cgromuk700[CROMSIZE700];
 #endif
 
 /* keyboard.c and keyboard700.c */
