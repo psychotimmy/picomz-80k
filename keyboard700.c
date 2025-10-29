@@ -464,7 +464,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x63: if (numlock) 
                    processkey[6]=0xFE; //.
                  else
-                   processkey[1]=0x04^0xFF; //delete (DEL)
+                   processkey[7]=0xBF; //delete (DEL)
                  break;
 
       case 0x64: processkey[6]=0x7F; //backslash (non US USB key 102)
@@ -614,6 +614,13 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  processkey[6]=0xFE;
                  break;
       case 0x38: processkey[7]=0xFD; //?
+                 break;
+
+      case 0x51: processkey[8]=0xFE; //shifted cursor down
+                 processkey[7]=0xEF; 
+                 break;
+      case 0x52: processkey[8]=0xFE; //shifted cursor up
+                 processkey[7]=0xDF;
                  break;
 
       /* Non-standard MZ-700 keys need to be somewhere ! */

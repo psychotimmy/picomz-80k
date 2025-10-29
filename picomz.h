@@ -84,7 +84,7 @@
   #define SHOW //
 #endif
 
-/* MZ-80 model definitions */
+/* MZ model definitions */
 #define MZ80K 1
 #define MZ80A 2
 #define MZ700 3
