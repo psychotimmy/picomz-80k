@@ -1,16 +1,17 @@
-/*    Sharp MZ-80K & MZ-80A tape handling    */
-/* Tim Holyoake, August 2024 - February 2025 */
+/* Sharp MZ-80K, MZ-80A & MZ-700 tape handling */
+/*  Tim Holyoake, August 2024 - November 2025  */
 
 #include "picomz.h"
 
 #define LONGPULSE  1     /* cread() returns high for a long pulse */
 #define SHORTPULSE 0     /*                 low for a short pulse */
 
-#define READPT 420       /* Elapsed time in microseconds that on a tape      */
-                         /* write a pulse is treated as a 1 rather than a 0. */
-                         /* The real MZ-80K/A read point is after 386us, but */
-                         /* 420us is safe in the emulator (increased from    */
-                         /* 400us during the MZ-80A implementation).         */
+#ifdef MZ700EMULATOR     /* Elapsed time in microseconds that on a tape      */
+  #define READPT 300     /* write a pulse is treated as a 1 rather than a 0. */
+#else                    /* The real MZ-80K/A/700 read point is 386us, but   */
+  #define READPT 420     /* 420us is safe in the K/A emulator (increased     */
+#endif                   /* from 400us during the MZ-80A implementation).    */
+                         /* 420 is too high for the MZ-700, but 300 seems OK */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
 #define WBGAP_L 22000    /* Big tape gap length in bits - write */
@@ -29,8 +30,11 @@
 
 /* Used in mzspinny() */
 #define TCOUNTERMAX 999  /* Maximum value of tapecounter */
-#define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
-
+#ifdef MZ700EMULATOR       /* MZ700 is 3.5MHz; 80K/A are 2.0MHz, so scale */
+  #define TCOUNTERINC 350  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
+#else
+  #define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
+#endif
 uint8_t crstate=0;       // Holds tape state for cread()
 uint8_t cwstate=0;       // Holds tape state for cwrite()
 
@@ -76,7 +80,7 @@ void mzspinny(uint8_t state)
 {
   uint8_t spos=EMULINE3;            // Write to fourth emulator status line
   static uint16_t spinny=0;         // Used to reset the tape counter
-  static uint8_t ignore=0;          // Don't update the tape counter
+  static uint16_t ignore=0;         // Don't update the tape counter
                                     // with every call to this function
   uint8_t mzstr[15];                // Used to convert ASCII to MZ display
 
