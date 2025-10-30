@@ -102,7 +102,7 @@ void wr8255(uint16_t addr, uint8_t data)
          #ifndef MZ700EMULATOR
            if ((data&0x80) && (++ps55x > 50)) {
          #else
-           if ((data&0x80) && (++ps55x > 12)) {
+           if ((data&0x80) && (++ps55x > 20)) {
          #endif
              ps55x=0;                // A simple 555/556 timer emulation 
              ++cblink;               // Bit 7 controls cursor blink
@@ -227,8 +227,6 @@ uint8_t rd8255(uint16_t addr)
                --idxloop;
 #else
              retval=processkey[idx];
-             // No kludging required for the MZ700 as keyboard scanning
-             // just works!!
              if (mzmodel == MZ80K) {
                if (idx < 8) {
                  // Wait for next strobe if a shift key is active AND
@@ -246,6 +244,9 @@ uint8_t rd8255(uint16_t addr)
                    // Wait for next scan to clear shift if row 9 IS active
                    // before clearing the shift key
                }
+             }
+             else if (mzmodel == MZ700) {
+               ;
              }
              else if (mzmodel == MZ80A) {
                if (idx != 0) {
