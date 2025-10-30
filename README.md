@@ -17,7 +17,7 @@ MZ-80K and MZ-80A: **picomz-80ka-pimoroni.uf2** (standard version) or **picomz-8
 
 MZ-700: **picomz-700-pimoroni.uf2** (standard version) for a Pico mounted on a Pimoroni VGA demo base
 
-MZ-80K adn MZ-80A: **pico2mz-80ka-pimoroni.uf2** (standard version) or **pico2mz-80ka-diag-pimoroni.uf2** (diag version) for a Pico 2 mounted on a Pimoroni VGA demo base
+MZ-80K and MZ-80A: **pico2mz-80ka-pimoroni.uf2** (standard version) or **pico2mz-80ka-diag-pimoroni.uf2** (diag version) for a Pico 2 mounted on a Pimoroni VGA demo base
 
 ![A picture of a Pimoroni VGA demo base with a Raspberry Pico (with headers) installed.](https://z80.timholyoake.uk/wp-content/uploads/2024/09/20240905_101721-1024x633.jpg)
 
