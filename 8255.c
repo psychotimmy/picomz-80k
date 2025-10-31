@@ -8,7 +8,7 @@
 // Note that the MZ-80K/A/700 only use the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
-static uint8_t portA;           /* 0xE000 - port A */
+uint8_t portA;                  /* 0xE000 - port A */
                                 /* 0xE001 - port B */
 uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
@@ -246,7 +246,21 @@ uint8_t rd8255(uint16_t addr)
                }
              }
              else if (mzmodel == MZ700) {
-               ;
+               if (idx < 8) {
+                 // Wait for next strobe if a shift/ctrl key is active AND
+                 // we're not scanning rows 8 or 9
+                 // 0xFE = shift, 0xBF = ctrl
+                 if ((processkey[8]==0xFE) || (processkey[8]==0xBF))
+                   retval=0xFF;
+               }
+               else {
+                 if ((idx == 8) &&
+                     ((processkey[8]==0xFE) || (processkey[8]==0xBF)) &&
+                     (processkey[9]==0xFF)) 
+                   // Shift/ctrl key has been processed and row 9 is NOT active
+                   processkey[idx]=0xFF;
+                   // Wait for next scan to clear shift/ctrl if row 9 IS active
+               }
              }
              else if (mzmodel == MZ80A) {
                if (idx != 0) {

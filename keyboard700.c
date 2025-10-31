@@ -336,26 +336,6 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x42: //USB F9 = MZ-700 F5
                  processkey[9]=0xF7;
                  break;
-      case 0x6c: //USB shift F5 = MZ-700 shift F1
-                 processkey[8]=0xFE;
-                 processkey[9]=0x7F;
-                 break;
-      case 0x6d: //USB shift F6 = MZ-700 shift F2
-                 processkey[8]=0xFE;
-                 processkey[9]=0xBF;
-                 break;
-      case 0x6e: //USB shift F7 = MZ-700 shift F3
-                 processkey[8]=0xFE;
-                 processkey[9]=0xDF;
-                 break;
-      case 0x6f: //USB shift F8 = MZ-700 shift F4
-                 processkey[8]=0xFE;
-                 processkey[9]=0xEF;
-                 break;
-      case 0x70: //USB shift F9 = MZ-700 shift F5
-                 processkey[8]=0xFE;
-                 processkey[9]=0x7F;
-                 break;
 
       case 0x43: mzcpu.pc=0x0000;         //F10 - MZ-700 reset button
                  // TODO: Banked memory ??
@@ -614,6 +594,27 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  processkey[6]=0xFE;
                  break;
       case 0x38: processkey[7]=0xFD; //?
+                 break;
+
+      case 0x3e: //USB shift F5 = MZ-700 shift F1
+                 processkey[8]=0xFE;
+                 processkey[9]=0x7F;
+                 break;
+      case 0x3f: //USB shift F6 = MZ-700 shift F2
+                 processkey[8]=0xFE;
+                 processkey[9]=0xBF;
+                 break;
+      case 0x40: //USB shift F7 = MZ-700 shift F3
+                 processkey[8]=0xFE;
+                 processkey[9]=0xDF;
+                 break;
+      case 0x41: //USB shift F8 = MZ-700 shift F4
+                 processkey[8]=0xFE;
+                 processkey[9]=0xEF;
+                 break;
+      case 0x42: //USB shift F9 = MZ-700 shift F5
+                 processkey[8]=0xFE;
+                 processkey[9]=0x7F;
                  break;
 
       case 0x51: processkey[8]=0xFE; //shifted cursor down

@@ -128,26 +128,35 @@ void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 {
   /* Used by MZ-700 to control memory bank switching */
 
+  // Swap out ROM for RAM
   if (addr == 0xE0) 
     bank4k=true;
 
+  // Swap out VRAM etc. for banked RAM
   if (addr == 0xE1) 
     bank12k=true;
 
+  // Swap out RAM for ROM
   if (addr == 0xE2) 
     bank4k=false;
 
+  // Swap out banked RAM for VRAM etc.
   if (addr == 0xE3) 
     bank12k=false;
  
+  // The equivalent of a power off / power on - locked bank unlocked as well  
   if (addr == 0xE4) {
     bank4k=false;
     bank12k=false;
+    bank12klck=false;
   }
 
+  // Lock the 12K banked RAM or VRAM etc. Writes inhibited, reads undefined
   if (addr == 0xE5) 
     bank12klck=true;
 
+  // Unlock the 12K banked RAM or VRAM etc. Writes enabled, reads defined by
+  // whether the banked RAM is active or the VRAM etc. is active.
   if (addr == 0xE6) 
     bank12klck=false;
 
