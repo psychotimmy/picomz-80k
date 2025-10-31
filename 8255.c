@@ -8,7 +8,7 @@
 // Note that the MZ-80K/A/700 only use the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
-uint8_t portA;                  /* 0xE000 - port A */
+static uint8_t portA;           /* 0xE000 - port A */
                                 /* 0xE001 - port B */
 uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
