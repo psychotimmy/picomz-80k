@@ -245,23 +245,6 @@ uint8_t rd8255(uint16_t addr)
                    // before clearing the shift key
                }
              }
-             else if (mzmodel == MZ700) {
-               if (idx < 8) {
-                 // Wait for next strobe if a shift/ctrl key is active AND
-                 // we're not scanning rows 8 or 9
-                 // 0xFE = shift, 0xBF = ctrl
-                 if ((processkey[8]==0xFE) || (processkey[8]==0xBF))
-                   retval=0xFF;
-               }
-               else {
-                 if ((idx == 8) &&
-                     ((processkey[8]==0xFE) || (processkey[8]==0xBF)) &&
-                     (processkey[9]==0xFF)) 
-                   // Shift/ctrl key has been processed and row 9 is NOT active
-                   processkey[idx]=0xFF;
-                   // Wait for next scan to clear shift/ctrl if row 9 IS active
-               }
-             }
              else if (mzmodel == MZ80A) {
                if (idx != 0) {
                  // Wait for next strobe if a shift or CTRL key is active AND
@@ -277,6 +260,31 @@ uint8_t rd8255(uint16_t addr)
                    processkey[idx]=0xFF;
                }
              }
+  #ifdef MZ700EMULATOR
+             else if (mzmodel == MZ700) {
+               // Monitor in ROM seems to handle the keyboard differently to 
+               // monitor in RAM (bank4k true).
+               extern bool bank4k;
+               if (bank4k) {
+                 if (idx < 8) {
+                   // Wait for next strobe if a shift/ctrl key is active AND
+                   // we're not scanning rows 8 or 9
+                   // 0xFE = shift, 0xBF = ctrl
+                   if ((processkey[8]==0xFE) || (processkey[8]==0xBF))
+                     retval=0xFF;
+                 } 
+                 else {
+                   if ((idx == 8) &&
+                       ((processkey[8]==0xFE) || (processkey[8]==0xBF)) &&
+                       (processkey[9]==0xFF)) 
+                     // Shift key has been processed and row 9 is NOT active
+                     processkey[idx]=0xFF;
+                     // Wait for next scan to clear shift if row 9 IS active
+                     // before clearing the shift key
+                 }
+               }
+             }
+  #endif
 #endif
            }
            else
