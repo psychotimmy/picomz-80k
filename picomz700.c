@@ -178,9 +178,9 @@ int main(void)
                            // conditions found on startup
 
 #if defined (PICO1)
-  // Set system clock to 220MHz
+  // Set system clock to 200MHz
   // See also CMakeLists.txt
-  set_sys_clock_pll(1350000000,6,1);
+  set_sys_clock_pll(1200000000,6,1);
 #endif
 
 #if defined (PICO2)

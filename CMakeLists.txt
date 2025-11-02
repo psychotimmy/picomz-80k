@@ -90,7 +90,7 @@
   target_compile_definitions(picomz-700-pimoroni
   PRIVATE
       PLL_SYS_REFDIV=1
-      PLL_SYS_VCO_FREQ_HZ=1320000000
+      PLL_SYS_VCO_FREQ_HZ=1200000000
       PLL_SYS_POSTDIV1=6
       PLL_SYS_POSTDIV2=1
       PICO1=1
