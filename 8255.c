@@ -102,7 +102,7 @@ void wr8255(uint16_t addr, uint8_t data)
          #ifndef MZ700EMULATOR
            if ((data&0x80) && (++ps55x > 50)) {
          #else
-           if ((data&0x80) && (++ps55x > 20)) {
+           if ((data&0x80) && (++ps55x > 36)) {
          #endif
              ps55x=0;                // A simple 555/556 timer emulation 
              ++cblink;               // Bit 7 controls cursor blink
