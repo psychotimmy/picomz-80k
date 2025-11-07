@@ -188,12 +188,14 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
-#ifdef USBDIAGOUTPUT
   static uint8_t newkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
                                      0xFF,0xFF,0xFF,0xFF,0xFF };
+#ifdef USBDIAGOUTPUT
   static uint8_t idxloop=0;        /* Allows some m/c code games to work */
                                    /* by keeping the press from the key  */
                                    /* matrix active for scantimes cycles */
+                                   /* Immitates a keyboard up event that */
+                                   /* a real USB keyboard returns        */
 #endif
   uint8_t idx,retval;
 
@@ -204,91 +206,43 @@ uint8_t rd8255(uint16_t addr)
     case 1:// Port B is keyboard input
            idx=portA&0x0F;
            // 10 lines (KBDROWS) to strobe, so idx must be between 0 and 9
-           if (idx < KBDROWS) {
-
+           if (idx > 9)
+             idx=9;
 #ifdef USBDIAGOUTPUT
-             /* Copy processkey if at start of scan and ready for a new */
-             /* key - we may not be if scantimes > 1 (K and A differ)   */
-             if ((idxloop == 0) && (idx == 9) && (mzmodel == MZ80K)) {
-               memcpy(newkey,processkey,KBDROWS);
-               memset(processkey,0xFF,KBDROWS);
-               idxloop=KBDROWS*scantimes-1;
-             } 
-             if ((idxloop == 0) && (idx == 0) && (mzmodel == MZ80A)) {
-               memcpy(newkey,processkey,KBDROWS);
-               memset(processkey,0xFF,KBDROWS);
-               idxloop=KBDROWS*scantimes+1;
-             } 
+           /* Copy processkey if at start of scan and ready for a new */
+           /* key - we may not be if scantimes > 1 (K and A differ)   */
+           if ((idxloop == 0) && (idx == 9) && (mzmodel == MZ80K)) {
+             memcpy(newkey,processkey,KBDROWS);
+             memset(processkey,0xFF,KBDROWS);
+             idxloop=KBDROWS*scantimes-1;
+           } 
+           if ((idxloop == 0) && (idx == 0) && (mzmodel == MZ80A)) {
+             memcpy(newkey,processkey,KBDROWS);
+             memset(processkey,0xFF,KBDROWS);
+             idxloop=KBDROWS*scantimes+1;
+           } 
 
-             /* Return the current row of the keyboard matrix */
-             retval=newkey[idx];
-             /* Decrement idxloop counter if not at zero */
-             if (idxloop > 0)
-               --idxloop;
+           /* Return the current row of the keyboard matrix */
+           retval=newkey[idx];
+           /* Decrement idxloop counter if not at zero */
+           if (idxloop > 0)
+             --idxloop;
 #else
-             retval=processkey[idx];
-             if (mzmodel == MZ80K) {
-               if (idx < 8) {
-                 // Wait for next strobe if a shift key is active AND
-                 // we're not scanning rows 8 or 9
-                 // 0xFE = left shift, 0xDF = right shift
-                 if ((processkey[8]==0xFE) || (processkey[8]==0xDF))
-                   retval=0xFF;
-               }
-               else {
-                 if ((idx == 8) &&
-                     ((processkey[8]==0xFE) || (processkey[8]==0xDF)) &&
-                     (processkey[9]==0xFF)) 
-                   // Shift key has been processed and row 9 is NOT active
-                   processkey[idx]=0xFF;
-                   // Wait for next scan to clear shift if row 9 IS active
-                   // before clearing the shift key
-               }
-             }
-             else if (mzmodel == MZ80A) {
-               if (idx != 0) {
-                 // Wait for next strobe if a shift or CTRL key is active AND
-                 // we're not scanning row 0
-                 // 0xFE = shift, 0x7F = ctrl
-                 if ((processkey[0] == 0xFE) || (processkey[0] == 0x7F))
-                   retval=0xFF;
-               }
-               else {
-                 if ((idx == 0) && 
-                     ((processkey[0] == 0xFE) || (processkey[0] == 0x7F)))
-                   // Shift or Ctrl key has been processed
-                   processkey[idx]=0xFF;
-               }
-             }
-  #ifdef MZ700EMULATOR
-             else if (mzmodel == MZ700) {
-               // Monitor in ROM seems to handle the keyboard differently to 
-               // monitor in RAM (bank4k true).
-               extern bool bank4k;
-               if (bank4k) {
-                 if (idx < 8) {
-                   // Wait for next strobe if a shift/ctrl key is active AND
-                   // we're not scanning rows 8 or 9
-                   // 0xFE = shift, 0xBF = ctrl
-                   if ((processkey[8]==0xFE) || (processkey[8]==0xBF))
-                     retval=0xFF;
-                 } 
-                 else {
-                   if ((idx == 8) &&
-                       ((processkey[8]==0xFE) || (processkey[8]==0xBF)) &&
-                       (processkey[9]==0xFF)) 
-                     // Shift key has been processed and row 9 is NOT active
-                     processkey[idx]=0xFF;
-                     // Wait for next scan to clear shift if row 9 IS active
-                     // before clearing the shift key
-                 }
-               }
-             }
-  #endif
-#endif
+           if (mzmodel == MZ80A) {
+             // Ensure shift / ctrl keys read correctly - (re)start scan on
+             // column 0 for the MZ-80A
+             if (idx == 0) 
+               memcpy(newkey,processkey,KBDROWS);
+             retval=newkey[idx];
            }
-           else
-             retval=0xFF;                // 0xFF always returned if idx > 9
+           else {
+             // Ensure shift / ctrl keys read correctly - (re)start scan on
+             // column 8 for MZ-80K and MZ-700
+             if (idx == 8) 
+               memcpy(newkey,processkey,KBDROWS);
+             retval=newkey[idx];
+           }
+#endif
            break;
     case 2:// Read upper 4 bits from portC 
            retval=portC&0x0F;          // Lower 4 bits returned unchanged
