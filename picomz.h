@@ -3,7 +3,7 @@
 // Release 1.1 - Written November 2024
 // Release 1.2 - Written January 2025
 // Release 2.0 - Written February 2025           (MZ-80A support)
-// Release 3.0 - Written October 2025            (MZ-700 support)
+// Release 3.0 - Written October - November 2025 (MZ-700 support)
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -89,6 +89,9 @@
 #define MZ80A 2
 #define MZ700 3
 
+/* MZ cursor blink timer in ms - emulates 555/556 timer hardware */
+#define CURSOR_BLINK_TIME 300
+
 /* Sharp MZ memory locations */
 
 #define MROMSIZE        4096  //   4   Kbytes Monitor ROM
@@ -140,6 +143,8 @@
 /***************************************************/
 /*                                                 */
 /* Sharp MZ-700 memory map summary                 */
+/*                                                 */
+/* TODO                                            */
 /*                                                 */
 /***************************************************/
 

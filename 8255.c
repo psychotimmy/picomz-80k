@@ -1,5 +1,5 @@
 /* Sharp MZ-80K, MZ-80A 8255 & MZ-700 implementation */
-/*      Tim Holyoake, August 2024 - October 2025     */
+/*     Tim Holyoake, August 2024 - November 2025     */
 
 #include "picomz.h"
 
@@ -26,7 +26,9 @@ uint8_t csense=1;               /* Cassette sense toggle */
 uint8_t vblank=0;               /* /VBLANK signal */
 uint8_t vgate;                  /* /VGATE signal  - not used */
 
-static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
+static uint32_t blinktime;      /* Timer for cursor blink - susbstitutes for */
+                                /* the 555/556 timers in actual MZ hardware */
+static bool cblink=false;       /* Cursor blink (false = off, true = on) */
 
 #ifdef USBDIAGOUTPUT
   uint8_t scantimes=1;          /* How many times the keyboard matrix is */
@@ -96,16 +98,11 @@ static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 
 void wr8255(uint16_t addr, uint8_t data)
 {
-  static uint8_t ps55x=0;            // Pseudo 555/556 timer for cursor blink
   switch (addr&0x0003) {             // addr is between 0xE000 and 0xE003
     case 0:// Write to portA static
-         #ifndef MZ700EMULATOR
-           if ((data&0x80) && (++ps55x > 50)) {
-         #else
-           if ((data&0x80) && (++ps55x > 36)) {
-         #endif
-             ps55x=0;                // A simple 555/556 timer emulation 
-             ++cblink;               // Bit 7 controls cursor blink
+           if (to_ms_since_boot(get_absolute_time()) > blinktime) {
+             blinktime += CURSOR_BLINK_TIME; // 300ms on MZ-700
+             cblink=!cblink;         // Bit 7 toggle controls cursor blink
            } 
                                      // Bits 0-3 are used by keyboard
            portA=data;               // Keeps state in portA static
@@ -249,10 +246,10 @@ uint8_t rd8255(uint16_t addr)
            retval|=(cmotor?0x10:0x00); // Cassette motor (off=0x00,on=0x10)
            retval|=(cread()?0x20:0x00);// Next bit read from tape  (1=0x20)
                                        //                          (0=0x00)
-           retval|=((cblink>0x7F)?0x40:0x00); // Blink cursor
-           retval|=(vblank?0x80:0x00);        // /V-BLANK status
+           retval|=(cblink?0x40:0x00); // Blink cursor (false=off, true=on)
+           retval|=(vblank?0x80:0x00); // /V-BLANK status
            break;
-    default:// Error!
+    default:// Error - return 0xC7 (shouldn't be possible to get here)
            retval=0xC7;
            SHOW("Error: illegal address passed to rd8255 0x%04x\n",addr);
            break;
