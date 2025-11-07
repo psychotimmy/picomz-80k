@@ -237,8 +237,12 @@ void wr8253(uint16_t addr, uint8_t val)
 uint8_t rdE008(void) 
 {
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
+  // on the MZ-80K and A, and 14ms per call on the MZ-700.
   // Each time this routine is called, the return value is incremented by 1
-  sleep_ms(11);
+  if (mzmodel == MZ700)
+    sleep_ms(16);
+  else
+    sleep_ms(11);
   return(mzpit.e008call++);
 }
 
