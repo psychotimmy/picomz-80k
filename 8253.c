@@ -1,18 +1,18 @@
-/* A vastly simplified 8253 Programmable Interval Timer implementation   */
-/* Sharp MZ-80K/A emulator, Tim Holyoake, September 2024 - February 2025 */
+/*    A vastly simplified 8253 Programmable Interval Timer implementation    */
+/* Sharp MZ-80K/A/700 emulator, Tim Holyoake, September 2024 - November 2025 */
 
 #include "picomz.h"
 
-// MZ-80K/A Implementation notes
+// MZ-80K/A/700 Implementation notes
 
 // Address E007 - PIT control word. (Write only - can't read this address.)
 // This implementation ignores it entirely. The MZ-80K/A usage of the 8253 is
 // very limited and never changes, so we can safely ignore control words.
 
-// Counter 2 (address E006) MZ-80K/A clock, 1 second resolution.
+// Counter 2 (address E006) MZ-80K/A/700 clock, 1 second resolution.
 // Counts down from 43,200 seconds unless reset. At zero, triggers /INT
 // to Z80 to toggle AM/PM flag in the monitor workarea (Mode 0).
-// This is NOT initialised by the SP-1002 monitor at startup, but is used
+// This is NOT initialised by the relevant MZ monitor at startup, but is used
 // (for example) by BASIC SP-5025 to implement TI$
 
 // Counter 1 (address E005) in the real hardware is used as rate generator
@@ -21,7 +21,7 @@
 // real time clock functions.
 
 // Counter 0 (address E004) - a square wave generator (Mode 3) 
-// used to output sound at the correct frequency to the MZ-80K's
+// used to output sound at the correct frequency to the MZ-80K/A/700s
 // loudspeaker. The monitor turns sound off by default on startup 
 // by writing 0x00 to E008. If 0x01 is written to E008, sound is turned on.
 // Sound generation in this implementation relies on the pwm and alarm
@@ -38,19 +38,19 @@ typedef struct toneg {    /* Tone generator structure for sound  */
 
 static toneg picotone;         /* Tone generator global static */
 
-pit8253 mzpit;                 /* MZ-80K/A 8253 PIT global */
+pit8253 mzpit;                 /* MZ-80K/A/700 8253 PIT global */
 static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
 
-static absolute_time_t clockreset; /* Last timestamp of MZ-80K/A clock reset */
+static absolute_time_t clockreset; /* Timestamp of MZ-80K/A/700 clock reset */
 
-/***************************************************************/
-/*                                                             */
-/* Internal 8253 functions to support the Sharp MZ-80K/A clock */
-/*                                                             */
-/***************************************************************/
+/*******************************************************************/
+/*                                                                 */
+/* Internal 8253 functions to support the Sharp MZ-80K/A/700 clock */
+/*                                                                 */
+/*******************************************************************/
 void mzpico_clk_init(void)
 {
-  // Store the absoltue time in the clockreset global. The MZ-80K/A
+  // Store the absoltue time in the clockreset global. The MZ-80K/A/700
   // clock will count seconds from here.
 
   clockreset=get_absolute_time();
@@ -85,7 +85,7 @@ void pico_tone_init()
 {
   // Pins for pwm (stereo) output.
   // Initialised as picotone1 and picotone2 in picomz.c
-  // The original MZ-80K/A was mono, of course!
+  // The original MZ-80K/A/700 were mono, of course!
 
   /* Set the gpio pins for pwm sound */
   gpio_set_function(picotone1, GPIO_FUNC_PWM);
@@ -150,14 +150,14 @@ void p8253_init(void)
   pico_tone_init();
   mzpit.e008call = 0x00;   // Used as a return value when E008 is read
 
-  // MZ-80K/A time
+  // MZ-80K/A/700 time
   mzpit.counter2 = 0x0000;
   mzpit.msb2 = 0;
   mzpit.c2start = 0x0000;
 }
 
 // Note - latching is currently ignored - unlikely to be crucial to 
-// the MZ-80K/A emulator's operation
+// the MZ-80K/A/700 emulator's operation
 uint8_t rd8253(uint16_t addr) 
 {
   if (addr == 0xE006) {
@@ -196,6 +196,7 @@ void wr8253(uint16_t addr, uint8_t val)
   // E004 is used for generating tones
   if (addr == 0xE004) {
     // The 8253 on the MZ-80K/A is fed with a 1MHz pulse
+    // On the MZ-700, this pulse is 1.1088 MHz
     // A 16 bit value is sent LSB, MSB to this address to divide
     // the base frequency to get the desired frequency.
     if (!mzpit.msb0) {
@@ -206,7 +207,11 @@ void wr8253(uint16_t addr, uint8_t val)
       mzpit.counter0|=((val<<8)&0xFF00);
       mzpit.msb0=0;
       if (mzpit.counter0==0) mzpit.counter0=1;  // Avoids possible divide by 0
-      picotone.freq=1000000.0/(float)mzpit.counter0;
+      // Frequency divider for MZ-700 and MZ80K/A is different
+      if (mzmodel == MZ700)
+        picotone.freq=1108800.0/(float)mzpit.counter0;
+      else
+        picotone.freq=1000000.0/(float)mzpit.counter0;
       //SHOW("Frequency requested is %f Hz\n",picotone.freq);
     }
   }
@@ -218,7 +223,7 @@ void wr8253(uint16_t addr, uint8_t val)
     /* E006 - write the countdown value to counter 2 */
     /* This is a 16bit value, sent LSB, MSB */
     if (!mzpit.msb2) {
-      mzpico_clk_init(); // Reset the start time for the MZ-80K/A clock
+      mzpico_clk_init(); // Reset the start time for the MZ-80K/A/700 clock
       mzpit.out2=true;   // Set output pin high to allow counter to decrement
       mzpit.counter2=val;
       mzpit.msb2=1;
@@ -237,10 +242,10 @@ void wr8253(uint16_t addr, uint8_t val)
 uint8_t rdE008(void) 
 {
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
-  // on the MZ-80K and A, and 14ms per call on the MZ-700.
+  // on the MZ-80K and A, and 15ms per call on the MZ-700.
   // Each time this routine is called, the return value is incremented by 1
   if (mzmodel == MZ700)
-    sleep_ms(16);
+    sleep_ms(15);
   else
     sleep_ms(11);
   return(mzpit.e008call++);
