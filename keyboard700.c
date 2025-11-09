@@ -653,10 +653,10 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x07: processkey[8]=0xBF; //CTRL D
                  processkey[4]=0xEF; 
                  break;
-      case 0x08: processkey[8]=0xBF; //CTRL E
+      case 0x08: processkey[8]=0xBF; //CTRL E - keyboard to lower case
                  processkey[4]=0xF7;
                  break;
-      case 0x09: processkey[8]=0xBF; //CTRL F
+      case 0x09: processkey[8]=0xBF; //CTRL F - keybaord to upper case
                  processkey[4]=0xFB;
                  break;
       case 0x0a: processkey[8]=0xBF; //CTRL G
@@ -677,7 +677,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x0f: processkey[8]=0xBF; //CTRL L
                  processkey[3]=0xEF;
                  break;
-      case 0x10: processkey[8]=0xBF; //CTRL M
+      case 0x10: processkey[8]=0xBF; //CTRL M - <CR>
                  processkey[3]=0xF7;
                  break;
       case 0x11: processkey[8]=0xBF; //CTRL N
@@ -686,34 +686,34 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x12: processkey[8]=0xBF; //CTRL O
                  processkey[3]=0xFD;
                  break;
-      case 0x13: processkey[8]=0xBF; //CTRL P
+      case 0x13: processkey[8]=0xBF; //CTRL P - <DEL>
                  processkey[3]=0xFE;
                  break;
-      case 0x14: processkey[8]=0xBF; //CTRL Q
+      case 0x14: processkey[8]=0xBF; //CTRL Q - cursor down
                  processkey[2]=0x7F; 
                  break;
-      case 0x15: processkey[8]=0xBF; //CTRL R
+      case 0x15: processkey[8]=0xBF; //CTRL R - cursor up
                  processkey[2]=0xBF;
                  break;
-      case 0x16: processkey[8]=0xBF; //CTRL S
+      case 0x16: processkey[8]=0xBF; //CTRL S - cursor left
                  processkey[2]=0xDF;
                  break;
-      case 0x17: processkey[8]=0xBF; //CTRL T
+      case 0x17: processkey[8]=0xBF; //CTRL T - cursor right
                  processkey[2]=0xEF;
                  break;
-      case 0x18: processkey[8]=0xBF; //CTRL U
+      case 0x18: processkey[8]=0xBF; //CTRL U - cursor home
                  processkey[2]=0xF7;
                  break;
-      case 0x19: processkey[8]=0xBF; //CTRL V
+      case 0x19: processkey[8]=0xBF; //CTRL V - <CLR>
                  processkey[2]=0xFB;
                  break;
-      case 0x1a: processkey[8]=0xBF; //CTRL W 
+      case 0x1a: processkey[8]=0xBF; //CTRL W - <GRAPH>
                  processkey[2]=0xFD;
                  break;
-      case 0x1b: processkey[8]=0xBF; //CTRL X 
+      case 0x1b: processkey[8]=0xBF; //CTRL X - <INST>
                  processkey[2]=0xFE;
                  break;
-      case 0x1c: processkey[8]=0xBF; //CTRL Y 
+      case 0x1c: processkey[8]=0xBF; //CTRL Y - <ALPHA>
                  processkey[1]=0x7F;
                  break;
       case 0x1d: processkey[8]=0xBF; //CTRL Z

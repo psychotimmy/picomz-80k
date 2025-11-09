@@ -254,20 +254,20 @@ uint8_t rdE008(void)
 void wrE008(uint8_t data) 
 {
   uint32_t *unused;
-
-  if (data == 0) {
-    // Disable sound generation if an alarm has been set
-    if (tone_alarm) 
-      mzpico_tone_off(tone_alarm, unused);
-    return;
+  switch (data) {
+    case 0:
+            // Disable sound generation if an alarm has been set
+            if (tone_alarm) 
+              mzpico_tone_off(tone_alarm, unused);
+            break;
+    case 1:
+            // Enable sound generation
+            mzpico_tone_on();
+            break;
+    default:
+            SHOW("Error: wrE008 sound generator %d (0 or 1 expected)\n",data);
+            break;
   }
 
-  if (data == 1) {
-    // Enable sound generation
-    mzpico_tone_on();
-    return;
-  }
-    
-  SHOW("Error: wrE008 sound generator passed %d (0 or 1 expected)\n",data);
   return;
 }
