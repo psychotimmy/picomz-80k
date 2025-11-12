@@ -192,6 +192,9 @@ extern uint8_t mzuserram[URAMSIZE];
   extern uint8_t mzvram[VRAMSIZE700];
   extern uint8_t mzbank4[BANK4SIZE];
   extern uint8_t mzbank12[BANK12SIZE];
+  extern bool bank4k;
+  extern bool bank12k;
+  extern bool bank12klck;
 #else
   extern uint8_t mzvram[VRAMSIZE];
 #endif
@@ -209,12 +212,6 @@ extern uint8_t picotone2;
 /* MZ model & CGROM types */
 extern uint8_t mzmodel;
 extern bool ukrom;
-/* Memory bank swtiching for MZ-700 only
-#ifdef MZ700EMULATOR
-  extern bool bank4k;
-  extern bool bank12k;
-  extern bool bank12klck;
-#endif
 
 /* sharpcorp.c and sharpcorp700.c */
 #ifdef MZ700EMULATOR

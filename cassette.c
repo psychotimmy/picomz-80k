@@ -29,9 +29,9 @@
 //(L_L+S256_L+HDR_L+(HDR_L/8)+CHK_L+(CHK_L/8)+L_L+WSGAP_L+STM_L+L_L)*2 
 
 /* Used in mzspinny() */
-#define TCOUNTERMAX 999  /* Maximum value of tapecounter */
-#ifdef MZ700EMULATOR       /* MZ700 is 3.5MHz; 80K/A are 2.0MHz, so scale */
-  #define TCOUNTERINC 350  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
+#define TCOUNTERMAX 999    /* Maximum value of tapecounter */
+#ifdef MZ700EMULATOR       /* MZ700 is 3.54MHz; 80K/A are 2.0MHz, so scale */
+  #define TCOUNTERINC 354  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
 #else
   #define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
 #endif
@@ -43,7 +43,7 @@ uint8_t body[TAPEBODYMAXSIZE]; // Maximum storage is 47.5K - 48640 bytes
 
 static FATFS fs;         // File system pointer for sd card
 
-/* MZ-80K/A tapes always have a 128 byte header, followed by a body */
+/* MZ-80K/A/700 tapes always have a 128 byte header, followed by a body */
 
 // Tape format is as follows: 
 
@@ -127,7 +127,7 @@ FRESULT tapeinit(void)
   return(res);
 }
 
-/* Save MZ-80K/A user RAM to a file */
+/* Save MZ-80K/A/700 active memory to a file */
 FRESULT mzsavedump(void)
 {
   FIL fp;                           // File pointer
@@ -153,8 +153,6 @@ FRESULT mzsavedump(void)
   uramheader[11]= 0x9e;             // p
   uramheader[12]= 0x0d;             // <end of name>
 
-#ifndef MZ700EMULATOR
-
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res) {
@@ -166,13 +164,49 @@ FRESULT mzsavedump(void)
   f_write(&fp, uramheader, TAPEHEADERSIZE, &bw);
   SHOW("Memory dump header: %d bytes written to MZDUMP.MZF\n",bw);
 
+  // Write 'tape' contents - everything in (active) monitor space
+  // and lower 4k banked memory on MZ700
+#ifdef MZ700EMULATOR
+  f_write(&fp, mzmonitor700, MROMSIZE, &bw);
+  f_write(&fp, mzbank4, BANK4SIZE, &bw);
+  SHOW("MZ700 monitor and 4k bank written to MZDUMP.MZF\n");
+#else
+  switch (mzmodel) { 
+    case MZ80K: f_write(&fp, mzmonitor80k, MROMSIZE, &bw);
+                SHOW("MZ-80K monitor written to MZDUMP.MZF\n");
+                break;
+    case MZ80A: f_write(&fp, mzmonitor80a, MROMSIZE, &bw);
+                SHOW("MZ-80A monitor space written to MZDUMP.MZF\n");
+                break;
+    default:    SHOW("Unknown MZ model type error %d\n",mzmodel);
+                f_close(&fp);
+                return(FR_INT_ERR);      // Model check failed
+                break;
+  }
+#endif
+
   // Write 'tape' contents - everything in mzuserram 
   f_write(&fp, mzuserram, URAMSIZE, &bw); 
   SHOW("Memory dump user RAM: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Write 'tape' contents - everything in mzvram
+#ifdef MZ700EMULATOR
+  f_write(&fp, mzvram, VRAMSIZE700, &bw);
+#else
   f_write(&fp, mzvram, VRAMSIZE, &bw); 
+#endif
   SHOW("Memory dump video RAM: %d bytes written to MZDUMP.MZF\n",bw);
+
+#ifdef MZ700EMULATOR
+  // On MZ700 write everything in upper 12k banked memory
+  f_write(&fp, mzbank12, BANK12SIZE, &bw);
+  SHOW("MZ700 12k bank written to MZDUMP.MZF\n");
+
+  // Write bank status booleans
+  f_write(&fp, &bank4k, sizeof(bank4k), &bw);
+  f_write(&fp, &bank12k, sizeof(bank12k), &bw);
+  f_write(&fp, &bank12klck, sizeof(bank12klck), &bw);
+#endif
 
   // Write 'tape' contents - z80 state
   f_write(&fp, &mzcpu, sizeof(mzcpu), &bw);
@@ -185,12 +219,10 @@ FRESULT mzsavedump(void)
   // Close the file and return
   f_close(&fp);
 
-#endif
-
   return(FR_OK);
 }
 
-/* Read MZ-80K/A memory dump        */
+/* Read MZ-80K/A/700 memory dump        */
 FRESULT mzreaddump(void)
 {
   FIL fp;                           // File pointer
@@ -199,8 +231,6 @@ FRESULT mzreaddump(void)
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
   uint8_t dumpfile[11] =            // Memory dump filename
   { 'M','Z','D','U','M','P','.','M','Z','F','\0' };
-
-#ifndef MZ700EMULATOR
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
@@ -217,6 +247,27 @@ FRESULT mzreaddump(void)
     return(FR_INT_ERR);      // assertion failed
   }
 
+  // Read 'tape' contents - everything in (active) monitor space
+  // and lower 4k banked memory on MZ700
+#ifdef MZ700EMULATOR
+  f_read(&fp, mzmonitor700, MROMSIZE, &br);
+  f_read(&fp, mzbank4, BANK4SIZE, &br);
+  SHOW("MZ700 monitor and 4k bank read\n");
+#else
+  switch (mzmodel) { 
+    case MZ80K: f_read(&fp, mzmonitor80k, MROMSIZE, &br);
+                SHOW("MZ-80K monitor read\n");
+                break;
+    case MZ80A: f_read(&fp, mzmonitor80a, MROMSIZE, &br);
+                SHOW("MZ-80A monitor space read\n");
+                break;
+    default:    SHOW("Unknown MZ model type error %d\n",mzmodel);
+                f_close(&fp);
+                return(FR_INT_ERR);      // Model check failed
+                break;
+  }
+#endif
+
   // Read mzuserram
   f_read(&fp, mzuserram, URAMSIZE, &br);
   if (br != URAMSIZE) {
@@ -225,13 +276,33 @@ FRESULT mzreaddump(void)
     return(FR_INT_ERR);      // assertion failed
   }
 
-  // Read mzvram
+  // Read 'tape' contents - everything in mzvram
+#ifdef MZ700EMULATOR
+  f_read(&fp, mzvram, VRAMSIZE700, &br);
+  if (br != VRAMSIZE700) {
+    SHOW("Error on video ram read - expecting %d bytes, got %d\n",VRAMSIZE,br);
+    f_close(&fp);
+    return(FR_INT_ERR);      // assertion failed
+  }
+#else
   f_read(&fp, mzvram, VRAMSIZE, &br);
   if (br != VRAMSIZE) {
     SHOW("Error on video ram read - expecting %d bytes, got %d\n",VRAMSIZE,br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
+#endif
+
+#ifdef MZ700EMULATOR
+  // On MZ700 read everything into upper 12k banked memory
+  f_read(&fp, mzbank12, BANK12SIZE, &br);
+  SHOW("MZ700 12k bank read\n");
+
+  // Read bank status booleans
+  f_read(&fp, &bank4k, sizeof(bank4k), &br);
+  f_read(&fp, &bank12k, sizeof(bank12k), &br);
+  f_read(&fp, &bank12klck, sizeof(bank12klck), &br);
+#endif
 
   // Read z80 state
   f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
@@ -251,8 +322,6 @@ FRESULT mzreaddump(void)
 
   // Success - close file
   f_close(&fp);
-
-#endif
 
   return(FR_OK);
 }
@@ -301,7 +370,7 @@ int16_t tapeloader(int16_t n)
     return(-1);
   }
   
-  // MZ-80K/A tape headers are always 128 bytes
+  // MZ-80K/A/700 tape headers are always 128 bytes
   f_read(&fp,header,TAPEHEADERSIZE,&bytesread);
   if (bytesread != TAPEHEADERSIZE) {
     SHOW("Header error - only read %d of 128 bytes\n",bytesread);
@@ -354,7 +423,8 @@ int16_t tapeloader(int16_t n)
 
   // Type of tape is stored in the header
   // 0x01 = machine code, 0x02 = language (BASIC,Pascal etc.), 0x03 = data
-  // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K/A specific)
+  // 0x04 = zen source, 0x05 = S-BASIC on MZ700, 0x06 = Chalkwell BASIC (MZ80)
+  // 0x20 = memory dump (Pico MZ-80K/A/700 specific)
   switch (header[0]) {
     case 0x01: if (ukrom)
                  ascii2mzdisplay("Machine code",mzstr);
@@ -399,10 +469,10 @@ int16_t tapeloader(int16_t n)
                  mzemustatus[spos++]=mzstr[i];
                break;
     case 0x20: if (ukrom)
-                 ascii2mzdisplay("Pico MZ-80K/A memory dump",mzstr);
+                 ascii2mzdisplay("Pico MZ memory dump",mzstr);
                else
-                 ascii2mzdisplay("PICO MZ-80K/A MEMORY DUMP",mzstr);
-               for (uint8_t i=0; i<23; i++)
+                 ascii2mzdisplay("PICO MZ MEMORY DUMP",mzstr);
+               for (uint8_t i=0; i<19; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
     default:   if (ukrom)
@@ -494,18 +564,18 @@ void reset_tape(void)
   return;
 }
 
-/* Read an MZ-80K/A format tape one bit at a time */
-/* Pseudo finite state machine implementation     */
-/* If the header and body are read successfully   */
-/* at the first attempt, the read process ends    */
-/* and the second copy is not read. This impl.    */
-/* assumes that the first read is ALWAYS good,    */
-/* as we're using .mzf files rather than a real   */
-/* cassette tape.                                 */
+/* Read an MZ-80K/A/700 format tape one bit at a time */
+/* Pseudo finite state machine implementation         */
+/* If the header and body are read successfully       */
+/* at the first attempt, the read process ends        */
+/* and the second copy is not read. This impl.        */
+/* assumes that the first read is ALWAYS good,        */
+/* as we're using .mzf files rather than a real       */
+/* cassette tape.                                     */
 uint8_t cread(void)
 {
                              // Used to calculate the bit to output from tape
-  uint8_t bitshift;          // to the MZ-80K/A when reading the header or body
+  uint8_t bitshift;          // to the MZ when reading the header or body
   static uint16_t chkbits;   // Tracks number of long pulses sent in the header
                              // or body to enable the checksum to be calculated
                              // MUST be a 16 bit unsigned value
@@ -751,8 +821,8 @@ uint8_t cread(void)
   return(LONGPULSE);
 }
 
-/* Write an MZ-80K/A format tape one bit at a time */
-/* Pseudo finite state machine implementation      */
+/* Write an MZ-80K/A/700 format tape one bit at a time */
+/* Pseudo finite state machine implementation          */
 void cwrite(uint8_t nextbit)
 {
   /* Note: cwrite() can only ever be called if the motor and sense are on */
@@ -773,7 +843,7 @@ void cwrite(uint8_t nextbit)
   if (cwstate==0) {
     /* The first high bit has been received */
     crstate=0;               // Reset the cread() state to 0. Something odd
-                             // happens on a SAVE, as a real MZ-80K tries to
+                             // happens on a SAVE, as a real MZ tries to
                              // read the tape first. On a real machine it can't
                              // do this as 'rec' is also pressed. On this 
                              // emulator, it starts  to read any preloaded 

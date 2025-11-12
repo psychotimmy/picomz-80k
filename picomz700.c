@@ -1,5 +1,5 @@
-/* MZ-700 emulator - main program  */
-/* Tim Holyoake, October 2025      */
+/*   MZ-700 emulator - main program    */
+/* Tim Holyoake, October-November 2025 */
 
 #include "picomz.h"
 
@@ -17,12 +17,12 @@ volatile void* unusedv;
 volatile z80*  unusedz;
 
 uint8_t mzmodel;                // MZ model type - MZ700 = 3
-bool ukrom = true;              // Default is UK CGROM
+bool ukrom=true;                // Default is UK CGROM
 
-/* Memory bank switching variables */
-bool bank4k;                    // 0x0000 - 0x0FFF is ROM at switch on
-bool bank12k;                   // 0xD000 - 0xFFFF is VRAM at switch on
-bool bank12klck;                // 0xD000 - 0xFFFF not inhibited at switch on
+                                // Banked memory status
+bool bank4k=false;              // 0x0000 - 0x0FFF is ROM at switch on
+bool bank12k=false;             // 0xD000 - 0xFFFF is VRAM at switch on
+bool bank12klck=false;          // 0xD000 - 0xFFFF not inhibited at switch on
 
 /* Write a byte to RAM or an output device */
 void __not_in_flash_func 
@@ -201,11 +201,6 @@ int main(void)
   SHOW("Hello! My computer\n\n");
 
   mzmodel=MZ700;
-
-  // Set banked memory to inactive - changed by calls to sio_write
-  bank4k=false;
-  bank12k=false;
-  bank12klck=false;
 
   // Initialise MZ-700 user memory (48K) and VRAM (4K)
   memset(mzuserram,0x00,URAMSIZE);
