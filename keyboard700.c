@@ -9,10 +9,6 @@ uint8_t processkey[KBDROWS];            // Return keyboard characters
 static int16_t tfno=0;                  // Current tape file number
 static bool tfwd=true;                  // Tape direction - true = forwards
                                         // false = backwards
-static bool graphmode=false;            // ALPHA/GRAPH key for the 700 is
-                                        // built as a toggle of the USB ESC
-                                        // key, rather than assigning two
-                                        // separate keys.
 
 #define MZ_KEY_REPEAT_INIT     500   // Key held for 500ms before 1st repeat
 #define MZ_KEY_REPEAT_INTERVAL  85   // Subsequent key repeats every 85ms
@@ -247,13 +243,11 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
 
       case 0x28: processkey[0]=0xFE; //<CR>    (USB return key)
                  break;
-      case 0x29: graphmode = !graphmode; //GRAPH/ALPHA toggle on USB ESC key
-                 if (graphmode)
-                   processkey[0]=0xBF; //<GRAPH> 
-                 else
-                   processkey[0]=0xEF; //<ALPHA>
+      case 0x29: processkey[0]=0xBF; //<GRAPH> (USB ESC key)
                  break;                   
       case 0x2a: processkey[7]=0xBF; //<DEL>   (USB backspace)
+                 break;
+      case 0x2b: processkey[0]=0xEF; //<ALPHA> (USB tab key)
                  break;
       case 0x2c: processkey[6]=0xEF; //<SPACE>
                  break;
@@ -565,6 +559,12 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x27: processkey[8]=0xFE; //)
                  processkey[6]=0xFB;
+                 break;
+      case 0x29: processkey[8]=0xFE; //<SHIFT><GRAPH> (shifted USB ESC key)
+                 processkey[0]=0xBF;                                 
+                 break;                   
+      case 0x2b: processkey[8]=0xFE; //<SHIFT><ALPHA> (shifted USB tab key)
+                 processkey[0]=0xEF;
                  break;
       case 0x2d: processkey[8]=0xFE; //(USB underscore _ = MZ700 pi)
                  processkey[6]=0xF7;
