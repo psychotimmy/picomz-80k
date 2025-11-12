@@ -614,7 +614,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x42: //USB shift F9 = MZ-700 shift F5
                  processkey[8]=0xFE;
-                 processkey[9]=0x7F;
+                 processkey[9]=0xF7;
                  break;
 
       case 0x51: processkey[8]=0xFE; //shifted cursor down
