@@ -27,6 +27,12 @@ static bool numlock;                 // Numlock key status
 static bool numlock_prev_rpt=false;  // Numlock pressed in previous report
 static bool numlock_this_rpt=false;  // Numlock pressed in this report
 
+static bool alphashift;              // ALPHA key shifted status
+static bool alpha_prev_rpt=false;    // Shift=lower case as per MZ-700 keyboard
+static bool alpha_this_rpt=false;
+
+static bool graphmode=false;         // Keep track of GRAPH mode activation
+
 // Used to send a repeating key to the MZ-700
 // and set status of NUM LOCK led
 void mzrptkey(void)
@@ -78,6 +84,32 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
       kleds_now &= ~KEYBOARD_LED_NUMLOCK;
   }
   numlock_prev_rpt=numlock_this_rpt;  // Save this status
+
+  // Did the status of the Caps Lock key change ?
+  if (report->keycode[0] == 0x39)
+    alpha_this_rpt=true;
+  else
+    alpha_this_rpt=false;
+
+  if (alpha_this_rpt && !alpha_prev_rpt) {
+    if (!graphmode) {
+      alphashift = !alphashift;      // Toggle CAPS Lock key
+                                     // alphashift == true == lower case (!)
+      if (alphashift)                // Change CAPS Lock LED
+        kleds_now &= ~KEYBOARD_LED_CAPSLOCK;
+      else
+        kleds_now |= KEYBOARD_LED_CAPSLOCK;
+    }
+    else {
+      graphmode = false;
+      alphashift = !alphashift;      // Toggle CAPS Lock key
+                                     // alphashift == true == lower case (!)
+      if (alphashift)                // Change CAPS Lock LED
+        kleds_now &= ~KEYBOARD_LED_CAPSLOCK;
+      else
+        kleds_now |= KEYBOARD_LED_CAPSLOCK;
+    }
+  }
    
   // Ignore anything less than 0x04 - no key, error conditions etc.
   if (report->keycode[0] > 0x03) {
@@ -122,12 +154,13 @@ void tuh_hid_mount_cb(uint8_t addr, uint8_t inst,
     toggle=!toggle;
   } 
 
-  // Set NUM LOCK ON to start with on the MZ-700
-  kleds_now=KEYBOARD_LED_NUMLOCK;
+  // Set NUM LOCK and CAPS LOCK ON to start with on the MZ-700
+  kleds_now=KEYBOARD_LED_NUMLOCK|KEYBOARD_LED_CAPSLOCK;
   tuh_hid_set_report(kaddr, kinst, 0, HID_REPORT_TYPE_OUTPUT, 
                      &kleds_now, sizeof(kleds_now));
   kleds_prev=kleds_now;
   numlock=true;
+  alphashift=false;
 
   return;
 }
@@ -243,11 +276,10 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
 
       case 0x28: processkey[0]=0xFE; //<CR>    (USB return key)
                  break;
-      case 0x29: processkey[0]=0xBF; //<GRAPH> (USB ESC key)
-                 break;                   
       case 0x2a: processkey[7]=0xBF; //<DEL>   (USB backspace)
                  break;
-      case 0x2b: processkey[0]=0xEF; //<ALPHA> (USB tab key)
+      case 0x2b: processkey[0]=0xBF; //<GRAPH> (USB tab key)
+                 graphmode=true;     //If true, CAPS LOCK always sets ALPHA
                  break;
       case 0x2c: processkey[6]=0xEF; //<SPACE>
                  break;
@@ -276,6 +308,11 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x37: processkey[6]=0xFE; //.
                  break;
       case 0x38: processkey[7]=0xFE; ///
+                 break;
+      case 0x39: // CAPS LOCK = TOGGLE ALPHA / SHIFT ALPHA unless exiting GRAPH
+                 //if (!graphmode)
+                   processkey[8]=0xFE;
+                 processkey[0]=0xEF;
                  break;
 
       case 0x3a: //F1 - Not mapped to a MZ-700 key
@@ -560,12 +597,6 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x27: processkey[8]=0xFE; //)
                  processkey[6]=0xFB;
                  break;
-      case 0x29: processkey[8]=0xFE; //<SHIFT><GRAPH> (shifted USB ESC key)
-                 processkey[0]=0xBF;                                 
-                 break;                   
-      case 0x2b: processkey[8]=0xFE; //<SHIFT><ALPHA> (shifted USB tab key)
-                 processkey[0]=0xEF;
-                 break;
       case 0x2d: processkey[8]=0xFE; //(USB underscore _ = MZ700 pi)
                  processkey[6]=0xF7;
                  break;
@@ -709,6 +740,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x1a: processkey[8]=0xBF; //CTRL W - <GRAPH>
                  processkey[2]=0xFD;
+                 graphmode=true;     //If true, CAPS LOCK always sets ALPHA
                  break;
       case 0x1b: processkey[8]=0xBF; //CTRL X - <INST>
                  processkey[2]=0xFE;
