@@ -29,9 +29,8 @@ void __not_in_flash_func
      (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
 {
   /* Write to 0x0000 - 0x0FFF only if RAM has been switched in */
-  if (addr < 0x1000) {
-    if (bank4k)
-      mzbank4[addr] = value;
+  if ((addr < 0x1000) && (bank4k)) {
+    mzbank4[addr] = value;
     return;
   }
 
