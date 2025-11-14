@@ -76,7 +76,7 @@ static FATFS fs;         // File system pointer for sd card
 // l - 1 long pulse
 
 /* Update the tape counter in the emulator status area, line 3 */
-void mzspinny(uint8_t state)
+void __not_in_flash_func (mzspinny) (uint8_t state)
 {
   uint8_t spos=EMULINE3;            // Write to fourth emulator status line
   static uint16_t spinny=0;         // Used to reset the tape counter
@@ -169,7 +169,6 @@ FRESULT mzsavedump(void)
 #ifdef MZ700EMULATOR
   f_write(&fp, mzmonitor700, MROMSIZE, &bw);
   f_write(&fp, mzbank4, BANK4SIZE, &bw);
-  SHOW("MZ700 monitor and 4k bank written to MZDUMP.MZF\n");
 #else
   switch (mzmodel) { 
     case MZ80K: f_write(&fp, mzmonitor80k, MROMSIZE, &bw);
@@ -200,7 +199,6 @@ FRESULT mzsavedump(void)
 #ifdef MZ700EMULATOR
   // On MZ700 write everything in upper 12k banked memory
   f_write(&fp, mzbank12, BANK12SIZE, &bw);
-  SHOW("MZ700 12k bank written to MZDUMP.MZF\n");
 
   // Write bank status booleans
   f_write(&fp, &bank4k, sizeof(bank4k), &bw);
@@ -234,15 +232,14 @@ FRESULT mzreaddump(void)
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
-  if (res) {
-    SHOW("Error on file open for MZDUMP.MZF, status is %d\n",res);
+  // An error has occured if res is non-zero
+  if (res) 
     return(res);
-  }
+  
 
   // Read the header - check it's what we're expecting
   f_read(&fp,uramheader,TAPEHEADERSIZE,&br);
   if (uramheader[0] != 0x20) {
-    SHOW("Error on header read - expecting type 0x20\n");
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -252,18 +249,15 @@ FRESULT mzreaddump(void)
 #ifdef MZ700EMULATOR
   f_read(&fp, mzmonitor700, MROMSIZE, &br);
   f_read(&fp, mzbank4, BANK4SIZE, &br);
-  SHOW("MZ700 monitor and 4k bank read\n");
 #else
   switch (mzmodel) { 
     case MZ80K: f_read(&fp, mzmonitor80k, MROMSIZE, &br);
-                SHOW("MZ-80K monitor read\n");
                 break;
     case MZ80A: f_read(&fp, mzmonitor80a, MROMSIZE, &br);
-                SHOW("MZ-80A monitor space read\n");
                 break;
-    default:    SHOW("Unknown MZ model type error %d\n",mzmodel);
+    default:    //MZ model check failed
                 f_close(&fp);
-                return(FR_INT_ERR);      // Model check failed
+                return(FR_INT_ERR);
                 break;
   }
 #endif
@@ -271,7 +265,6 @@ FRESULT mzreaddump(void)
   // Read mzuserram
   f_read(&fp, mzuserram, URAMSIZE, &br);
   if (br != URAMSIZE) {
-    SHOW("Error on userram read - expecting %d bytes, got %d\n",URAMSIZE,br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -280,14 +273,12 @@ FRESULT mzreaddump(void)
 #ifdef MZ700EMULATOR
   f_read(&fp, mzvram, VRAMSIZE700, &br);
   if (br != VRAMSIZE700) {
-    SHOW("Error on video ram read - expecting %d bytes, got %d\n",VRAMSIZE,br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
 #else
   f_read(&fp, mzvram, VRAMSIZE, &br);
   if (br != VRAMSIZE) {
-    SHOW("Error on video ram read - expecting %d bytes, got %d\n",VRAMSIZE,br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -296,7 +287,6 @@ FRESULT mzreaddump(void)
 #ifdef MZ700EMULATOR
   // On MZ700 read everything into upper 12k banked memory
   f_read(&fp, mzbank12, BANK12SIZE, &br);
-  SHOW("MZ700 12k bank read\n");
 
   // Read bank status booleans
   f_read(&fp, &bank4k, sizeof(bank4k), &br);
@@ -307,7 +297,6 @@ FRESULT mzreaddump(void)
   // Read z80 state
   f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
   if (br != sizeof(mzcpu)) {
-    SHOW("Error on z80 read - expecting %d bytes, got %d\n",sizeof(mzcpu),br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -315,7 +304,6 @@ FRESULT mzreaddump(void)
   // Read 8253 state
   f_read(&fp, &mzpit, sizeof(mzpit), &br);
   if (br != sizeof(mzpit)) {
-    SHOW("Error on 8253 read - expecting %d bytes, got %d\n",sizeof(mzpit),br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -337,10 +325,10 @@ int16_t tapeloader(int16_t n)
   uint8_t mzstr[25];
 
   res=f_opendir(&dp,"/");	/* Open the root directory on the sd card */
-  if (res) {
-    SHOW("Error on directory open for /, status is %d\n",res);
+  //Error on opening root directory if res is non-zero
+  if (res) 
     return(-1);
-  }
+  
 
   // If we're passed a number less than 0, use 0 (first file).
   if (n < 0) 
@@ -352,7 +340,6 @@ int16_t tapeloader(int16_t n)
     if (res != FR_OK || fno.fname[0] == 0) {
       /* We're at the end of the tape or an error has happened */
       /* Return with no change to the preloaded file */
-      SHOW("End of tape, status is %d\n",res);
       f_closedir(&dp);
       return(-1);
     }
@@ -485,14 +472,13 @@ int16_t tapeloader(int16_t n)
   }
 
   // We've read the tape successfully if we get here
-  SHOW("Successful preload of %s\n",fno.fname);
   f_close(&fp);
 
   return(n);     /* Return the file number loaded - matches requested */
 }
 
 /* Write a new file to sd card 'tape'                             */
-void tapewriter(void)
+void __not_in_flash_func (tapewriter) (void)
 {
   uint8_t sharpfilelen=0;
   uint8_t sdfilename[22];  // sdfilename needs 1 more char than
@@ -505,7 +491,6 @@ void tapewriter(void)
   FIL fp;
 
   SHOW("In tapewriter()\n");
-  SHOW("Convert Sharp tape file name to sensible ASCII\n");
 
   // Sharp tape file name is up to 17 characters stored in header[1]
   // to header[17]. If less than 17 characters, name ends with 0x0D
@@ -552,7 +537,7 @@ void tapewriter(void)
 /* Resets the tape state machines. Called at the */
 /* end of a successful read or write, or if the  */
 /* BREAK key is pressed to abort.                */
-void reset_tape(void)
+void __not_in_flash_func (reset_tape) (void)
 {
   crstate=0;
   cwstate=0;
@@ -823,7 +808,7 @@ uint8_t cread(void)
 
 /* Write an MZ-80K/A/700 format tape one bit at a time */
 /* Pseudo finite state machine implementation          */
-void cwrite(uint8_t nextbit)
+void __not_in_flash_func (cwrite) (uint8_t nextbit)
 {
   /* Note: cwrite() can only ever be called if the motor and sense are on */
 

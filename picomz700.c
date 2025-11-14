@@ -16,8 +16,8 @@ z80 mzcpu;                      // Z80 CPU context
 volatile void* unusedv;
 volatile z80*  unusedz;
 
-uint8_t mzmodel;                // MZ model type - MZ700 = 3
-bool ukrom=true;                // Default is UK CGROM
+uint8_t mzmodel=MZ700;          // MZ model type - MZ700 = 3
+bool ukrom=true;                // UK CGROM only at present on MZ-700
 
                                 // Banked memory status
 bool bank4k=false;              // 0x0000 - 0x0FFF is ROM at switch on
@@ -167,7 +167,6 @@ void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 uint8_t sio_read(z80* unusedz, uint8_t addr)
 {
   /* Not used by MZ-700, so should never get here */
-  SHOW("Error: In sio_read at 0x%04x\n",addr);
   return(0);
 }
 
@@ -197,11 +196,6 @@ int main(void)
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
-  SHOW("\nHello! My friend\n");
-  SHOW("Hello! My computer\n\n");
-
-  mzmodel=MZ700;
-
   // Initialise MZ-700 user memory (48K) and VRAM (4K)
   memset(mzuserram,0x00,URAMSIZE);
   memset(mzvram,0x00,VRAMSIZE700);
@@ -217,7 +211,6 @@ int main(void)
   // Check for I2C capability on RC2014 RP2040 VGA board
   init_i2c_bus();
   if (has_pca9536(i2c_bus)) {
-    SHOW("PCA9536 detected\n");
     pca9536_output_reset(i2c_bus,0b0011); // preinitialize output at LOW
     pca9536_setup_io(i2c_bus,IO_0,IO_MODE_OUT); // USB_POWER
     pca9536_setup_io(i2c_bus,IO_1,IO_MODE_OUT); // ACTIVE BUZZER (not used)
@@ -232,7 +225,6 @@ int main(void)
     picotone2=24;
   }
   else {
-    SHOW("PCA9536 NOT detected\n");
     deinit_i2c_bus();
     // Note that speaker will be attached to GPIOs 18/19 if a Pico-based
     // RC2014 VGA terminal with an sd card backpack is used - define
@@ -248,7 +240,6 @@ int main(void)
 
   // Initialise 8253 PIT
   p8253_init();
-  SHOW("8253 PIT initialised\n");
 
   // Initialise the Z80 processor
   z80_init(&mzcpu);
@@ -257,14 +248,11 @@ int main(void)
   mzcpu.port_in = sio_read;
   mzcpu.port_out = sio_write;
   mzcpu.pc = 0x0000;
-  SHOW("Z80 processor initialised\n");
 
   // Initialise USB keyboard
   memset(processkey,0xFF,KBDROWS);
 
   tusb_init();
-
-  SHOW("USB keyboard connected\n");
 
   mzpicoled(0);
 
@@ -272,7 +260,6 @@ int main(void)
   FRESULT tapestatus;
   tapestatus=tapeinit(); 
   if (tapestatus != FR_OK) {
-    SHOW("Error: sd card failed to initialise\n");
     // We've been unable to mount the sd card, so signal this with
     // 1s long pulses on the pico led. Emulator will need restarting
     // as without the sd card it's not much use!
@@ -284,7 +271,6 @@ int main(void)
       mzpicoled(toggle);
     }
   }
-  SHOW("microSD card mounted ok\n");
 
   // Define pixel colours - 8 used by the MZ-700
   colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
@@ -298,7 +284,6 @@ int main(void)
 
   // Start VGA output on the second core
   multicore_launch_core1(vga_main);
-  SHOW("VGA output started on second core\n\n");
 
   // Main emulator loop
 

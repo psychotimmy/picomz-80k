@@ -12,6 +12,11 @@ static bool tfwd=true;                  // Tape direction - true = forwards
 
 #define MZ_KEY_REPEAT_INIT     500   // Key held for 500ms before 1st repeat
 #define MZ_KEY_REPEAT_INTERVAL  85   // Subsequent key repeats every 85ms
+                                     // Only applies to USB keyboard repeats -
+                                     // how the MZ-700 handles this depends on
+                                     // if the ROM monitor (no repeating keys)
+                                     // or S-BASIC RAM monitor (repeating keys)
+                                     // is active.
 
 static uint8_t  rptcode;             // Store (possible) repeating key code
 static uint8_t  rptmodifier;         // Store (possible) repeating modfier

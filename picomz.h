@@ -209,7 +209,7 @@ extern uint8_t picotone2;
   extern uint16_t whitepix;
   extern uint16_t blackpix;
 #endif
-/* MZ model & CGROM types */
+/* MZ model and CGROM types - UK/Japanese on MZ-80K only at present */
 extern uint8_t mzmodel;
 extern bool ukrom;
 
