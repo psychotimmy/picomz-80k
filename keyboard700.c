@@ -32,6 +32,7 @@ static bool alpha_prev_rpt=false;    // Shift=lower case as per MZ-700 keyboard
 static bool alpha_this_rpt=false;
 
 static bool graphmode=false;         // Keep track of GRAPH mode activation
+static bool resetalpha=false;        // true when moving from GRAPH to ALPHA
 
 // Used to send a repeating key to the MZ-700
 // and set status of NUM LOCK led
@@ -102,12 +103,11 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
     }
     else {
       graphmode = false;
-      alphashift = !alphashift;      // Toggle CAPS Lock key
+      resetalpha = true;             // Signal move from GRAPH to ALPHA
+      alphashift = false;            // CAPS LOCK key reset to upper case
                                      // alphashift == true == lower case (!)
-      if (alphashift)                // Change CAPS Lock LED
-        kleds_now &= ~KEYBOARD_LED_CAPSLOCK;
-      else
-        kleds_now |= KEYBOARD_LED_CAPSLOCK;
+                                     // Change CAPS Lock LED
+      kleds_now |= KEYBOARD_LED_CAPSLOCK;
     }
   }
    
@@ -161,6 +161,7 @@ void tuh_hid_mount_cb(uint8_t addr, uint8_t inst,
   kleds_prev=kleds_now;
   numlock=true;
   alphashift=false;
+  resetalpha=false;
 
   return;
 }
@@ -310,8 +311,9 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x38: processkey[7]=0xFE; ///
                  break;
       case 0x39: // CAPS LOCK = TOGGLE ALPHA / SHIFT ALPHA unless exiting GRAPH
-                 //if (!graphmode)
+                 if ((!graphmode) && (!resetalpha))
                    processkey[8]=0xFE;
+                 resetalpha=false;   // Always set false when CAPS LOCK pressed
                  processkey[0]=0xEF;
                  break;
 
