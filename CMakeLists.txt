@@ -50,6 +50,18 @@
         miscfuncs.c
   )
 
+  add_executable(picomz-700-rc2014
+	picomz700.c
+        sharpcorp700.c
+	keyboard700.c
+        vgadisplay700.c
+        8255.c
+        8253.c
+        cassette.c
+        miscfuncs.c
+        pca9536.c
+  )
+
   add_executable(picomz-80ka-diag-pimoroni
 	picomz.c
         sharpcorp.c
@@ -76,6 +88,11 @@
       ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
+  target_include_directories(picomz-700-rc2014
+  PRIVATE 
+      ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
   target_compile_definitions(picomz-80ka-rc2014
   PRIVATE
       RC2014VGA=1
@@ -93,6 +110,17 @@
       PLL_SYS_VCO_FREQ_HZ=1200000000
       PLL_SYS_POSTDIV1=6
       PLL_SYS_POSTDIV2=1
+      PICO1=1
+      MZ700EMULATOR=1
+  )
+
+  target_compile_definitions(picomz-700-rc2014
+  PRIVATE
+      PLL_SYS_REFDIV=1
+      PLL_SYS_VCO_FREQ_HZ=1200000000
+      PLL_SYS_POSTDIV1=6
+      PLL_SYS_POSTDIV2=1
+      RC2014VGA=1
       PICO1=1
       MZ700EMULATOR=1
   )
@@ -121,6 +149,8 @@
   
   target_link_libraries(picomz-700-pimoroni zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
 
+  target_link_libraries(picomz-700-rc2014 zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_i2c hardware_pwm hardware_pio hardware_gpio tinyusb_host tinyusb_board)
+
   target_link_libraries(picomz-80ka-diag-pimoroni zazu80 fatfs sdcard pico_stdlib pico_util pico_multicore pico_scanvideo_dpi pico_time hardware_pwm hardware_pio hardware_gpio)
 
   pico_enable_stdio_usb(picomz-80ka-diag-pimoroni 1)
@@ -129,6 +159,7 @@
   pico_add_extra_outputs(picomz-80ka-rc2014)
   pico_add_extra_outputs(picomz-80ka-pimoroni)
   pico_add_extra_outputs(picomz-700-pimoroni)
+  pico_add_extra_outputs(picomz-700-rc2014)
   pico_add_extra_outputs(picomz-80ka-diag-pimoroni)
 
 else()
