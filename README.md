@@ -1,7 +1,7 @@
 # Pico MZ 
 ## A Sharp MZ-80K, MZ-80A and MZ-700 Emulator for the Raspberry Pico and Pico 2 Microcontrollers
 
-A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K, MZ-80A and MZ-700 utilising any of the Pimoroni VGA demo base, RC2014 RP2040 VGA card or RC2014 Pi Pico VGA card.
+A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K, MZ-80A and MZ-700. It makes use of a Pimoroni VGA demo base, RC2014 Pi Pico VGA card or the RC2014 RP2040 VGA card.
 
 ## Documentation
 
