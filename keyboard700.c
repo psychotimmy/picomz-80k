@@ -195,7 +195,6 @@ void tuh_hid_umount_cb(uint8_t addr, uint8_t inst)
   return;
 }
 
-/* Real USB Keyboard - used by non-diagnostic versions               */
 /* Convert USB HID key press to the MZ-700 keyboard map,             */
 /* then store in the processkey[] global (read on portB by the 8255) */
 void mzhidmapkey700(uint8_t usbk0, uint8_t modifier) 

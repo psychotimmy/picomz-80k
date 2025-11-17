@@ -515,9 +515,10 @@ void __not_in_flash_func (tapewriter) (void)
   return;
 }
 
-/* Resets the tape state machines. Called at the */
-/* end of a successful read or write, or if the  */
-/* BREAK key is pressed to abort.                */
+/* Resets the tape state machines. Called at the  */
+/* end of a successful read or write, or if SHIFT */
+/* BREAK is pressed to abort, or if the reset key */
+/* is pressed on the MZ-80A / MZ-700.             */
 void __not_in_flash_func (reset_tape) (void)
 {
   crstate=0;
@@ -530,7 +531,7 @@ void __not_in_flash_func (reset_tape) (void)
   return;
 }
 
-/* Read an MZ-80K/A/700 format tape one bit at a time */
+/* Read a MZ-80K/A/700 format tape one bit at a time  */
 /* Pseudo finite state machine implementation         */
 /* If the header and body are read successfully       */
 /* at the first attempt, the read process ends        */
@@ -777,8 +778,8 @@ uint8_t cread(void)
   return(LONGPULSE);
 }
 
-/* Write an MZ-80K/A/700 format tape one bit at a time */
-/* Pseudo finite state machine implementation          */
+/* Write a MZ-80K/A/700 format tape one bit at a time */
+/* Pseudo finite state machine implementation         */
 void __not_in_flash_func (cwrite) (uint8_t nextbit)
 {
   /* Note: cwrite() can only ever be called if the motor and sense are on */

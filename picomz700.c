@@ -189,8 +189,7 @@ int main(void)
 
   stdio_init_all();
 
-  busy_wait_ms(1000);              // Wait for inits to complete before
-                                   // outputting diagnostics etc.
+  busy_wait_ms(250);               // Wait for inits to complete
 
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);

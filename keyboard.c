@@ -255,7 +255,6 @@ void tuh_hid_umount_cb(uint8_t addr, uint8_t inst)
   return;
 }
 
-/* Real USB Keyboard - used by non-diagnostic versions               */
 /* Convert USB HID key press to the MZ-80K keyboard map,             */
 /* then store in the processkey[] global (read on portB by the 8255) */
 void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier) 
@@ -416,9 +415,6 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
       case 0x3f: //F6 - Not mapped to a MZ-80K key
                  ukrom=!ukrom;            // Toggle between UK and JP CGROM
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
-                 break;
-
-      case 0x42: //F9 - no. times keymatrix scanned. Not used in std versions
                  break;
 
       case 0x44: mzreaddump();            //F11 - read memory dump
@@ -836,7 +832,7 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
     }
   }
 
-  /* Misc ctrl USB keys to maintain compatibility with diag version */
+  /* Misc ctrl USB keys */
   if ((modifier == 0x01) || (modifier == 0x10)) {
     switch (usbk0) {
 
@@ -855,7 +851,6 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
   return;
 }
 
-/* Real USB Keyboard - used by non-diagnostic versions               */
 /* Convert USB HID key press to the MZ-80A keyboard map,             */
 /* then store in the processkey[] global (read on portB by the 8255) */
 void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier) 
