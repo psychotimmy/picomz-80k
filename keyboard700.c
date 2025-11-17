@@ -376,7 +376,9 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
 
       case 0x43: mzcpu.pc=0x0000;         //F10 - MZ-700 reset button
-                 // TODO: Banked memory ??
+                 // Reset only resets the program counter to 0x0000
+                 // Ctrl reset is required to reset banked memory as well
+                 // ... the equivalent of a power off / power on.
                  reset_tape(); 
                  break;
       case 0x44: mzreaddump();            //F11 - read memory dump
@@ -757,6 +759,14 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x1d: processkey[8]=0xBF; //CTRL Z
                  processkey[1]=0xBF;
+                 break;
+      case 0x43: mzcpu.pc=0x0000;         //F10 - MZ-700 reset button
+                 // Reset only resets the program counter to 0x0000
+                 // Ctrl reset is required to reset banked memory as well
+                 // ... the equivalent of a power off / power on.
+                 z80* unusedz;
+                 sio_write(unusedz,0xE4,0);
+                 reset_tape(); 
                  break;
 
       default:   break;

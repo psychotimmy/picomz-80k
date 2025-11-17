@@ -195,6 +195,7 @@ extern uint8_t mzuserram[URAMSIZE];
   extern bool bank4k;
   extern bool bank12k;
   extern bool bank12klck;
+  extern void sio_write(z80*, uint8_t, uint8_t);
 #else
   extern uint8_t mzvram[VRAMSIZE];
 #endif
