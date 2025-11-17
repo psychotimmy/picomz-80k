@@ -11,23 +11,17 @@ Full user and systems documentation is provided in the [documentation subdirecto
 
 Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed.
 
+### MZ-80K and MZ-80A
+
 Flash one of:
 
-MZ-80K and MZ-80A: **picomz-80ka-pimoroni.uf2** (standard version) or **picomz-80ka-diag-pimoroni.uf2** (diag version) for a Pico mounted on a Pimoroni VGA demo base
+**picomz-80ka-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
 
-MZ-700: **picomz-700-pimoroni.uf2** (standard version) for a Pico mounted on a Pimoroni VGA demo base
+**picomz-80ka-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
 
-MZ-80K and MZ-80A: **pico2mz-80ka-pimoroni.uf2** (standard version) or **pico2mz-80ka-diag-pimoroni.uf2** (diag version) for a Pico 2 mounted on a Pimoroni VGA demo base
+**pico2mz-80ka-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
 
-![A picture of a Pimoroni VGA demo base with a Raspberry Pico (with headers) installed.](https://z80.timholyoake.uk/wp-content/uploads/2024/09/20240905_101721-1024x633.jpg)
-
-MZ-80K and MZ-80A: **picomz-80ka-rc2014.uf2** (standard version) for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
-
-![A picture of a RC2014 RP2040 VGA terminal card on a backplane 8](https://z80.timholyoake.uk/wp-content/uploads/2025/01/20250110_093313-1024x642.jpg)
-
-**MZ-80K / MZ-80A versions**
-
-When a USB keyboard (standard versions) or terminal emulator (diag versions) plus a VGA display is connected, you will see:
+When a USB keyboard plus a VGA display is connected, you will see:
 
 **  MONITOR SP-1002  **
 
@@ -45,7 +39,13 @@ To boot the emulator into MZ-80A mode, press and hold the 'A' button on your Pic
 
 is displayed on the screen.
 
-**MZ-700 versions**
+### MZ-700
+
+Flash one of:
+
+**picomz-700-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
+
+**pico2mz-700-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
 
 When a USB keyboard plus a VGA display is connected, you will see:
 
@@ -53,23 +53,23 @@ When a USB keyboard plus a VGA display is connected, you will see:
 
 \*
 
-**All versions** 
+### All versions 
 
-If the Pico's green led (or RC2014 RP2040 VGA card's white led) is flashing quickly (200ms between flashes), this means that a USB keyboard has not been connected or recognised via a terminal emulator. 
+If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing quickly (200ms between flashes), this means that a USB keyboard has not been connected. 
 
-If the Pico's green led (or RC2014 RP2040 VGA card's while led) is flashing slowly (1s between flashes), then your microSD card cannot be read.
+If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing slowly (1s between flashes), then your microSD card cannot be read.
 
-If either of these error conditions occur, the emulator will not display the monitor prompt until the problem is resolved. 
+If **either** of these error conditions occur, **the Pico MZ will not display the monitor prompt until the problem is resolved.** 
 
 To find a file to load from the microSD card, use the F1 key to browse its contents forwards, F2 to go backwards. 
 
 ## Brief developer notes
 
-The current Pico SDK 2.2.0 master branch (latest stable) works with Pico MZ version 3.0.0
+Pico MZ version 3.0.0 works with the current Pico SDK 2.2.0 master branch (latest stable)
 
-(Pico SDK 2.1.x works with releases 1.1.0 to 2.0.1 of Pico MZ-80K/A. Earlier releases use Pico SDK 1.5.1)
+(Pico MZ versions 1.1.0 to 2.0.1 work with Pico SDK 2.1.x. Earlier releases use Pico SDK 1.5.1)
 
-### Release chronology
+### Release highlights
 
 Release 1.1.0 introduced Pico 2 support.
 
@@ -92,8 +92,8 @@ CMake (version 3.13 or later) and a gcc cross compiler.
    sudo apt install cmake
    sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
 ```   
-The Pico MZ emulator relies on the latest stable release of the Raspberry Pico SDK. This and
-the Pico Extras repository must be available on your computer if you wish to compile the emulator.
+The Pico MZ relies on the latest stable release of the Raspberry Pico SDK. This, along with
+the Pico Extras repository must be available on your computer if you wish to re-compile the emulator.
 
 Assuming that you are already in the subdirectory in which you wish to install the Pico SDK, Pico Extras 
 and Pico MZ repositories, issue the commands:
@@ -138,4 +138,4 @@ There should now be four (Pico) or two (Pico 2) .uf2 files in your build directo
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 29th October 2025.
+### This README was last updated on 17th November 2025.
