@@ -156,13 +156,11 @@ FRESULT mzsavedump(void)
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res) {
-    SHOW("Error on file open for MZDUMP.MZF, status is %d\n",res);
     return(res);
   }
 
   // Write the 'tape' header
   f_write(&fp, uramheader, TAPEHEADERSIZE, &bw);
-  SHOW("Memory dump header: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Write 'tape' contents - everything in (active) monitor space
   // and lower 4k banked memory on MZ700
@@ -172,13 +170,10 @@ FRESULT mzsavedump(void)
 #else
   switch (mzmodel) { 
     case MZ80K: f_write(&fp, mzmonitor80k, MROMSIZE, &bw);
-                SHOW("MZ-80K monitor written to MZDUMP.MZF\n");
                 break;
     case MZ80A: f_write(&fp, mzmonitor80a, MROMSIZE, &bw);
-                SHOW("MZ-80A monitor space written to MZDUMP.MZF\n");
                 break;
-    default:    SHOW("Unknown MZ model type error %d\n",mzmodel);
-                f_close(&fp);
+    default:    f_close(&fp);
                 return(FR_INT_ERR);      // Model check failed
                 break;
   }
@@ -186,7 +181,6 @@ FRESULT mzsavedump(void)
 
   // Write 'tape' contents - everything in mzuserram 
   f_write(&fp, mzuserram, URAMSIZE, &bw); 
-  SHOW("Memory dump user RAM: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Write 'tape' contents - everything in mzvram
 #ifdef MZ700EMULATOR
@@ -194,7 +188,6 @@ FRESULT mzsavedump(void)
 #else
   f_write(&fp, mzvram, VRAMSIZE, &bw); 
 #endif
-  SHOW("Memory dump video RAM: %d bytes written to MZDUMP.MZF\n",bw);
 
 #ifdef MZ700EMULATOR
   // On MZ700 write everything in upper 12k banked memory
@@ -208,11 +201,9 @@ FRESULT mzsavedump(void)
 
   // Write 'tape' contents - z80 state
   f_write(&fp, &mzcpu, sizeof(mzcpu), &bw);
-  SHOW("Memory dump z80 cpu state: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Write 'tape' contents - 8253 state
   f_write(&fp, &mzpit, sizeof(mzpit), &bw);
-  SHOW("Memory dump 8253 state: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Close the file and return
   f_close(&fp);
@@ -344,7 +335,7 @@ int16_t tapeloader(int16_t n)
       return(-1);
     }
     if (fno.fattrib & AM_DIR)    /* All subdirectories ignored at present */
-      SHOW("Ignoring directory %s\n",fno.fname);
+      ;
     else 
       ++dc;                      /* Increment the file count */
   }
@@ -353,14 +344,12 @@ int16_t tapeloader(int16_t n)
   // We now have the next file on the tape - preload it
   res=f_open(&fp,fno.fname,FA_READ|FA_OPEN_EXISTING);
   if (res) {
-    SHOW("Error on file open for %s, status is %d\n",fno.fname,res);
     return(-1);
   }
   
   // MZ-80K/A/700 tape headers are always 128 bytes
   f_read(&fp,header,TAPEHEADERSIZE,&bytesread);
   if (bytesread != TAPEHEADERSIZE) {
-    SHOW("Header error - only read %d of 128 bytes\n",bytesread);
     f_close(&fp);
     return(-1);
   }
@@ -368,10 +357,8 @@ int16_t tapeloader(int16_t n)
   // Work out how many bytes to read from the header - stored in
   // locations header[19] and header[18] (msb, lsb)
   bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  SHOW("Tape body length for tape %d is %d\n",n,bodybytes);
   f_read(&fp,body,bodybytes,&bytesread);
   if (bytesread != bodybytes) {
-    SHOW("Body error - only read %d of %d bytes\n",bytesread,bodybytes);
     f_close(&fp);
     return(-1);
   }
@@ -490,8 +477,6 @@ void __not_in_flash_func (tapewriter) (void)
   FRESULT res;
   FIL fp;
 
-  SHOW("In tapewriter()\n");
-
   // Sharp tape file name is up to 17 characters stored in header[1]
   // to header[17]. If less than 17 characters, name ends with 0x0D
 
@@ -513,20 +498,16 @@ void __not_in_flash_func (tapewriter) (void)
   // we simply overwrite it ... just as would happen on a tape.
   res=f_open(&fp,sdfilename,FA_CREATE_ALWAYS|FA_WRITE);
   if (res) {
-    SHOW("Error on file open for %s, status is %d\n",sdfilename,res);
     return;
   }
 
   // Write the 128 byte header to the file
   f_write(&fp, header, TAPEHEADERSIZE, &bw);
-  SHOW("%d header bytes written to %s\n",bw,sdfilename);
 
   // Write the tape body to the file
   uint16_t bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  SHOW("bodybytes is\n",bodybytes);
   for (i=0;i<bodybytes;i++)
     f_write(&fp, &body[i], 1, &bw);
-  SHOW("%d file body bytes written to %s\n",i,sdfilename);
 
   // Close the file and return
   f_close(&fp);
@@ -654,7 +635,6 @@ uint8_t cread(void)
         // as this will automatically be taken care of for us
         checksum[0]=(chkbits>>8)&0xFF; /* MSB of the checksum */
         checksum[1]=chkbits&0xFF;      /* LSB of the checksum */
-        SHOW("Header checksum is 0x%04x 0x%02x 0x%02x\n",chkbits,checksum[0],checksum[1]);
         // Reset chkbits for the next time a checksum is calculated
         chkbits=0;
       }
@@ -717,8 +697,6 @@ uint8_t cread(void)
     /* in memory locations 0x1103 and 0x1102 from the 20th & 19th values     */
     /* found in the header - i.e. header[19] (msb) and header[18] (lsb).     */
     bodybytes=((header[19]<<8)&0xFF00)|header[18];
-    SHOW("Body length is 0x%04x (%d) bytes\n",bodybytes,bodybytes);
-    SHOW("Transition to state 8 - program data\n");
     crstate=8;
   }
 
@@ -742,9 +720,6 @@ uint8_t cread(void)
       return(SHORTPULSE);
     }
     /* At the end of the body, move onto checksum state (9) */
-    SHOW("Transition to state 9 - program checksum\n");
-    SHOW("%d bits processed\n",secbits);
-    SHOW("%d bytes processed\n",secbits/8);
     secbits=0;
     crstate=9;
   }
@@ -758,7 +733,6 @@ uint8_t cread(void)
         // as this will automatically be taken care of for us
         checksum[0]=(chkbits>>8)&0xFF; /* MSB of the checksum */
         checksum[1]=chkbits&0xFF;      /* LSB of the checksum */
-        SHOW("Body checksum is 0x%02x%02x\n",checksum[0],checksum[1]);
         // Reset chkbits for the next time a checksum is calculated
         chkbits=0;
       }
@@ -778,7 +752,6 @@ uint8_t cread(void)
     }
     /* At the end of the checksum stop */
     /* Assumes copy of program data is not needed */
-    SHOW("Transition to state 13 - stop\n");
     secbits=0;
     crstate=13; 
   }
@@ -793,12 +766,10 @@ uint8_t cread(void)
   /* At end of body checksum, reset tape state, send final stop bit */
       hilo=0;
       reset_tape();
-      SHOW("Final stop bit sent\n");
       return(LONGPULSE);
   }
 
   /* Catch any errors - shouldn't happen, but ...        */
-  SHOW("Error in cread() - unknown state %d\n",crstate);
   /* Reset hilo to 0, reset state */
   hilo=0;
   reset_tape();
@@ -859,7 +830,6 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
     /* when the total received is 22,081 - ie, after WBGAP_L+BTM_L+L_L  */
     if (secbits==WBGAP_L+BTM_L+L_L) {
       if (low==WBGAP_L+BTM_L/2) {
-        SHOW("Tape header preamble written ok\n");
         // All ok - move onto the next state
         cwstate=2;
         secbits=0;
@@ -868,7 +838,6 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
         chkbits=0;
       }
       else {
-        SHOW("Error writing tape header preamble %d %d %d\n",secbits,low,high);
         cwstate=0;
       }
     }
@@ -936,11 +905,9 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
     /* Check to see if we're at the end of the checksum */
     if (secbits==CHK_L) {
       if (chkbits==(((checksum[0]<<8)&0xFF00)|checksum[1]))
-        SHOW("Header checksum is ok\n");
+        ;
       else
-        SHOW("Header checksum is bad ... carrying on anyway\n");
-      bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
-      SHOW("Body length is 0x%04x\n",bodybytes);
+        bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
       cwstate=4;
       chkbits=0;
       secbits=0;
@@ -963,7 +930,6 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
                                  // (1 pulse = 1 followed by 0 = 2 bits)
     if (secbits==SKIP_L) {
       // Assume all is ok - move onto state 8 - file body
-      SHOW("Gap between header and copy assumed ok\n");
       cwstate=8;
       secbits=0;
     }
@@ -1031,10 +997,6 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
     }
     /* Check to see if we're at the end of the checksum */
     if (secbits==CHK_L) {
-      if (chkbits==(((checksum[0]<<8)&0xFF00)|checksum[1]))
-        SHOW("Body checksum is ok\n");
-      else
-        SHOW("Body checksum bad ... pushing on anyway\n");
       cwstate=10;
       chkbits=0;
       secbits=0;
@@ -1057,7 +1019,6 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
     /* Check that we have received enough 1/0 bits - 2 x number of pulses */
     if (secbits==(L_L+S256_L+bodybytes*8+bodybytes+CHK_L+2)*2) {
       // Assumed all ok - move onto the final state
-      SHOW("Skipped body copy - assumed ok\n");
       cwstate=13;
       secbits=0;
     }
@@ -1082,16 +1043,14 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
     if (secbits==L_L) { 
       if (high==L_L) {
         // All ok - finish write
-        SHOW("End of file reached ok - writing to sd card\n");
         tapewriter();
-        SHOW("sd card written\n");
         cwstate=0;
         secbits=0;
         high=0;
         low=0;
       }
       else {
-        SHOW("Error at end of file! %d %d %d\n",secbits,low,high);
+        // Error - quit now
         cwstate=0;
         secbits=0;
         high=0;
@@ -1102,7 +1061,6 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
   }
 
   /* Shouldn't be able to get here */
-  SHOW("Error - unknown cwrite() state %d\n",cwstate);
   cwstate=0;
 
   return;

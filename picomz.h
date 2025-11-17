@@ -49,9 +49,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#ifndef USBDIAGOUTPUT
-  #include "tusb_config.h" // Needs to come before tusb.h as it
-#endif                     // overrides settings in tusb_options.h
+#include "tusb_config.h"
 #include <tusb.h>        
 #include "pico.h"
 #include "pico/stdlib.h"
@@ -73,16 +71,6 @@
 #include "sdcard/sdcard.h"
 #include "sdcard/pio_spi.h"
 #include "zazu80/z80.h"
-
-/* Low-level debugging code macro for printf() */
-/* See CMakeLists.txt for compile time setting */
-/* of USBDIAGOUTOUT */
-
-#ifdef USBDIAGOUTPUT
-  #define SHOW printf
-#else
-  #define SHOW //
-#endif
 
 /* MZ model definitions */
 #define MZ80K 1
@@ -228,17 +216,12 @@ extern bool ukrom;
 
 /* keyboard.c and keyboard700.c */
 extern uint8_t processkey[KBDROWS];
-#ifdef USBDIAGOUTPUT
-  extern void mzcdcmapkey80k(int32_t*, int8_t);
-  extern void mzcdcmapkey80a(int32_t*, int8_t);
+extern void mzrptkey(void);
+#ifndef MZ700EMULATOR
+  extern void mzhidmapkey80k(uint8_t, uint8_t);
+  extern void mzhidmapkey80a(uint8_t, uint8_t);
 #else
-  extern void mzrptkey(void);
-  #ifndef MZ700EMULATOR
-    extern void mzhidmapkey80k(uint8_t, uint8_t);
-    extern void mzhidmapkey80a(uint8_t, uint8_t);
-  #else
-    extern void mzhidmapkey700(uint8_t, uint8_t);
-  #endif
+  extern void mzhidmapkey700(uint8_t, uint8_t);
 #endif
 
 /* cassette.c */
@@ -264,9 +247,6 @@ extern uint8_t cmotor;
 extern uint8_t csense;
 extern uint8_t vgate;
 extern uint8_t vblank;
-#ifdef USBDIAGOUTPUT
-  extern uint8_t scantimes;
-#endif
 extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 

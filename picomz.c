@@ -54,7 +54,6 @@ void __not_in_flash_func
     return;
   }
   else if ((addr < 0xE000) && (mzmodel == MZ80A)) {
-    //SHOW("** Writing 0x%02x to unused address 0x%04x **\n",value,addr);
     return;
   }
 
@@ -78,7 +77,6 @@ void __not_in_flash_func
 
   /* Write to the user socket ROM is attempted on startup on the MZ-80A */
   if ((addr == 0xE800) && (mzmodel == MZ80A)) {
-    SHOW("** Writing 0x%02x to user ROM socket at 0x%04x **\n",value,addr);
     return;
   }
 
@@ -88,7 +86,6 @@ void __not_in_flash_func
   /* in the 'wild' yet that relies on this side effect.                 */
   /* Currently this trap includes the FD ROM space for MZ-80K & MZ-80A  */
 
-  SHOW("** Writing 0x%02x to unused address 0x%04x **\n",value,addr);
   return;
 }
 
@@ -127,7 +124,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
   /* Unused address */
   if (addr < 0xE008) {
-    SHOW("Reading unused address 0x%04x\n",addr);
     return(0xC7);
   }
 
@@ -140,7 +136,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
     /* Memory swap - Monitor code goes to 0xC000 */
     if (addr == 0xE00C) {
-      SHOW("MZ-80A monitor swapped out to 0xC000\n");
       for (uint8_t i=0; i<MROMSIZE; i++)
         mzuserram[(addr-0x1000)+i]=mzmonitor80a[i];
       return(0xFF);
@@ -148,7 +143,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
     /* Memory swap - 0xC000+4K goes to 0x0000 */
     if (addr == 0xE010) {
-      SHOW("MZ-80A 0xC000 swapped into to monitor space\n");
       for (uint8_t i=0; i<MROMSIZE; i++)
         mzmonitor80a[i]=mzuserram[(addr-0x1000)+i];
       return(0xFF);
@@ -156,7 +150,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
     /* Normal video */
     if (addr == 0xE014) {
-      SHOW("MZ-80A normal video\n");
       whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
       blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
       /* Return value doesn't seem to be used, but 0x00 stored at 0x1190 */
@@ -166,7 +159,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
     /* Reverse video */
     if (addr == 0xE015) {
-      SHOW("MZ-80A reverse video\n");
       whitepix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
       blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);
       /* Return value doesn't seem to be used, but 0xFF stored at 0x1190 */ 
@@ -176,7 +168,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
     /* Scroll screen up / down */
     if ((addr >= 0xE200) && (addr <=0xE2FF)) {
-      SHOW("MZ-80A display command read at 0x%04x \n",addr);
       return(addr&0xFF);
     }
 
@@ -184,12 +175,10 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 
   /* MZ-80A user socket ROM - return 0xC7 if not present */
   if ((addr == 0xE800) && (mzmodel == MZ80A)) {
-    SHOW("Reading user socket ROM address 0x%04x\n",addr);
     return(0xC7);
   }
 
   /* All other unused addresses */
-  SHOW("Reading unused address 0x%04x\n",addr);
   return(0xC7);
 }
 
@@ -197,7 +186,6 @@ uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
 void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 {
   /* SIO not used by MZ-80K/A, so should never get here */
-  SHOW("Error: In sio_write at 0x%04x with value 0x%02x\n",addr,val);
   return;
 }
 
@@ -205,7 +193,6 @@ void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 uint8_t sio_read(z80* unusedz, uint8_t addr)
 {
   /* SIO not used by MZ-80K/A, so should never get here */
-  SHOW("Error: In sio_read at 0x%04x\n",addr);
   return(0);
 }
 
@@ -214,24 +201,8 @@ int main(void)
 {
   uint8_t toggle;          // Used to toggle the pico's led for error
                            // conditions found on startup
-#ifdef USBDIAGOUTPUT
-  int32_t usbc[USBKBDBUF]; // USB keyboard buffer
-  int8_t  ncodes;          // No. codes to process in usb keyboard buffer
-#endif
 
-#if defined (USBDIAGOUTPUT) && defined (PICO1)
-  // Set system clock to 175MHz if in diag mode on a rp2040
-  // See also CMakeLists.txt
-  set_sys_clock_pll(1050000000,6,1);
-#endif
-
-#if defined (USBDIAGOUTPUT) && defined (PICO2)
-  // Set system clock to 125MHz if in diag mode on a rp2350
-  // See also CMakeLists.txt
-  set_sys_clock_pll(1500000000,6,2);
-#endif
-
-#if ! defined (USBDIAGOUTPUT) && defined (PICO2)
+#if defined (PICO2)
   // Set system clock to 100MHz if in normal mode on a rp2350
   // See also CMakeLists.txt
   set_sys_clock_pll(1500000000,5,3);
@@ -245,9 +216,6 @@ int main(void)
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
-  SHOW("\nHello! My friend\n");
-  SHOW("Hello! My computer\n\n");
-
   // If button A on the Pico's carrier board is pressed, run the emulator 
   // as a MZ-80A rather than as a MZ-80K.
 
@@ -256,11 +224,9 @@ int main(void)
   gpio_pull_down(0);
   if (gpio_get(0)) {
     mzmodel=MZ80A;
-    SHOW("MZ-80A emulation selected\n");
   }
   else {
     mzmodel=MZ80K;
-    SHOW("MZ-80K emulation selected\n");
   }
 
   // Initialise mzuserram
@@ -276,7 +242,6 @@ int main(void)
   // Check for I2C capability on RC2014 RP2040 VGA board
   init_i2c_bus();
   if (has_pca9536(i2c_bus)) {
-    SHOW("PCA9536 detected\n");
     pca9536_output_reset(i2c_bus,0b0011); // preinitialize output at LOW
     pca9536_setup_io(i2c_bus,IO_0,IO_MODE_OUT); // USB_POWER
     pca9536_setup_io(i2c_bus,IO_1,IO_MODE_OUT); // ACTIVE BUZZER (not used)
@@ -291,7 +256,6 @@ int main(void)
     picotone2=24;
   }
   else {
-    SHOW("PCA9536 NOT detected\n");
     deinit_i2c_bus();
     // Note that speaker will be attached to GPIOs 18/19 if a Pico-based
     // RC2014 VGA terminal with an sd card backpack is used - define
@@ -307,7 +271,6 @@ int main(void)
 
   // Initialise 8253 PIT
   p8253_init();
-  SHOW("8253 PIT initialised\n");
 
   // Initialise the Z80 processor
   z80_init(&mzcpu);
@@ -316,31 +279,17 @@ int main(void)
   mzcpu.port_in = sio_read;
   mzcpu.port_out = sio_write;
   mzcpu.pc = 0x0000;
-  SHOW("Z80 processor initialised\n");
 
   // Initialise USB keyboard
   memset(processkey,0xFF,KBDROWS);
 
-#ifdef USBDIAGOUTPUT
-  toggle=1;
-  mzpicoled(toggle);
-  while (!tud_cdc_connected()) { 
-    // Pico onboard led flashes if no keyboard via terminal emulator found
-    sleep_ms(200); 
-    toggle=!toggle;  
-    mzpicoled(toggle);
-  }
-#else
   tusb_init();
-#endif
-  SHOW("USB keyboard connected\n");
   mzpicoled(0);
 
   // Mount the sd card to act as a tape source
   FRESULT tapestatus;
   tapestatus=tapeinit(); 
   if (tapestatus != FR_OK) {
-    SHOW("Error: sd card failed to initialise\n");
     // We've been unable to mount the sd card, so signal this with
     // 1s long pulses on the pico led. Emulator will need restarting
     // as without the sd card it's not much use!
@@ -352,7 +301,6 @@ int main(void)
       mzpicoled(toggle);
     }
   }
-  SHOW("microSD card mounted ok\n");
 
   // Define default pixel colours
   blackpix=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);
@@ -363,50 +311,28 @@ int main(void)
 
   // Start VGA output on the second core
   multicore_launch_core1(vga_main);
-  SHOW("VGA output started on second core\n\n");
 
   // Main emulator loop
-  #if !defined (USBDIAGOUTPUT)
   uint8_t delay=0;
-  #endif
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-  #if !defined (USBDIAGOUTPUT) && defined (PICO1)
+  #if defined (PICO1)
     if (++delay == 3) {
       busy_wait_us(1);            // Need to slow down the Pico a little
       delay=0;
     }
   #endif
-  #if !defined (USBDIAGOUTPUT) && defined (PICO2)
+  #if defined (PICO2)
     if (++delay == 2) {
       busy_wait_us(2);            // Need to slow down the Pico 2 a little
       delay=0;
     }
   #endif
 
-  #ifdef USBDIAGOUTPUT
-    usbc[0]=tud_cdc_read_char();  // Read keyboard, no wait
-    if (usbc[0] != -1) {
-      SHOW("Key pressed %x\n",usbc[0]);
-      sleep_ms(2);                // Delay to allow keyboard to catch up
-      ncodes=1;
-        while((usbc[ncodes]=tud_cdc_read_char()) != -1) { 
-          SHOW("Key pressed %x\n",usbc[ncodes]);
-          sleep_ms(2);
-          ++ncodes;
-        }
-      if (mzmodel == MZ80K)
-        mzcdcmapkey80k(usbc,ncodes);   // Map usb code(s) to MZ-80K keyboard
-      else
-        mzcdcmapkey80a(usbc,ncodes);   // Map usb code(s) to MZ-80A keyboard
-      memset(usbc,-1,USBKBDBUF);       // Reset USB keyboard buffer to empty
-    }
-  #else
     tuh_task();                   // Check for new keyboard events
     mzrptkey();                   // Check for a repeating key event
                                   // or a NUM LOCK event
-  #endif
   }
 
   return(0); // No return from here

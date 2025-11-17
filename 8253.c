@@ -186,7 +186,6 @@ uint8_t rd8253(uint16_t addr)
   }
 
   /* Anything other than E006 is unexpected */
-  SHOW("rd8253 passed unexpected address 0x%04x\n",addr);
   return(0x00);
 }
 
@@ -212,7 +211,6 @@ void wr8253(uint16_t addr, uint8_t val)
         picotone.freq=1108800.0/(float)mzpit.counter0;
       else
         picotone.freq=1000000.0/(float)mzpit.counter0;
-      //SHOW("Frequency requested is %f Hz\n",picotone.freq);
     }
   }
 
@@ -255,17 +253,14 @@ void wrE008(uint8_t data)
 {
   uint32_t *unused;
   switch (data) {
-    case 0:
-            // Disable sound generation if an alarm has been set
+    case 0: // Disable sound generation if an alarm has been set
             if (tone_alarm) 
               mzpico_tone_off(tone_alarm, unused);
             break;
-    case 1:
-            // Enable sound generation
+    case 1: // Enable sound generation
             mzpico_tone_on();
             break;
-    default:
-            SHOW("Error: wrE008 sound generator %d (0 or 1 expected)\n",data);
+    default:// Valid values are 0 or 1, so do nothing
             break;
   }
 

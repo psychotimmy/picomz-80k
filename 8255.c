@@ -30,20 +30,6 @@ static uint32_t blinktime;      /* Timer for cursor blink - susbstitutes for */
                                 /* the 555/556 timers in actual MZ hardware */
 static bool cblink=false;       /* Cursor blink (false = off, true = on) */
 
-#ifdef USBDIAGOUTPUT
-  uint8_t scantimes=1;          /* How many times the keyboard matrix is */
-                                /* scanned before it is reset. Most programs */
-                                /* work well on the default; some m/c games */
-                                /* need this set to 2 or 3 for keypresses to */
-                                /* be read effectively. A kludge, but the */
-                                /* best option at the moment - better than */
-                                /* releases 1.0.0 or 1.0.1 as more flexible */
-                                /* F9 key rotates between 1 and 3, 1 is the */
-                                /* default on startup. Now only used in diag */
-                                /* builds as of v1.2.1 - properly fixed in */
-                                /* standard builds. */
-#endif
-
 // The control port is implemented as follows:
 // 
 // Bit 0 - Port C lower 4 bits - 1=input, 0=output
@@ -113,7 +99,6 @@ void wr8255(uint16_t addr, uint8_t data)
     case 2:// Overwrite the lower 4 bits of port C.
            // This is allowed, but normally the control port is used
            // to affect 1 bit at a time.
-           SHOW("!! addressing portC directly with 0x%02x !!\n",data);
            portC = (portC&0xF0)|(data&0x0F);
            break;
     case 3:// Control port code
@@ -164,20 +149,17 @@ void wr8255(uint16_t addr, uint8_t data)
                        portC|=0x08;
                        csense=!csense;   /* Toggle sense when bit set */
                        cmotor=!cmotor;   /* Toggle motor when bit set */
-                       SHOW("motor %d sense %d\n",cmotor,csense);
                      }
                      else 
                        portC&=0xF7;      /* sense & motor remain as before */
                      break;
                   /* Should never get to cases 4-7, so break */
-             default:SHOW("Unexpected portC bit set attempt (%d)\n",portCbit);
-                     break;
+             default:break;
            }
       } // As noted, mustn't do anything if bit 7 is 1 (mode set)
     break;
 
     default:// Error!
-            SHOW("Error: illegal address passed to wr8255 0x%04x\n",addr);
             break;
   }
   return;
@@ -187,13 +169,6 @@ uint8_t rd8255(uint16_t addr)
 {
   static uint8_t newkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
                                      0xFF,0xFF,0xFF,0xFF,0xFF };
-#ifdef USBDIAGOUTPUT
-  static uint8_t idxloop=0;        /* Allows some m/c code games to work */
-                                   /* by keeping the press from the key  */
-                                   /* matrix active for scantimes cycles */
-                                   /* Immitates a keyboard up event that */
-                                   /* a real USB keyboard returns        */
-#endif
   uint8_t idx,retval;
 
   switch (addr&0x0003) {           // addr is between 0xE000 and 0xE002
@@ -205,26 +180,6 @@ uint8_t rd8255(uint16_t addr)
            // 10 lines (KBDROWS) to strobe, so idx must be between 0 and 9
            if (idx > 9)
              idx=9;
-#ifdef USBDIAGOUTPUT
-           /* Copy processkey if at start of scan and ready for a new */
-           /* key - we may not be if scantimes > 1 (K and A differ)   */
-           if ((idxloop == 0) && (idx == 9) && (mzmodel == MZ80K)) {
-             memcpy(newkey,processkey,KBDROWS);
-             memset(processkey,0xFF,KBDROWS);
-             idxloop=KBDROWS*scantimes-1;
-           } 
-           if ((idxloop == 0) && (idx == 0) && (mzmodel == MZ80A)) {
-             memcpy(newkey,processkey,KBDROWS);
-             memset(processkey,0xFF,KBDROWS);
-             idxloop=KBDROWS*scantimes+1;
-           } 
-
-           /* Return the current row of the keyboard matrix */
-           retval=newkey[idx];
-           /* Decrement idxloop counter if not at zero */
-           if (idxloop > 0)
-             --idxloop;
-#else
            if (mzmodel == MZ80A) {
              // Ensure shift / ctrl keys read correctly - (re)start scan on
              // column 0 for the MZ-80A
@@ -239,7 +194,6 @@ uint8_t rd8255(uint16_t addr)
                memcpy(newkey,processkey,KBDROWS);
              retval=newkey[idx];
            }
-#endif
            break;
     case 2:// Read upper 4 bits from portC 
            retval=portC&0x0F;          // Lower 4 bits returned unchanged
@@ -251,7 +205,6 @@ uint8_t rd8255(uint16_t addr)
            break;
     default:// Error - return 0xC7 (shouldn't be possible to get here)
            retval=0xC7;
-           SHOW("Error: illegal address passed to rd8255 0x%04x\n",addr);
            break;
   }
   return(retval);

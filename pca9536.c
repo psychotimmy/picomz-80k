@@ -46,7 +46,6 @@ bool has_pca9536( i2c_inst_t *i2c ){
   // 20ms timeout
   int nb_bytes=reg_read_timeout(i2c,PCA9536_ADDR,REG_INPUT,data,4,20000);
   if(nb_bytes <= 0){
-    SHOW("Nothing read from the PCA9536 I2C bus!");
     return false;
   }
   // try to write the register, 
