@@ -13,9 +13,9 @@ Flash one of:
 
 **picomz-80ka-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
 
-**picomz-80ka-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
-
 **pico2mz-80ka-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
+
+**picomz-80ka-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
 
 Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
 
@@ -43,7 +43,7 @@ Flash one of:
 
 **picomz-700-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
 
-**pico2mz-700-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
+**pico2mz-700-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
 
 Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
 
