@@ -7,11 +7,7 @@ A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K
 
 Full user and systems documentation is provided in the [documentation subdirectory](https://github.com/psychotimmy/picomz-80k/tree/main/documentation).
 
-## Brief user notes
-
-Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed.
-
-### MZ-80K and MZ-80A
+### Using the Pico MZ as a MZ-80K or MZ-80A
 
 Flash one of:
 
@@ -21,7 +17,9 @@ Flash one of:
 
 **pico2mz-80ka-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
 
-When a USB keyboard plus a VGA display is connected, you will see:
+Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
+
+When a USB keyboard and VGA display is connected, you will see:
 
 **  MONITOR SP-1002  **
 
@@ -39,7 +37,7 @@ To boot the emulator into MZ-80A mode, press and hold the 'A' button on your Pic
 
 is displayed on the screen.
 
-### MZ-700
+### Using the Pico MZ as a MZ-700
 
 Flash one of:
 
@@ -47,7 +45,9 @@ Flash one of:
 
 **pico2mz-700-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
 
-When a USB keyboard plus a VGA display is connected, you will see:
+Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
+
+When a USB keyboard and VGA display is connected, you will see:
 
 **  MONITOR 1Z-013A  **
 
@@ -55,9 +55,9 @@ When a USB keyboard plus a VGA display is connected, you will see:
 
 ### All versions 
 
-If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing quickly (200ms between flashes), this means that a USB keyboard has not been connected. 
+If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing quickly (200ms between flashes), it means that a USB keyboard has not been recognised. 
 
-If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing slowly (1s between flashes), then your microSD card cannot be read.
+If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing slowly (1s between flashes), then your microSD card cannot be read or has not been installed.
 
 If **either** of these error conditions occur, **the Pico MZ will not display the monitor prompt until the problem is resolved.** 
 
