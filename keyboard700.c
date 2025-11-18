@@ -591,7 +591,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x22: processkey[8]=0xFE; //%
                  processkey[5]=0xF7;
                  break;
-      case 0x23: processkey[6]=0xBF; //^ (shifted 6 - ^ on USB kbd)
+      case 0x23: processkey[6]=0xBF; //up arrow (shifted 6 - ^ on USB kbd)
                  break;
       case 0x24: processkey[8]=0xFE; //&
                  processkey[5]=0xFD;
@@ -663,14 +663,14 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  processkey[7]=0xDF;
                  break;
 
-      /* Non-standard MZ-700 keys need to be somewhere ! */
-
       case 0x54: processkey[8]=0xFE; // <- (USB keypad shift /)
                  processkey[7]=0xFE;
                  break;
-
-      case 0x64: processkey[8]=0xFE; // -> (USB pipe symbol |, shift \)
+      case 0x55: processkey[8]=0xFE; // -> (USB keypad shift *)
                  processkey[7]=0xFD;
+
+      case 0x64: processkey[8]=0xFE; // | (USB pipe symbol |, shift \)
+                 processkey[6]=0x7F;
                  break;
       default:   break;
     }
