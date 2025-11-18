@@ -668,6 +668,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x55: processkey[8]=0xFE; // -> (USB keypad shift *)
                  processkey[7]=0xFD;
+                 break;
 
       case 0x64: processkey[8]=0xFE; // | (USB pipe symbol |, shift \)
                  processkey[6]=0x7F;
