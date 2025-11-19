@@ -284,10 +284,20 @@ int main(void)
   multicore_launch_core1(vga_main);
 
   // Main emulator loop
-
+  uint8_t delay=0;
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
+  #if defined (PICO1)
+    #if defined (RC2014VGA)
+    if (++delay == 12) {
+    #else
+    if (++delay == 20) {
+    #endif
+      busy_wait_us(1);            // Need to slow down the Pico a little
+      delay=0;                    // Pimoroni base is slightly slower than
+    }                             // the RC2014 cards for some unknown reason!
+  #endif
 
     tuh_task();                   // Check for new keyboard events
     mzrptkey();                   // Check for a repeating key event

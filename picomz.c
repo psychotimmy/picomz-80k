@@ -202,7 +202,7 @@ int main(void)
   uint8_t toggle;          // Used to toggle the pico's led for error
                            // conditions found on startup
 
-#if defined (PICO2)
+#ifdef PICO2
   // Set system clock to 100MHz if in normal mode on a rp2350
   // See also CMakeLists.txt
   set_sys_clock_pll(1500000000,5,3);
@@ -316,13 +316,21 @@ int main(void)
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-  #if defined (PICO1)
-    if (++delay == 3) {
+  #ifdef PICO1
+    #ifndef RC2014VGA
+    if (++delay == 4) {
       busy_wait_us(1);            // Need to slow down the Pico a little
-      delay=0;
+      delay=0;                    // Pimoroni base
     }
+    #else
+    if (++delay == 3) {
+      if (mzmodel == MZ80A)
+        busy_wait_us(1);          // Need to slow down the Pico a little
+      delay=0;                    // RC2014 VGA cards running as MZ-80A
+    }
+    #endif
   #endif
-  #if defined (PICO2)
+  #ifdef PICO2
     if (++delay == 2) {
       busy_wait_us(2);            // Need to slow down the Pico 2 a little
       delay=0;

@@ -594,7 +594,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x23: processkey[6]=0xBF; //up arrow (shifted 6 - ^ on USB kbd)
                  break;
       case 0x24: processkey[8]=0xFE; //&
-                 processkey[5]=0xFD;
+                 processkey[5]=0xFB;
                  break;
       case 0x25: processkey[8]=0xFE; //*
                  processkey[0]=0xFD;
