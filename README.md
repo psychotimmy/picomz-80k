@@ -45,6 +45,8 @@ Flash one of:
 
 **pico2mz-700-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
 
+**picomz-700-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
+
 Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
 
 When a USB keyboard and VGA display is connected, you will see:
@@ -67,7 +69,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 Pico MZ version 3.0.0 works with the current Pico SDK 2.2.0 master branch (latest stable)
 
-(Pico MZ versions 1.1.0 to 2.0.1 work with Pico SDK 2.1.x. Earlier releases use Pico SDK 1.5.1)
+(Pico MZ versions 1.1.0 to 2.0.1 used Pico SDK 2.1.x. Earlier releases used Pico SDK 1.5.1)
 
 ### Release highlights
 
@@ -138,4 +140,4 @@ There should now be four (Pico) or two (Pico 2) .uf2 files in your build directo
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 17th November 2025.
+### This README was last updated on 20th November 2025.
