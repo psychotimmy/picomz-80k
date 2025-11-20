@@ -288,9 +288,9 @@ int main(void)
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-  #if defined (PICO1)
-    #if defined (RC2014VGA)
-    if (++delay == 12) {
+  #ifdef PICO1
+    #ifdef RC2014VGA
+    if (++delay == 9) {
     #else
     if (++delay == 20) {
     #endif

@@ -318,15 +318,16 @@ int main(void)
     z80_step(&mzcpu);		  // Execute next z80 opcode
   #ifdef PICO1
     #ifndef RC2014VGA
-    if (++delay == 4) {
+    if (++delay == 3) {
       busy_wait_us(1);            // Need to slow down the Pico a little
       delay=0;                    // Pimoroni base
     }
     #else
-    if (++delay == 3) {
-      if (mzmodel == MZ80A)
+    if (mzmodel == MZ80A) {
+      if (++delay == 3) {
         busy_wait_us(1);          // Need to slow down the Pico a little
-      delay=0;                    // RC2014 VGA cards running as MZ-80A
+        delay=0;                  // RC2014 VGA cards running as MZ-80A
+      }
     }
     #endif
   #endif

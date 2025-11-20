@@ -115,7 +115,7 @@ void __not_in_flash_func (mzspinny) (uint8_t state)
 }
 
 /* Attempt to mount an sd card */
-FRESULT tapeinit(void)
+FRESULT __not_in_flash_func (tapeinit) (void)
 {
   FRESULT res;
 
@@ -128,7 +128,7 @@ FRESULT tapeinit(void)
 }
 
 /* Save MZ-80K/A/700 active memory to a file */
-FRESULT mzsavedump(void)
+FRESULT __not_in_flash_func (mzsavedump) (void)
 {
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
@@ -212,7 +212,7 @@ FRESULT mzsavedump(void)
 }
 
 /* Read MZ-80K/A/700 memory dump        */
-FRESULT mzreaddump(void)
+FRESULT __not_in_flash_func (mzreaddump) (void)
 {
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
@@ -306,7 +306,7 @@ FRESULT mzreaddump(void)
 }
 
 /* Preload a tape file into the header/body memory ready for LOAD */
-int16_t tapeloader(int16_t n)
+int16_t __not_in_flash_func (tapeloader) (int16_t n)
 {
   FIL fp;
   DIR dp;
@@ -539,7 +539,7 @@ void __not_in_flash_func (reset_tape) (void)
 /* assumes that the first read is ALWAYS good,        */
 /* as we're using .mzf files rather than a real       */
 /* cassette tape.                                     */
-uint8_t cread(void)
+uint8_t __not_in_flash_func (cread) (void)
 {
                              // Used to calculate the bit to output from tape
   uint8_t bitshift;          // to the MZ when reading the header or body
