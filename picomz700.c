@@ -181,12 +181,6 @@ int main(void)
   set_sys_clock_pll(1200000000,6,1);
 #endif
 
-#if defined (PICO2)
-  // Set system clock to 125MHz
-  // See also CMakeLists.txt
-  set_sys_clock_pll(1500000000,6,2);
-#endif
-
   stdio_init_all();
 
   busy_wait_ms(250);               // Wait for inits to complete
@@ -297,6 +291,12 @@ int main(void)
       busy_wait_us(1);            // Need to slow down the Pico a little
       delay=0;                    // Pimoroni base is slightly slower than
     }                             // the RC2014 cards for some unknown reason!
+  #endif
+  #ifdef PICO2
+    if (++delay == 7) {
+      busy_wait_us(1);            // Need to slow down the Pico 2 a little
+      delay=0;
+    }
   #endif
 
     tuh_task();                   // Check for new keyboard events

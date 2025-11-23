@@ -134,8 +134,8 @@ FRESULT __not_in_flash_func (mzsavedump) (void)
   FRESULT res;                      // FatFS function result
   uint bw;                          // Number of bytes written to file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t dumpfile[11] =            // Memory dump filename
-  { 'M','Z','D','U','M','P','.','M','Z','F','\0' };
+  uint8_t dumpfile[12] =            // Memory dump filename
+  { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
   uramheader[0] = 0x20;             // Use 0x20 as the header identifier
@@ -152,6 +152,14 @@ FRESULT __not_in_flash_func (mzsavedump) (void)
   uramheader[10]= 0xb3;             // m
   uramheader[11]= 0x9e;             // p
   uramheader[12]= 0x0d;             // <end of name>
+
+  // Distinguish between K, A and 700 dump files 
+  if (mzmodel == MZ80K)
+    dumpfile[6]='K';
+  else if (mzmodel == MZ80A)
+    dumpfile[6]='A';
+  else
+    dumpfile[6]='7';
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
@@ -218,15 +226,22 @@ FRESULT __not_in_flash_func (mzreaddump) (void)
   FRESULT res;                      // FatFS function result
   uint br;                          // Number of bytes read from file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t dumpfile[11] =            // Memory dump filename
-  { 'M','Z','D','U','M','P','.','M','Z','F','\0' };
+  uint8_t dumpfile[12] =            // Memory dump filename
+  { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
+
+  // Distinguish between K, A and 700 dump files 
+  if (mzmodel == MZ80K)
+    dumpfile[6]='K';
+  else if (mzmodel == MZ80A)
+    dumpfile[6]='A';
+  else
+    dumpfile[6]='7';
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
   // An error has occured if res is non-zero
   if (res) 
     return(res);
-  
 
   // Read the header - check it's what we're expecting
   f_read(&fp,uramheader,TAPEHEADERSIZE,&br);

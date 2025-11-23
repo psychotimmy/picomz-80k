@@ -202,12 +202,6 @@ int main(void)
   uint8_t toggle;          // Used to toggle the pico's led for error
                            // conditions found on startup
 
-#ifdef PICO2
-  // Set system clock to 100MHz if in normal mode on a rp2350
-  // See also CMakeLists.txt
-  set_sys_clock_pll(1500000000,5,3);
-#endif
-
   stdio_init_all();
 
   busy_wait_ms(250);               // Wait for inits to complete
@@ -332,12 +326,19 @@ int main(void)
     #endif
   #endif
   #ifdef PICO2
-    if (++delay == 2) {
-      busy_wait_us(2);            // Need to slow down the Pico 2 a little
-      delay=0;
+    if (mzmodel == MZ80A) {
+      if (++delay == 3) {
+        busy_wait_us(5);          // Need to slow down the Pico 2 a little
+        delay=0;                  // MZ-80A
+      }
+    } 
+    else {
+      if (++delay == 3) {
+        busy_wait_us(3);          // Need to slow down the Pico 2 a little
+        delay=0;                  // MZ-80K
+      }
     }
   #endif
-
     tuh_task();                   // Check for new keyboard events
     mzrptkey();                   // Check for a repeating key event
                                   // or a NUM LOCK event
