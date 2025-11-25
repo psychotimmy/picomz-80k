@@ -85,9 +85,6 @@
 //               NP  --- NP  --- NP  NP  NP  NP
 // Row 9         .   --- 3   --- 6   -   9   +  
 
-uint8_t processkey[KBDROWS];            // Return keyboard characters
-                                        // All 0xFF means no key to process
-
 static uint8_t smlcapled=0;             // SML/CAPS toggle 
 static int16_t tfno=0;                  // Current tape file number
 static bool tfwd=true;                  // Tape direction - true = forwards

@@ -18,6 +18,12 @@ volatile z80*  unusedz;
 uint8_t mzmodel;                // MZ model type - default is MZ-80K
 bool ukrom = true;              // Default is UK CGROM
 
+                                // Return keyboard characters
+                                // All 0xFF means no key to process
+
+uint8_t processkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
+                                0xFF,0xFF,0xFF,0XFF,0xFF };
+
 /* Write a byte to RAM or an output device */
 void __not_in_flash_func 
      (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
@@ -274,9 +280,8 @@ int main(void)
   mzcpu.pc = 0x0000;
 
   // Initialise USB keyboard
-  memset(processkey,0xFF,KBDROWS);
-
   tusb_init();
+
   mzpicoled(0);
 
   // Mount the sd card to act as a tape source

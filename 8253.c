@@ -240,19 +240,21 @@ void wr8253(uint16_t addr, uint8_t val)
 uint8_t rdE008(void) 
 {
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
-  // on the MZ-80K and A, and 15ms per call on the MZ-700.
-  // Each time this routine is called, the return value is incremented by 1
+  // on the MZ-80K and A, and 14ms per call on the MZ-700.
+  // Each time this routine is called, the return value is decremented by 1
   if (mzmodel == MZ700)
-    sleep_ms(15);
-  else
+    sleep_ms(14);
+  else 
     sleep_ms(11);
-  return(mzpit.e008call++);
+  return((mzpit.e008call--)&0x01);
 }
 
 void wrE008(uint8_t data) 
 {
   uint32_t *unused;
-  switch (data) {
+  mzpit.e008call=data&0x01;   // lsb = sound (ignore joystick, HBLNK)
+
+  switch (mzpit.e008call) {
     case 0: // Disable sound generation if an alarm has been set
             if (tone_alarm) 
               mzpico_tone_off(tone_alarm, unused);

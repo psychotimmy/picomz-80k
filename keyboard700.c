@@ -3,9 +3,6 @@
 
 #include "picomz.h"
 
-uint8_t processkey[KBDROWS];            // Return keyboard characters
-                                        // All 0xFF means no key to process
-
 static int16_t tfno=0;                  // Current tape file number
 static bool tfwd=true;                  // Tape direction - true = forwards
                                         // false = backwards

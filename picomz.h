@@ -139,9 +139,6 @@
 /* MZ-80K, MZ-80A and MZ-700 keyboard */
 #define KBDROWS 10     // There are 10 rows sensed on the keyboard
 
-/* USB keyboard buffer */
-#define USBKBDBUF 12   // Should be ample
-
 /* Emulator status information display - uses the last 40 scanlines */
 /* equivalent to 5 rows of 40 characters */
 #define EMUSSIZE 200   // Up to 200 bytes of status info stored
@@ -155,7 +152,7 @@
 
 /* Tape header and maximum body sizes in bytes */
 #define TAPEHEADERSIZE    128 // 128 bytes
-#define TAPEBODYMAXSIZE 48640 // 47.5Kbytes
+#define TAPEBODYMAXSIZE 49152 // 48 Kbytes
 
 /* Holds global variables relating to the 8253 PIT */
 typedef struct pit8253 {  
@@ -201,6 +198,8 @@ extern uint8_t picotone2;
 /* MZ model and CGROM types - UK/Japanese on MZ-80K only at present */
 extern uint8_t mzmodel;
 extern bool ukrom;
+/* Keyboard array */
+extern uint8_t processkey[KBDROWS];
 
 /* sharpcorp.c and sharpcorp700.c */
 #ifdef MZ700EMULATOR

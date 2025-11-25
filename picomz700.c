@@ -19,6 +19,12 @@ volatile z80*  unusedz;
 uint8_t mzmodel=MZ700;          // MZ model type - MZ700 = 3
 bool ukrom=true;                // UK CGROM only at present on MZ-700
 
+                                // Return keyboard characters
+                                // All 0xFF means no key to process
+
+uint8_t processkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
+                                0xFF,0xFF,0xFF,0XFF,0xFF };
+
                                 // Banked memory status
 bool bank4k=false;              // 0x0000 - 0x0FFF is ROM at switch on
 bool bank12k=false;             // 0xD000 - 0xFFFF is VRAM at switch on
@@ -242,8 +248,6 @@ int main(void)
   mzcpu.pc = 0x0000;
 
   // Initialise USB keyboard
-  memset(processkey,0xFF,KBDROWS);
-
   tusb_init();
 
   mzpicoled(0);
