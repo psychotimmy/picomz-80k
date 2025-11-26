@@ -172,7 +172,7 @@ void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
 uint8_t sio_read(z80* unusedz, uint8_t addr)
 {
   /* Not used by MZ-700, so should never get here */
-  return(0);
+  return(0xC7);
 }
 
 /* Sharp MZ-700 emulator main loop */
@@ -195,12 +195,12 @@ int main(void)
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
   // Initialise MZ-700 user memory (48K) and VRAM (4K)
-  memset(mzuserram,0x00,URAMSIZE);
+  memset(mzuserram,0xFF,URAMSIZE);
   memset(mzvram,0x00,VRAMSIZE700);
 
   // Initialise MZ-700 banked RAM (4K and 12K) - inactive at switch on */
-  memset(mzbank4,0x00,BANK4SIZE);
-  memset(mzbank12,0x00,BANK12SIZE);
+  memset(mzbank4,0xFF,BANK4SIZE);
+  memset(mzbank12,0xFF,BANK12SIZE);
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
@@ -297,7 +297,7 @@ int main(void)
     }                             // the RC2014 cards for some unknown reason!
   #endif
   #ifdef PICO2
-    if (++delay == 7) {
+    if (++delay == 3) {
       busy_wait_us(1);            // Need to slow down the Pico 2 a little
       delay=0;
     }

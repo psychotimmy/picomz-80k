@@ -43,6 +43,8 @@ static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
 
 static absolute_time_t clockreset; /* Timestamp of MZ-80K/A/700 clock reset */
 
+static uint8_t portE008=0xFF;      /* E008 port data */
+
 /*******************************************************************/
 /*                                                                 */
 /* Internal 8253 functions to support the Sharp MZ-80K/A/700 clock */
@@ -147,8 +149,8 @@ void p8253_init(void)
   // Sound generation
   mzpit.counter0 = 0x0000;
   mzpit.msb0 = 0;
+  mzpit.out0 = false;      // Stop the counter
   pico_tone_init();
-  mzpit.e008call = 0x00;   // Used as a return value when E008 is read
 
   // MZ-80K/A/700 time
   mzpit.counter2 = 0x0000;
@@ -205,12 +207,15 @@ void wr8253(uint16_t addr, uint8_t val)
     else {
       mzpit.counter0|=((val<<8)&0xFF00);
       mzpit.msb0=0;
-      if (mzpit.counter0==0) mzpit.counter0=1;  // Avoids possible divide by 0
-      // Frequency divider for MZ-700 and MZ80K/A is different
-      if (mzmodel == MZ700)
-        picotone.freq=1108800.0/(float)mzpit.counter0;
-      else
-        picotone.freq=1000000.0/(float)mzpit.counter0;
+      if (mzpit.counter0 != 0) {
+        // Avoid a possible divide by 0
+        // Legal value for frequency divider is 0x0001 to 0xFFFF
+        // Frequency divider for MZ-700 and MZ80K/A is different
+        if (mzmodel == MZ700)
+          picotone.freq=1108800.0/(float)mzpit.counter0;
+        else
+          picotone.freq=1000000.0/(float)mzpit.counter0;
+      }
     }
   }
 
@@ -241,30 +246,41 @@ uint8_t rdE008(void)
 {
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
   // on the MZ-80K and A, and 14ms per call on the MZ-700.
-  // Each time this routine is called, the return value is decremented by 1
-  if (mzmodel == MZ700)
-    sleep_ms(14);
-  else 
-    sleep_ms(11);
-  return((mzpit.e008call--)&0x01);
+
+  if (mzpit.out0) {
+    if (mzmodel == MZ700)
+      sleep_ms(14);
+    else 
+      sleep_ms(11);
+  }
+
+  if (portE008&0x01)
+    //portE008&=0xFE;
+    portE008=0xFE;
+  else
+    //portE008^=0x01;
+    portE008=0xFF;
+
+  return(portE008);
 }
 
 void wrE008(uint8_t data) 
 {
   uint32_t *unused;
-  mzpit.e008call=data&0x01;   // lsb = sound (ignore joystick, HBLNK)
 
-  switch (mzpit.e008call) {
+  switch (data&0x01) {
+
     case 0: // Disable sound generation if an alarm has been set
             if (tone_alarm) 
               mzpico_tone_off(tone_alarm, unused);
+            mzpit.out0=false;
             break;
     case 1: // Enable sound generation
             mzpico_tone_on();
-            break;
-    default:// Valid values are 0 or 1, so do nothing
+            mzpit.out0=true;
             break;
   }
 
+  portE008=data;
   return;
 }

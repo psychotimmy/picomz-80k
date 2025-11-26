@@ -159,14 +159,13 @@ typedef struct pit8253 {
   uint16_t counter0; /* Two byte counter for sound frequency */
   uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
                      /* we're writing to or reading from (E004) */
+  bool out0;         /* Start / stop counter 0 output */
 
   uint16_t c2start;  /* Records value set in counter 2 when initialised */
   uint16_t counter2; /* Two byte counter for time */
   uint8_t msb2;      /* Used to keep track of which byte of counter 2 */
                      /* we're writing to or reading from (E006) */
   bool out2;         /* Start / stop counter 2 output */ 
-
-  uint8_t e008call;  /* Incremented whenever E008 is read */
 
 } pit8253;
 

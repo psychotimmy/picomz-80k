@@ -187,12 +187,28 @@ uint8_t rd8255(uint16_t addr)
                memcpy(newkey,processkey,KBDROWS);
              retval=newkey[idx];
            }
-           else {
+           else if (mzmodel == MZ80K) {
              // Ensure shift / ctrl keys read correctly - (re)start scan on
-             // column 8 for MZ-80K and MZ-700
+             // column 8 for MZ-80
              if (idx == 8) 
-               memcpy(newkey,processkey,KBDROWS);
+                memcpy(newkey,processkey,KBDROWS);
              retval=newkey[idx];
+           }
+           else {
+             // MZ-700 keyboard handling
+             retval=processkey[idx];
+             if (idx < 8) {
+               // Wait for next strobe if shift or ctrl pressed
+               if ((processkey[8]==0xFE)||(processkey[8]==0xBF))
+                 retval=0xFF;
+             }
+             else {
+               if ((idx == 8) && ((processkey[8]==0xFE)||(processkey[8]==0xBF))
+                              &&  (processkey[9]==0xFF))
+                 // Shift / ctrl already processed if row 9 not active
+                 processkey[8]=0xFF;
+               // If row 9 is active, wait for next strobe to clear shift/ctrl
+             }
            }
            break;
     case 2:// Read upper 4 bits from portC 
