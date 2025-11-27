@@ -181,12 +181,6 @@ int main(void)
   uint8_t toggle;          // Used to toggle the pico's led for error
                            // conditions found on startup
 
-#if defined (PICO1)
-  // Set system clock to 200MHz
-  // See also CMakeLists.txt
-  set_sys_clock_pll(1200000000,6,1);
-#endif
-
   stdio_init_all();
 
   busy_wait_ms(250);               // Wait for inits to complete
@@ -262,7 +256,7 @@ int main(void)
     toggle=1;
     mzpicoled(toggle);
     while (true) {
-      sleep_ms(1000);
+      busy_wait_ms(1000);
       toggle=!toggle;
       mzpicoled(toggle);
     }
@@ -290,7 +284,7 @@ int main(void)
     #ifdef RC2014VGA
     if (++delay == 9) {
     #else
-    if (++delay == 20) {
+    if (++delay == 14) {
     #endif
       busy_wait_us(1);            // Need to slow down the Pico a little
       delay=0;                    // Pimoroni base is slightly slower than

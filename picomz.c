@@ -294,7 +294,7 @@ int main(void)
     toggle=1;
     mzpicoled(toggle);
     while (true) {
-      sleep_ms(1000);
+      busy_wait_ms(1000);
       toggle=!toggle;
       mzpicoled(toggle);
     }
@@ -317,8 +317,8 @@ int main(void)
     z80_step(&mzcpu);		  // Execute next z80 opcode
   #ifdef PICO1
     #ifndef RC2014VGA
-    if (++delay == 3) {
-      busy_wait_us(1);            // Need to slow down the Pico a little
+    if (++delay == 7) {
+      busy_wait_us(2);            // Need to slow down the Pico a little
       delay=0;                    // Pimoroni base
     }
     #else

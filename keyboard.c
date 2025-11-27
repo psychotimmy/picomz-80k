@@ -211,7 +211,7 @@ void tuh_hid_mount_cb(uint8_t addr, uint8_t inst,
   // tuh_hid_report_received_cb() callback invoked when a report is available
   while (!tuh_hid_receive_report(addr,inst)) {
     mzpicoled(toggle);
-    sleep_ms(200); 
+    busy_wait_ms(200); 
     toggle=!toggle;
   } 
 
@@ -238,7 +238,7 @@ void tuh_hid_report_received_cb(uint8_t addr, uint8_t inst,
   // tuh_hid_report_received_cb() invoked when next report is available
   while (!tuh_hid_receive_report(addr,inst)) {
     mzpicoled(toggle);
-    sleep_ms(200); 
+    busy_wait_ms(200); 
     toggle=!toggle;
   } 
 

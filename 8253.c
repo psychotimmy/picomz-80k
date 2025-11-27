@@ -6,14 +6,14 @@
 // MZ-80K/A/700 Implementation notes
 
 // Address E007 - PIT control word. (Write only - can't read this address.)
-// This implementation ignores it entirely. The MZ-80K/A usage of the 8253 is
-// very limited and never changes, so we can safely ignore control words.
+// This implementation ignores it entirely. The MZ-80K/A/700 usage of the 8253
+// is very limited and never changes, so we can safely ignore control words.
 
 // Counter 2 (address E006) MZ-80K/A/700 clock, 1 second resolution.
 // Counts down from 43,200 seconds unless reset. At zero, triggers /INT
 // to Z80 to toggle AM/PM flag in the monitor workarea (Mode 0).
 // This is NOT initialised by the relevant MZ monitor at startup, but is used
-// (for example) by BASIC SP-5025 to implement TI$
+// (for example) by Sharp BASICs to implement TI$
 
 // Counter 1 (address E005) in the real hardware is used as rate generator
 // (Mode 2) to drive the clock for counter 2 with 1 second pulses. Not
@@ -23,7 +23,10 @@
 // Counter 0 (address E004) - a square wave generator (Mode 3) 
 // used to output sound at the correct frequency to the MZ-80K/A/700s
 // loudspeaker. The monitor turns sound off by default on startup 
-// by writing 0x00 to E008. If 0x01 is written to E008, sound is turned on.
+// by writing 0xFE to E008. If 0xFF is written to E008, sound is turned on.
+// Note that only the lsb is significant for sound generation. The other bits
+// are all set high so that the MZ-700 emulation doesn't think that a joystick
+// is in use.
 // Sound generation in this implementation relies on the pwm and alarm
 // functions delivered by the pico SDK.
 
@@ -247,19 +250,10 @@ uint8_t rdE008(void)
   // Implements TEMPO & note durations - this needs to sleep for 11ms per call
   // on the MZ-80K and A, and 14ms per call on the MZ-700.
 
-  if (mzpit.out0) {
-    if (mzmodel == MZ700)
-      sleep_ms(14);
-    else 
-      sleep_ms(11);
-  }
+  if (mzpit.out0)
+    (mzmodel == MZ700) ? busy_wait_ms(14):busy_wait_ms(11);
 
-  if (portE008&0x01)
-    //portE008&=0xFE;
-    portE008=0xFE;
-  else
-    //portE008^=0x01;
-    portE008=0xFF;
+  (portE008&0x01) ? (portE008=0xFE):(portE008=0xFF);
 
   return(portE008);
 }

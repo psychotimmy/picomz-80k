@@ -131,8 +131,31 @@
 /***************************************************/
 /*                                                 */
 /* Sharp MZ-700 memory map summary                 */
+/* At power on:                                    */
 /*                                                 */
-/* TODO                                            */
+/* 0x0000 - 0x0FFF  Monitor 1Z-013A                */
+/*      0 - 4095    4096 bytes                     */
+/* 0x1000 - 0x11FF  Monitor stack and work area    */
+/*   4096 - 4607    512 bytes                      */
+/* 0x1200 - 0xCFFF  User program area (inc. langs) */
+/*   4608 - 53247   48640 bytes                    */
+/* 0xD000 - 0xDFFF  Video device control area      */
+/*  53248 -  57343  2048 bytes for screen, plus    */
+/*                  2048 bytes for colour and      */
+/*                  character set information.     */
+/* 0xE000 - 0xEFFF  8255/8253 device control area  */
+/*  57344 - 61439      Only first few addrs used   */
+/*                     (0xE000 - 0xE008)           */
+/* 0xF000 - 0xFFFF  FD /QD ROMs (if present)       */
+/*  61440 - 65535                                  */
+/*                                                 */
+/* There is also 4K of RAM that can be paged in    */
+/* under s/w control to replace the ROM at 0x0000, */
+/* and 12K of RAM that can replace the VRAM, ROMs  */
+/* and devices from 0xD000 onwards. For example,   */
+/* S-BASIC 1Z-013B replaces the monitor ROM with   */
+/* the 4K banked RAM at 0x0000 and implements an   */
+/* (incompatible!) monitor in ROM instead.         */
 /*                                                 */
 /***************************************************/
 
