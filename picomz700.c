@@ -282,7 +282,7 @@ int main(void)
     z80_step(&mzcpu);		  // Execute next z80 opcode
   #ifdef PICO1
     #ifdef RC2014VGA
-    if (++delay == 9) {
+    if (++delay == 7) {
       busy_wait_us(1);            // Need to slow down the Pico a little
       delay=0;                    // Pimoroni base is slightly slower than
     }                             // the RC2014 cards for some unknown reason!
@@ -294,7 +294,7 @@ int main(void)
     #endif
   #endif
   #ifdef PICO2
-    if (++delay == 4) {
+    if (++delay == 3) {
       busy_wait_us(1);            // Need to slow down the Pico 2 a little
       delay=0;
     }
