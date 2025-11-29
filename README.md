@@ -67,9 +67,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-Pico MZ version 3.0.0 works with the current Pico SDK 2.2.0 master branch (latest stable)
-
-(Pico MZ versions 1.1.0 to 2.0.1 used Pico SDK 2.1.x. Earlier releases used Pico SDK 1.5.1)
+Pico MZ version 3.0.0 works with the current Pico SDK 2.2.0 master branch (latest stable).
 
 ### Release highlights
 
@@ -134,10 +132,10 @@ For Pico 2 builds, issue the commands:
    cmake -DPICO_BOARD=vgaboard -DPICO_PLATFORM=rp2350 ..
    make
 ```
-There should now be four (Pico) or two (Pico 2) .uf2 files in your build directory for the emulator that can be installed on the appropriate hardware
+There should now be four (Pico) or two (Pico 2) .uf2 files in your build directory for the emulator that can be installed on the appropriate hardware.
 
 ## Project Background
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 20th November 2025.
+### This README was last updated on 29th November 2025.
