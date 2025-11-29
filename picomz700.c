@@ -283,15 +283,18 @@ int main(void)
   #ifdef PICO1
     #ifdef RC2014VGA
     if (++delay == 9) {
-    #else
-    if (++delay == 14) {
-    #endif
       busy_wait_us(1);            // Need to slow down the Pico a little
       delay=0;                    // Pimoroni base is slightly slower than
     }                             // the RC2014 cards for some unknown reason!
+    #else
+    if (++delay == 255) {
+      busy_wait_us(1);            // Need to slow down the Pico a little
+      //delay=0;                  // Pimoroni base (255 is limit of uint8_t)
+    }
+    #endif
   #endif
   #ifdef PICO2
-    if (++delay == 3) {
+    if (++delay == 4) {
       busy_wait_us(1);            // Need to slow down the Pico 2 a little
       delay=0;
     }

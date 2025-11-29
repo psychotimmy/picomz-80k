@@ -39,7 +39,7 @@ typedef struct toneg {    /* Tone generator structure for sound  */
   float freq;             /* Requested frequency in Hz */
 } toneg;
 
-static toneg picotone;         /* Tone generator global static */
+static toneg picotone;         /* Tone generator static */
 
 pit8253 mzpit;                 /* MZ-80K/A/700 8253 PIT global */
 static alarm_id_t tone_alarm;  /* Alarms used to start/stop tones */
@@ -127,8 +127,8 @@ void mzpico_tone_on(void)
 {
   uint32_t *unused; /* Dummy variable for alarm callback */
 
-  // Avoid possible divide by 0 by insisting frequency > 0.1Hz
-  if (picotone.freq > 0.1) {
+  // Avoid possible divide by 0 by insisting frequency >= 0.1Hz
+  if (picotone.freq >= 0.1) {
     float divider=(float)picotone.picoclock/(picotone.freq*10000.0);
     pwm_set_clkdiv(picotone.slice1, divider);
     pwm_set_clkdiv(picotone.slice2, divider);
@@ -139,7 +139,8 @@ void mzpico_tone_on(void)
     pwm_set_enabled(picotone.slice1, true);
     pwm_set_enabled(picotone.slice2, true);
 
-    if (tone_alarm) cancel_alarm(tone_alarm);
+    if (tone_alarm) 
+      cancel_alarm(tone_alarm);
     // The delay of 2000s below is arbitrary
     // The alarm will always (?!) be cancelled before this value is reached.
     tone_alarm=add_alarm_in_ms(2000000,mzpico_tone_off,unused,true);
@@ -210,15 +211,14 @@ void wr8253(uint16_t addr, uint8_t val)
     else {
       mzpit.counter0|=((val<<8)&0xFF00);
       mzpit.msb0=0;
-      if (mzpit.counter0 != 0) {
+      if (mzpit.counter0 == 0x0000)
         // Avoid a possible divide by 0
-        // Legal value for frequency divider is 0x0001 to 0xFFFF
-        // Frequency divider for MZ-700 and MZ80K/A is different
-        if (mzmodel == MZ700)
-          picotone.freq=1108800.0/(float)mzpit.counter0;
-        else
-          picotone.freq=1000000.0/(float)mzpit.counter0;
-      }
+        mzpit.counter0 == 0x0001;
+      // Legal value for frequency divider is 0x0001 to 0xFFFF
+      // Frequency divider for MZ-700 and MZ80K/A is different
+      (mzmodel == MZ700) ? 
+        (picotone.freq=1108800.0/(float)mzpit.counter0):
+        (picotone.freq=1000000.0/(float)mzpit.counter0);
     }
   }
 
@@ -251,6 +251,9 @@ uint8_t rdE008(void)
   // on the MZ-80K and A, and 14ms per call on the MZ-700.
 
   if (mzpit.out0)
+    // Sound is only active if mzpit.counter0 is running
+    // Important for the MZ-700 as address E008 is shared by the joystick(s)
+    // Not implemented in Pico MZ yet.
     (mzmodel == MZ700) ? busy_wait_ms(14):busy_wait_ms(11);
 
   (portE008&0x01) ? (portE008=0xFE):(portE008=0xFF);
@@ -265,9 +268,12 @@ void wrE008(uint8_t data)
   switch (data&0x01) {
 
     case 0: // Disable sound generation if an alarm has been set
-            if (tone_alarm) 
+            if (tone_alarm)
               mzpico_tone_off(tone_alarm, unused);
-            mzpit.out0=false;
+            // Only flag the counter as stopped if it's at zero
+            // Otherwise, rests are not dealt with correctly
+            if (mzpit.counter0 == 0x0000)
+              mzpit.out0=false;
             break;
     case 1: // Enable sound generation
             mzpico_tone_on();
