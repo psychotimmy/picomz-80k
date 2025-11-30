@@ -3,6 +3,7 @@
 // Release 1.1 - Written November 2024
 // Release 1.2 - Written January 2025
 // Release 2.0 - Written February 2025           (MZ-80A support)
+// Release 3.0 - Written October - November 2025 (MZ-700 support)
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -11,6 +12,10 @@
 // The contents of the SP-1002, SA-1510 Monitors and Character ROMs are 
 // Copyright (c) 1979 and 1982 Sharp Corporation and may be found in the
 // source file sharpcorp.c
+//
+// The contents of the 1Z-013A Monitor and MZ-700 Character ROMs are 
+// Copyright (c) 1982 Sharp Corporation and may be found in the
+// source file sharpcorp700.c
 //
 // This emulator has no other connection with Sharp Corporation.
 //
@@ -44,9 +49,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#ifndef USBDIAGOUTPUT
-  #include "tusb_config.h" // Needs to come before tusb.h as it
-#endif                     // overrides settings in tusb_options.h
+#include "tusb_config.h"
 #include <tusb.h>        
 #include "pico.h"
 #include "pico/stdlib.h"
@@ -69,27 +72,25 @@
 #include "sdcard/pio_spi.h"
 #include "zazu80/z80.h"
 
-/* Low-level debugging code macro for printf() */
-/* See CMakeLists.txt for compile time setting */
-/* of USBDIAGOUTOUT */
-
-#ifdef USBDIAGOUTPUT
-  #define SHOW printf
-#else
-  #define SHOW //
-#endif
-
-/* MZ-80 model definitions */
+/* MZ model definitions */
 #define MZ80K 1
 #define MZ80A 2
+#define MZ700 3
 
-/* Sharp MZ-80K memory locations */
+/* MZ cursor blink timer in ms - emulates 555/556 timer hardware */
+#define CURSOR_BLINK_TIME 300
+
+/* Sharp MZ memory locations */
 
 #define MROMSIZE        4096  //   4   Kbytes Monitor ROM
-#define CROMSIZE        2048  //   2   Kbytes Character ROM
-#define URAMSIZE        49152 //   0.5 Kbytes Monitor + 48 Kbytes User RAM
+#define CROMSIZE        2048  //   2   Kbytes Character ROM (MZ-80K and MZ-80A)
+#define CROMSIZE700     4096  //   4   Kbytes Character ROM (MZ-700)
+#define URAMSIZE        49152 //   48  Kbytes Monitor RAM + User RAM
 #define VRAMSIZE        2048  //   2   Kbyte  Video RAM (1K used on MZ-80K)
+#define VRAMSIZE700     4096  //   4   Kbytes Video RAM (2K + 2K colour)
 #define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
+#define BANK4SIZE       12288 //   4   Kbytes Banked RAM (MZ-700)
+#define BANK12SIZE      12288 //   12  Kbytes Banked RAM (MZ-700)
 
 /***************************************************/
 /* Sharp MZ-80K and MZ-80A memory map summary      */
@@ -128,12 +129,38 @@
 /*                     First 2048 bytes on MZ-80A  */
 /*                                                 */
 /***************************************************/
+/*                                                 */
+/* Sharp MZ-700 memory map summary                 */
+/* At power on:                                    */
+/*                                                 */
+/* 0x0000 - 0x0FFF  Monitor 1Z-013A                */
+/*      0 - 4095    4096 bytes                     */
+/* 0x1000 - 0x11FF  Monitor stack and work area    */
+/*   4096 - 4607    512 bytes                      */
+/* 0x1200 - 0xCFFF  User program area (inc. langs) */
+/*   4608 - 53247   48640 bytes                    */
+/* 0xD000 - 0xDFFF  Video device control area      */
+/*  53248 -  57343  2048 bytes for screen, plus    */
+/*                  2048 bytes for colour and      */
+/*                  character set information.     */
+/* 0xE000 - 0xEFFF  8255/8253 device control area  */
+/*  57344 - 61439      Only first few addrs used   */
+/*                     (0xE000 - 0xE008)           */
+/* 0xF000 - 0xFFFF  FD /QD ROMs (if present)       */
+/*  61440 - 65535                                  */
+/*                                                 */
+/* There is also 4K of RAM that can be paged in    */
+/* under s/w control to replace the ROM at 0x0000, */
+/* and 12K of RAM that can replace the VRAM, ROMs  */
+/* and devices from 0xD000 onwards. For example,   */
+/* S-BASIC 1Z-013B replaces the monitor ROM with   */
+/* the 4K banked RAM at 0x0000 and implements an   */
+/* (incompatible!) monitor in ROM instead.         */
+/*                                                 */
+/***************************************************/
 
-/* MZ-80K keyboard */
+/* MZ-80K, MZ-80A and MZ-700 keyboard */
 #define KBDROWS 10     // There are 10 rows sensed on the keyboard
-
-/* USB keyboard buffer */
-#define USBKBDBUF 12   // Should be ample
 
 /* Emulator status information display - uses the last 40 scanlines */
 /* equivalent to 5 rows of 40 characters */
@@ -148,13 +175,14 @@
 
 /* Tape header and maximum body sizes in bytes */
 #define TAPEHEADERSIZE    128 // 128 bytes
-#define TAPEBODYMAXSIZE 48640 // 47.5Kbytes
+#define TAPEBODYMAXSIZE 49152 // 48 Kbytes
 
 /* Holds global variables relating to the 8253 PIT */
 typedef struct pit8253 {  
   uint16_t counter0; /* Two byte counter for sound frequency */
   uint8_t msb0;      /* Used to keep track of which byte of counter 0 */
                      /* we're writing to or reading from (E004) */
+  bool out0;         /* Start / stop counter 0 output */
 
   uint16_t c2start;  /* Records value set in counter 2 when initialised */
   uint16_t counter2; /* Two byte counter for time */
@@ -162,41 +190,59 @@ typedef struct pit8253 {
                      /* we're writing to or reading from (E006) */
   bool out2;         /* Start / stop counter 2 output */ 
 
-  uint8_t e008call;  /* Incremented whenever E008 is read */
-
 } pit8253;
 
-/* picomz.c */
+/* picomz.c and picomz700.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
-extern uint8_t mzvram[VRAMSIZE];
+#ifdef MZ700EMULATOR
+  extern uint8_t mzvram[VRAMSIZE700];
+  extern uint8_t mzbank4[BANK4SIZE];
+  extern uint8_t mzbank12[BANK12SIZE];
+  extern bool bank4k;
+  extern bool bank12k;
+  extern bool bank12klck;
+  extern void sio_write(z80*, uint8_t, uint8_t);
+#else
+  extern uint8_t mzvram[VRAMSIZE];
+#endif
 extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
 extern uint8_t picotone2;
 /* Pixel colours */
-extern uint16_t whitepix;
-extern uint16_t blackpix;
-/* MZ model & CGROM types */
+#ifdef MZ700EMULATOR
+  extern uint16_t colourpix[8];
+#else
+  extern uint16_t whitepix;
+  extern uint16_t blackpix;
+#endif
+/* MZ model and CGROM types - UK/Japanese on MZ-80K only at present */
 extern uint8_t mzmodel;
 extern bool ukrom;
-
-/* sharpcorp.c */
-extern uint8_t mzmonitor80k[MROMSIZE];
-extern uint8_t mzmonitor80a[MROMSIZE];
-extern const uint8_t cgromuk80k[CROMSIZE];
-extern const uint8_t cgromjp80k[CROMSIZE];
-extern const uint8_t cgromuk80a[CROMSIZE];
-
-/* keyboard.c */
+/* Keyboard array */
 extern uint8_t processkey[KBDROWS];
-#ifdef USBDIAGOUTPUT
-  extern void mzcdcmapkey80k(int32_t*, int8_t);
-  extern void mzcdcmapkey80a(int32_t*, int8_t);
+
+/* sharpcorp.c and sharpcorp700.c */
+#ifdef MZ700EMULATOR
+  extern uint8_t mzmonitor700[MROMSIZE];
+  extern const uint8_t cgromuk700[CROMSIZE700];
 #else
-  extern void mzrptkey(void);
+  extern uint8_t mzmonitor80k[MROMSIZE];
+  extern uint8_t mzmonitor80a[MROMSIZE];
+  extern const uint8_t cgromuk80k[CROMSIZE];
+  extern const uint8_t cgromjp80k[CROMSIZE];
+  extern const uint8_t cgromuk80a[CROMSIZE];
+#endif
+
+/* keyboard.c and keyboard700.c */
+extern uint8_t processkey[KBDROWS];
+extern void mzrptkey(void);
+#ifndef MZ700EMULATOR
   extern void mzhidmapkey80k(uint8_t, uint8_t);
   extern void mzhidmapkey80a(uint8_t, uint8_t);
+#else
+  extern void mzhidmapkey700(uint8_t, uint8_t);
 #endif
 
 /* cassette.c */
@@ -213,7 +259,7 @@ extern FRESULT mzsavedump(void);
 extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
 
-/* vgadisplay.c */
+/* vgadisplay.c and vgadisplay700.c */
 extern void vga_main(void);
 
 /* 8255.c */
@@ -222,9 +268,6 @@ extern uint8_t cmotor;
 extern uint8_t csense;
 extern uint8_t vgate;
 extern uint8_t vblank;
-#ifdef USBDIAGOUTPUT
-  extern uint8_t scantimes;
-#endif
 extern uint8_t rd8255(uint16_t addr);
 extern void wr8255(uint16_t addr, uint8_t data);
 

@@ -1,16 +1,17 @@
-/*    Sharp MZ-80K & MZ-80A tape handling    */
-/* Tim Holyoake, August 2024 - February 2025 */
+/* Sharp MZ-80K, MZ-80A & MZ-700 tape handling */
+/*  Tim Holyoake, August 2024 - November 2025  */
 
 #include "picomz.h"
 
 #define LONGPULSE  1     /* cread() returns high for a long pulse */
 #define SHORTPULSE 0     /*                 low for a short pulse */
 
-#define READPT 420       /* Elapsed time in microseconds that on a tape      */
-                         /* write a pulse is treated as a 1 rather than a 0. */
-                         /* The real MZ-80K/A read point is after 386us, but */
-                         /* 420us is safe in the emulator (increased from    */
-                         /* 400us during the MZ-80A implementation).         */
+#ifdef MZ700EMULATOR     /* Elapsed time in microseconds that on a tape      */
+  #define READPT 300     /* write a pulse is treated as a 1 rather than a 0. */
+#else                    /* The real MZ-80K/A/700 read point is 386us, but   */
+  #define READPT 420     /* 420us is safe in the K/A emulator (increased     */
+#endif                   /* from 400us during the MZ-80A implementation).    */
+                         /* 420 is too high for the MZ-700, but 300 seems OK */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
 #define WBGAP_L 22000    /* Big tape gap length in bits - write */
@@ -28,9 +29,12 @@
 //(L_L+S256_L+HDR_L+(HDR_L/8)+CHK_L+(CHK_L/8)+L_L+WSGAP_L+STM_L+L_L)*2 
 
 /* Used in mzspinny() */
-#define TCOUNTERMAX 999  /* Maximum value of tapecounter */
-#define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
-
+#define TCOUNTERMAX 999    /* Maximum value of tapecounter */
+#ifdef MZ700EMULATOR       /* MZ700 is 3.54MHz; 80K/A are 2.0MHz, so scale */
+  #define TCOUNTERINC 354  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
+#else
+  #define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
+#endif
 uint8_t crstate=0;       // Holds tape state for cread()
 uint8_t cwstate=0;       // Holds tape state for cwrite()
 
@@ -39,7 +43,7 @@ uint8_t body[TAPEBODYMAXSIZE]; // Maximum storage is 47.5K - 48640 bytes
 
 static FATFS fs;         // File system pointer for sd card
 
-/* MZ-80K/A tapes always have a 128 byte header, followed by a body */
+/* MZ-80K/A/700 tapes always have a 128 byte header, followed by a body */
 
 // Tape format is as follows: 
 
@@ -72,11 +76,11 @@ static FATFS fs;         // File system pointer for sd card
 // l - 1 long pulse
 
 /* Update the tape counter in the emulator status area, line 3 */
-void mzspinny(uint8_t state)
+void __not_in_flash_func (mzspinny) (uint8_t state)
 {
   uint8_t spos=EMULINE3;            // Write to fourth emulator status line
   static uint16_t spinny=0;         // Used to reset the tape counter
-  static uint8_t ignore=0;          // Don't update the tape counter
+  static uint16_t ignore=0;         // Don't update the tape counter
                                     // with every call to this function
   uint8_t mzstr[15];                // Used to convert ASCII to MZ display
 
@@ -111,7 +115,7 @@ void mzspinny(uint8_t state)
 }
 
 /* Attempt to mount an sd card */
-FRESULT tapeinit(void)
+FRESULT __not_in_flash_func (tapeinit) (void)
 {
   FRESULT res;
 
@@ -123,15 +127,15 @@ FRESULT tapeinit(void)
   return(res);
 }
 
-/* Save MZ-80K/A user RAM to a file */
-FRESULT mzsavedump(void)
+/* Save MZ-80K/A/700 active memory to a file */
+FRESULT __not_in_flash_func (mzsavedump) (void)
 {
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
   uint bw;                          // Number of bytes written to file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t dumpfile[11] =            // Memory dump filename
-  { 'M','Z','D','U','M','P','.','M','Z','F','\0' };
+  uint8_t dumpfile[12] =            // Memory dump filename
+  { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
   uramheader[0] = 0x20;             // Use 0x20 as the header identifier
@@ -149,32 +153,65 @@ FRESULT mzsavedump(void)
   uramheader[11]= 0x9e;             // p
   uramheader[12]= 0x0d;             // <end of name>
 
+  // Distinguish between K, A and 700 dump files 
+  if (mzmodel == MZ80K)
+    dumpfile[6]='K';
+  else if (mzmodel == MZ80A)
+    dumpfile[6]='A';
+  else
+    dumpfile[6]='7';
+
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res) {
-    SHOW("Error on file open for MZDUMP.MZF, status is %d\n",res);
     return(res);
   }
 
   // Write the 'tape' header
   f_write(&fp, uramheader, TAPEHEADERSIZE, &bw);
-  SHOW("Memory dump header: %d bytes written to MZDUMP.MZF\n",bw);
+
+  // Write 'tape' contents - everything in (active) monitor space
+  // and lower 4k banked memory on MZ700
+#ifdef MZ700EMULATOR
+  f_write(&fp, mzmonitor700, MROMSIZE, &bw);
+  f_write(&fp, mzbank4, BANK4SIZE, &bw);
+#else
+  switch (mzmodel) { 
+    case MZ80K: f_write(&fp, mzmonitor80k, MROMSIZE, &bw);
+                break;
+    case MZ80A: f_write(&fp, mzmonitor80a, MROMSIZE, &bw);
+                break;
+    default:    f_close(&fp);
+                return(FR_INT_ERR);      // Model check failed
+                break;
+  }
+#endif
 
   // Write 'tape' contents - everything in mzuserram 
   f_write(&fp, mzuserram, URAMSIZE, &bw); 
-  SHOW("Memory dump user RAM: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Write 'tape' contents - everything in mzvram
+#ifdef MZ700EMULATOR
+  f_write(&fp, mzvram, VRAMSIZE700, &bw);
+#else
   f_write(&fp, mzvram, VRAMSIZE, &bw); 
-  SHOW("Memory dump video RAM: %d bytes written to MZDUMP.MZF\n",bw);
+#endif
+
+#ifdef MZ700EMULATOR
+  // On MZ700 write everything in upper 12k banked memory
+  f_write(&fp, mzbank12, BANK12SIZE, &bw);
+
+  // Write bank status booleans
+  f_write(&fp, &bank4k, sizeof(bank4k), &bw);
+  f_write(&fp, &bank12k, sizeof(bank12k), &bw);
+  f_write(&fp, &bank12klck, sizeof(bank12klck), &bw);
+#endif
 
   // Write 'tape' contents - z80 state
   f_write(&fp, &mzcpu, sizeof(mzcpu), &bw);
-  SHOW("Memory dump z80 cpu state: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Write 'tape' contents - 8253 state
   f_write(&fp, &mzpit, sizeof(mzpit), &bw);
-  SHOW("Memory dump 8253 state: %d bytes written to MZDUMP.MZF\n",bw);
 
   // Close the file and return
   f_close(&fp);
@@ -182,51 +219,90 @@ FRESULT mzsavedump(void)
   return(FR_OK);
 }
 
-/* Read MZ-80K/A memory dump        */
-FRESULT mzreaddump(void)
+/* Read MZ-80K/A/700 memory dump        */
+FRESULT __not_in_flash_func (mzreaddump) (void)
 {
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
   uint br;                          // Number of bytes read from file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t dumpfile[11] =            // Memory dump filename
-  { 'M','Z','D','U','M','P','.','M','Z','F','\0' };
+  uint8_t dumpfile[12] =            // Memory dump filename
+  { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
+
+  // Distinguish between K, A and 700 dump files 
+  if (mzmodel == MZ80K)
+    dumpfile[6]='K';
+  else if (mzmodel == MZ80A)
+    dumpfile[6]='A';
+  else
+    dumpfile[6]='7';
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
-  if (res) {
-    SHOW("Error on file open for MZDUMP.MZF, status is %d\n",res);
+  // An error has occured if res is non-zero
+  if (res) 
     return(res);
-  }
 
   // Read the header - check it's what we're expecting
   f_read(&fp,uramheader,TAPEHEADERSIZE,&br);
   if (uramheader[0] != 0x20) {
-    SHOW("Error on header read - expecting type 0x20\n");
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
+
+  // Read 'tape' contents - everything in (active) monitor space
+  // and lower 4k banked memory on MZ700
+#ifdef MZ700EMULATOR
+  f_read(&fp, mzmonitor700, MROMSIZE, &br);
+  f_read(&fp, mzbank4, BANK4SIZE, &br);
+#else
+  switch (mzmodel) { 
+    case MZ80K: f_read(&fp, mzmonitor80k, MROMSIZE, &br);
+                break;
+    case MZ80A: f_read(&fp, mzmonitor80a, MROMSIZE, &br);
+                break;
+    default:    //MZ model check failed
+                f_close(&fp);
+                return(FR_INT_ERR);
+                break;
+  }
+#endif
 
   // Read mzuserram
   f_read(&fp, mzuserram, URAMSIZE, &br);
   if (br != URAMSIZE) {
-    SHOW("Error on userram read - expecting %d bytes, got %d\n",URAMSIZE,br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
 
-  // Read mzvram
-  f_read(&fp, mzvram, VRAMSIZE, &br);
-  if (br != VRAMSIZE) {
-    SHOW("Error on video ram read - expecting %d bytes, got %d\n",VRAMSIZE,br);
+  // Read 'tape' contents - everything in mzvram
+#ifdef MZ700EMULATOR
+  f_read(&fp, mzvram, VRAMSIZE700, &br);
+  if (br != VRAMSIZE700) {
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
+#else
+  f_read(&fp, mzvram, VRAMSIZE, &br);
+  if (br != VRAMSIZE) {
+    f_close(&fp);
+    return(FR_INT_ERR);      // assertion failed
+  }
+#endif
+
+#ifdef MZ700EMULATOR
+  // On MZ700 read everything into upper 12k banked memory
+  f_read(&fp, mzbank12, BANK12SIZE, &br);
+
+  // Read bank status booleans
+  f_read(&fp, &bank4k, sizeof(bank4k), &br);
+  f_read(&fp, &bank12k, sizeof(bank12k), &br);
+  f_read(&fp, &bank12klck, sizeof(bank12klck), &br);
+#endif
 
   // Read z80 state
   f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
   if (br != sizeof(mzcpu)) {
-    SHOW("Error on z80 read - expecting %d bytes, got %d\n",sizeof(mzcpu),br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -234,7 +310,6 @@ FRESULT mzreaddump(void)
   // Read 8253 state
   f_read(&fp, &mzpit, sizeof(mzpit), &br);
   if (br != sizeof(mzpit)) {
-    SHOW("Error on 8253 read - expecting %d bytes, got %d\n",sizeof(mzpit),br);
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
@@ -246,7 +321,7 @@ FRESULT mzreaddump(void)
 }
 
 /* Preload a tape file into the header/body memory ready for LOAD */
-int16_t tapeloader(int16_t n)
+int16_t __not_in_flash_func (tapeloader) (int16_t n)
 {
   FIL fp;
   DIR dp;
@@ -256,10 +331,10 @@ int16_t tapeloader(int16_t n)
   uint8_t mzstr[25];
 
   res=f_opendir(&dp,"/");	/* Open the root directory on the sd card */
-  if (res) {
-    SHOW("Error on directory open for /, status is %d\n",res);
+  //Error on opening root directory if res is non-zero
+  if (res) 
     return(-1);
-  }
+  
 
   // If we're passed a number less than 0, use 0 (first file).
   if (n < 0) 
@@ -271,12 +346,11 @@ int16_t tapeloader(int16_t n)
     if (res != FR_OK || fno.fname[0] == 0) {
       /* We're at the end of the tape or an error has happened */
       /* Return with no change to the preloaded file */
-      SHOW("End of tape, status is %d\n",res);
       f_closedir(&dp);
       return(-1);
     }
     if (fno.fattrib & AM_DIR)    /* All subdirectories ignored at present */
-      SHOW("Ignoring directory %s\n",fno.fname);
+      ;
     else 
       ++dc;                      /* Increment the file count */
   }
@@ -285,14 +359,12 @@ int16_t tapeloader(int16_t n)
   // We now have the next file on the tape - preload it
   res=f_open(&fp,fno.fname,FA_READ|FA_OPEN_EXISTING);
   if (res) {
-    SHOW("Error on file open for %s, status is %d\n",fno.fname,res);
     return(-1);
   }
   
-  // MZ-80K/A tape headers are always 128 bytes
+  // MZ-80K/A/700 tape headers are always 128 bytes
   f_read(&fp,header,TAPEHEADERSIZE,&bytesread);
   if (bytesread != TAPEHEADERSIZE) {
-    SHOW("Header error - only read %d of 128 bytes\n",bytesread);
     f_close(&fp);
     return(-1);
   }
@@ -300,10 +372,8 @@ int16_t tapeloader(int16_t n)
   // Work out how many bytes to read from the header - stored in
   // locations header[19] and header[18] (msb, lsb)
   bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  SHOW("Tape body length for tape %d is %d\n",n,bodybytes);
   f_read(&fp,body,bodybytes,&bytesread);
   if (bytesread != bodybytes) {
-    SHOW("Body error - only read %d of %d bytes\n",bytesread,bodybytes);
     f_close(&fp);
     return(-1);
   }
@@ -342,7 +412,8 @@ int16_t tapeloader(int16_t n)
 
   // Type of tape is stored in the header
   // 0x01 = machine code, 0x02 = language (BASIC,Pascal etc.), 0x03 = data
-  // 0x04 = zen source, 0x20 = memory dump (Pico MZ-80K/A specific)
+  // 0x04 = zen source, 0x05 = S-BASIC on MZ700, 0x06 = Chalkwell BASIC (MZ80)
+  // 0x20 = memory dump (Pico MZ-80K/A/700 specific)
   switch (header[0]) {
     case 0x01: if (ukrom)
                  ascii2mzdisplay("Machine code",mzstr);
@@ -372,6 +443,13 @@ int16_t tapeloader(int16_t n)
                for (uint8_t i=0; i<10; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
+    case 0x05: if (ukrom)
+                 ascii2mzdisplay("Sharp S-BASIC",mzstr);
+               else
+                 ascii2mzdisplay("SHARP S-BASIC",mzstr);
+               for (uint8_t i=0; i<13; i++)
+                 mzemustatus[spos++]=mzstr[i];
+               break;
     case 0x06: if (ukrom)
                  ascii2mzdisplay("Chalkwell BASIC",mzstr);
                else
@@ -380,10 +458,10 @@ int16_t tapeloader(int16_t n)
                  mzemustatus[spos++]=mzstr[i];
                break;
     case 0x20: if (ukrom)
-                 ascii2mzdisplay("Pico MZ-80K/A memory dump",mzstr);
+                 ascii2mzdisplay("Pico MZ memory dump",mzstr);
                else
-                 ascii2mzdisplay("PICO MZ-80K/A MEMORY DUMP",mzstr);
-               for (uint8_t i=0; i<23; i++)
+                 ascii2mzdisplay("PICO MZ MEMORY DUMP",mzstr);
+               for (uint8_t i=0; i<19; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
     default:   if (ukrom)
@@ -396,14 +474,13 @@ int16_t tapeloader(int16_t n)
   }
 
   // We've read the tape successfully if we get here
-  SHOW("Successful preload of %s\n",fno.fname);
   f_close(&fp);
 
   return(n);     /* Return the file number loaded - matches requested */
 }
 
 /* Write a new file to sd card 'tape'                             */
-void tapewriter(void)
+void __not_in_flash_func (tapewriter) (void)
 {
   uint8_t sharpfilelen=0;
   uint8_t sdfilename[22];  // sdfilename needs 1 more char than
@@ -414,9 +491,6 @@ void tapewriter(void)
   uint16_t i;              // Counts file body bytes written to sd card
   FRESULT res;
   FIL fp;
-
-  SHOW("In tapewriter()\n");
-  SHOW("Convert Sharp tape file name to sensible ASCII\n");
 
   // Sharp tape file name is up to 17 characters stored in header[1]
   // to header[17]. If less than 17 characters, name ends with 0x0D
@@ -439,20 +513,16 @@ void tapewriter(void)
   // we simply overwrite it ... just as would happen on a tape.
   res=f_open(&fp,sdfilename,FA_CREATE_ALWAYS|FA_WRITE);
   if (res) {
-    SHOW("Error on file open for %s, status is %d\n",sdfilename,res);
     return;
   }
 
   // Write the 128 byte header to the file
   f_write(&fp, header, TAPEHEADERSIZE, &bw);
-  SHOW("%d header bytes written to %s\n",bw,sdfilename);
 
   // Write the tape body to the file
   uint16_t bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  SHOW("bodybytes is\n",bodybytes);
   for (i=0;i<bodybytes;i++)
     f_write(&fp, &body[i], 1, &bw);
-  SHOW("%d file body bytes written to %s\n",i,sdfilename);
 
   // Close the file and return
   f_close(&fp);
@@ -460,10 +530,11 @@ void tapewriter(void)
   return;
 }
 
-/* Resets the tape state machines. Called at the */
-/* end of a successful read or write, or if the  */
-/* BREAK key is pressed to abort.                */
-void reset_tape(void)
+/* Resets the tape state machines. Called at the  */
+/* end of a successful read or write, or if SHIFT */
+/* BREAK is pressed to abort, or if the reset key */
+/* is pressed on the MZ-80A / MZ-700.             */
+void __not_in_flash_func (reset_tape) (void)
 {
   crstate=0;
   cwstate=0;
@@ -475,18 +546,18 @@ void reset_tape(void)
   return;
 }
 
-/* Read an MZ-80K/A format tape one bit at a time */
-/* Pseudo finite state machine implementation     */
-/* If the header and body are read successfully   */
-/* at the first attempt, the read process ends    */
-/* and the second copy is not read. This impl.    */
-/* assumes that the first read is ALWAYS good,    */
-/* as we're using .mzf files rather than a real   */
-/* cassette tape.                                 */
-uint8_t cread(void)
+/* Read a MZ-80K/A/700 format tape one bit at a time  */
+/* Pseudo finite state machine implementation         */
+/* If the header and body are read successfully       */
+/* at the first attempt, the read process ends        */
+/* and the second copy is not read. This impl.        */
+/* assumes that the first read is ALWAYS good,        */
+/* as we're using .mzf files rather than a real       */
+/* cassette tape.                                     */
+uint8_t __not_in_flash_func (cread) (void)
 {
                              // Used to calculate the bit to output from tape
-  uint8_t bitshift;          // to the MZ-80K/A when reading the header or body
+  uint8_t bitshift;          // to the MZ when reading the header or body
   static uint16_t chkbits;   // Tracks number of long pulses sent in the header
                              // or body to enable the checksum to be calculated
                              // MUST be a 16 bit unsigned value
@@ -580,7 +651,6 @@ uint8_t cread(void)
         // as this will automatically be taken care of for us
         checksum[0]=(chkbits>>8)&0xFF; /* MSB of the checksum */
         checksum[1]=chkbits&0xFF;      /* LSB of the checksum */
-        SHOW("Header checksum is 0x%04x 0x%02x 0x%02x\n",chkbits,checksum[0],checksum[1]);
         // Reset chkbits for the next time a checksum is calculated
         chkbits=0;
       }
@@ -643,8 +713,6 @@ uint8_t cread(void)
     /* in memory locations 0x1103 and 0x1102 from the 20th & 19th values     */
     /* found in the header - i.e. header[19] (msb) and header[18] (lsb).     */
     bodybytes=((header[19]<<8)&0xFF00)|header[18];
-    SHOW("Body length is 0x%04x (%d) bytes\n",bodybytes,bodybytes);
-    SHOW("Transition to state 8 - program data\n");
     crstate=8;
   }
 
@@ -668,9 +736,6 @@ uint8_t cread(void)
       return(SHORTPULSE);
     }
     /* At the end of the body, move onto checksum state (9) */
-    SHOW("Transition to state 9 - program checksum\n");
-    SHOW("%d bits processed\n",secbits);
-    SHOW("%d bytes processed\n",secbits/8);
     secbits=0;
     crstate=9;
   }
@@ -684,7 +749,6 @@ uint8_t cread(void)
         // as this will automatically be taken care of for us
         checksum[0]=(chkbits>>8)&0xFF; /* MSB of the checksum */
         checksum[1]=chkbits&0xFF;      /* LSB of the checksum */
-        SHOW("Body checksum is 0x%02x%02x\n",checksum[0],checksum[1]);
         // Reset chkbits for the next time a checksum is calculated
         chkbits=0;
       }
@@ -704,7 +768,6 @@ uint8_t cread(void)
     }
     /* At the end of the checksum stop */
     /* Assumes copy of program data is not needed */
-    SHOW("Transition to state 13 - stop\n");
     secbits=0;
     crstate=13; 
   }
@@ -719,12 +782,10 @@ uint8_t cread(void)
   /* At end of body checksum, reset tape state, send final stop bit */
       hilo=0;
       reset_tape();
-      SHOW("Final stop bit sent\n");
       return(LONGPULSE);
   }
 
   /* Catch any errors - shouldn't happen, but ...        */
-  SHOW("Error in cread() - unknown state %d\n",crstate);
   /* Reset hilo to 0, reset state */
   hilo=0;
   reset_tape();
@@ -732,9 +793,9 @@ uint8_t cread(void)
   return(LONGPULSE);
 }
 
-/* Write an MZ-80K/A format tape one bit at a time */
-/* Pseudo finite state machine implementation      */
-void cwrite(uint8_t nextbit)
+/* Write a MZ-80K/A/700 format tape one bit at a time */
+/* Pseudo finite state machine implementation         */
+void __not_in_flash_func (cwrite) (uint8_t nextbit)
 {
   /* Note: cwrite() can only ever be called if the motor and sense are on */
 
@@ -754,7 +815,7 @@ void cwrite(uint8_t nextbit)
   if (cwstate==0) {
     /* The first high bit has been received */
     crstate=0;               // Reset the cread() state to 0. Something odd
-                             // happens on a SAVE, as a real MZ-80K tries to
+                             // happens on a SAVE, as a real MZ tries to
                              // read the tape first. On a real machine it can't
                              // do this as 'rec' is also pressed. On this 
                              // emulator, it starts  to read any preloaded 
@@ -785,7 +846,6 @@ void cwrite(uint8_t nextbit)
     /* when the total received is 22,081 - ie, after WBGAP_L+BTM_L+L_L  */
     if (secbits==WBGAP_L+BTM_L+L_L) {
       if (low==WBGAP_L+BTM_L/2) {
-        SHOW("Tape header preamble written ok\n");
         // All ok - move onto the next state
         cwstate=2;
         secbits=0;
@@ -794,7 +854,6 @@ void cwrite(uint8_t nextbit)
         chkbits=0;
       }
       else {
-        SHOW("Error writing tape header preamble %d %d %d\n",secbits,low,high);
         cwstate=0;
       }
     }
@@ -862,11 +921,9 @@ void cwrite(uint8_t nextbit)
     /* Check to see if we're at the end of the checksum */
     if (secbits==CHK_L) {
       if (chkbits==(((checksum[0]<<8)&0xFF00)|checksum[1]))
-        SHOW("Header checksum is ok\n");
+        ;
       else
-        SHOW("Header checksum is bad ... carrying on anyway\n");
-      bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
-      SHOW("Body length is 0x%04x\n",bodybytes);
+        bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
       cwstate=4;
       chkbits=0;
       secbits=0;
@@ -889,7 +946,6 @@ void cwrite(uint8_t nextbit)
                                  // (1 pulse = 1 followed by 0 = 2 bits)
     if (secbits==SKIP_L) {
       // Assume all is ok - move onto state 8 - file body
-      SHOW("Gap between header and copy assumed ok\n");
       cwstate=8;
       secbits=0;
     }
@@ -957,10 +1013,6 @@ void cwrite(uint8_t nextbit)
     }
     /* Check to see if we're at the end of the checksum */
     if (secbits==CHK_L) {
-      if (chkbits==(((checksum[0]<<8)&0xFF00)|checksum[1]))
-        SHOW("Body checksum is ok\n");
-      else
-        SHOW("Body checksum bad ... pushing on anyway\n");
       cwstate=10;
       chkbits=0;
       secbits=0;
@@ -983,7 +1035,6 @@ void cwrite(uint8_t nextbit)
     /* Check that we have received enough 1/0 bits - 2 x number of pulses */
     if (secbits==(L_L+S256_L+bodybytes*8+bodybytes+CHK_L+2)*2) {
       // Assumed all ok - move onto the final state
-      SHOW("Skipped body copy - assumed ok\n");
       cwstate=13;
       secbits=0;
     }
@@ -1008,16 +1059,14 @@ void cwrite(uint8_t nextbit)
     if (secbits==L_L) { 
       if (high==L_L) {
         // All ok - finish write
-        SHOW("End of file reached ok - writing to sd card\n");
         tapewriter();
-        SHOW("sd card written\n");
         cwstate=0;
         secbits=0;
         high=0;
         low=0;
       }
       else {
-        SHOW("Error at end of file! %d %d %d\n",secbits,low,high);
+        // Error - quit now
         cwstate=0;
         secbits=0;
         high=0;
@@ -1028,7 +1077,6 @@ void cwrite(uint8_t nextbit)
   }
 
   /* Shouldn't be able to get here */
-  SHOW("Error - unknown cwrite() state %d\n",cwstate);
   cwstate=0;
 
   return;

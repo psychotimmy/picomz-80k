@@ -1,11 +1,11 @@
-/* Sharp MZ-80K & MZ-80A 8255 implementation */
-/* Tim Holyoake, August 2024 - February 2025 */
+/* Sharp MZ-80K, MZ-80A 8255 & MZ-700 implementation */
+/*     Tim Holyoake, August 2024 - November 2025     */
 
 #include "picomz.h"
 
-// 8255 address to port mapping for the MZ-80K/A
+// 8255 address to port mapping for the MZ-80K/A/700
 // The ports are all 8 bits wide 
-// Note that the MZ-80K and A only uses the 8255 in mode 0,
+// Note that the MZ-80K/A/700 only use the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
 static uint8_t portA;           /* 0xE000 - port A */
@@ -14,9 +14,9 @@ uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
 
 uint8_t cmotor=1;               /* Cassette motor off (0) or on (1) */
-                                /* Toggled to 0 during MZ-80K/A startup */
+                                /* Toggled to 0 during MZ startup */
 uint8_t csense=1;               /* Cassette sense toggle */
-                                /* Toggled to 0 during MZ-80K/A startup */
+                                /* Toggled to 0 during MZ startup */
                                 /* Note - the emulator currently ties the */
                                 /* cmotor & csense signals together. A more */
                                 /* faithful version would have */
@@ -26,21 +26,9 @@ uint8_t csense=1;               /* Cassette sense toggle */
 uint8_t vblank=0;               /* /VBLANK signal */
 uint8_t vgate;                  /* /VGATE signal  - not used */
 
-static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
-
-#ifdef USBDIAGOUTPUT
-  uint8_t scantimes=1;          /* How many times the keyboard matrix is */
-                                /* scanned before it is reset. Most programs */
-                                /* work well on the default; some m/c games */
-                                /* need this set to 2 or 3 for keypresses to */
-                                /* be read effectively. A kludge, but the */
-                                /* best option at the moment - better than */
-                                /* releases 1.0.0 or 1.0.1 as more flexible */
-                                /* F9 key rotates between 1 and 3, 1 is the */
-                                /* default on startup. Now only used in diag */
-                                /* builds as of v1.2.1 - properly fixed in */
-                                /* standard builds. */
-#endif
+static uint32_t blinktime;      /* Timer for cursor blink - susbstitutes for */
+                                /* the 555/556 timers in actual MZ hardware */
+static bool cblink=false;       /* Cursor blink (false = off, true = on) */
 
 // The control port is implemented as follows:
 // 
@@ -53,7 +41,7 @@ static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 // Bit 6 -    -"-              - 0         1         1
 // Bit 7 - Mode/port C bit flag- 1=mode set active, 0=bit set active
 
-// The SP-1002 / SA-1510 monitors write the value 0x8A to the control port
+// The MZ monitors write the value 0x8A to the control port
 // on startup - 1001010 binary. This sets portC lower as output,
 // portC upper as input, portB as input and portA as output.
 
@@ -96,27 +84,25 @@ static uint8_t cblink=0;        /* Cursor blink (<= 0x7F off, > 0x7F on) */
 
 void wr8255(uint16_t addr, uint8_t data)
 {
-  static uint8_t ps555=0;            // Pseudo 555 timer for cursor blink
   switch (addr&0x0003) {             // addr is between 0xE000 and 0xE003
     case 0:// Write to portA static
-           if ((data&0x80) && (++ps555 > 50)) {
-             ps555=0;                // A simple 555 timer emulation 
-             ++cblink;               // Bit 7 controls cursor blink
+           if (to_ms_since_boot(get_absolute_time()) > blinktime) {
+             blinktime += CURSOR_BLINK_TIME; // 300ms on MZ-700
+             cblink=!cblink;         // Bit 7 toggle controls cursor blink
            } 
                                      // Bits 0-3 are used by keyboard
            portA=data;               // Keeps state in portA static
            break;
-    case 1:// Write to portB - this should never happen on an MZ-80K/A,
+    case 1:// Write to portB - this should never happen on a MZ,
            // so nothing should change if a program tries to do it.
            break;
     case 2:// Overwrite the lower 4 bits of port C.
            // This is allowed, but normally the control port is used
            // to affect 1 bit at a time.
-           SHOW("!! addressing portC directly with 0x%02x !!\n",data);
            portC = (portC&0xF0)|(data&0x0F);
            break;
     case 3:// Control port code
-           // If mode set is chosen, do nothing as the MZ-80K/A must never
+           // If mode set is chosen, do nothing as the MZ must never
            // change the way the 8255 ports are configured after the 
            // monitor issues it with 8A on start up.
            uint8_t portCbit, setbit;
@@ -163,20 +149,17 @@ void wr8255(uint16_t addr, uint8_t data)
                        portC|=0x08;
                        csense=!csense;   /* Toggle sense when bit set */
                        cmotor=!cmotor;   /* Toggle motor when bit set */
-                       SHOW("motor %d sense %d\n",cmotor,csense);
                      }
                      else 
                        portC&=0xF7;      /* sense & motor remain as before */
                      break;
                   /* Should never get to cases 4-7, so break */
-             default:SHOW("Unexpected portC bit set attempt (%d)\n",portCbit);
-                     break;
+             default:break;
            }
       } // As noted, mustn't do anything if bit 7 is 1 (mode set)
     break;
 
     default:// Error!
-            SHOW("Error: illegal address passed to wr8255 0x%04x\n",addr);
             break;
   }
   return;
@@ -184,13 +167,8 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
-#ifdef USBDIAGOUTPUT
   static uint8_t newkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
                                      0xFF,0xFF,0xFF,0xFF,0xFF };
-  static uint8_t idxloop=0;        /* Allows some m/c code games to work */
-                                   /* by keeping the press from the key  */
-                                   /* matrix active for scantimes cycles */
-#endif
   uint8_t idx,retval;
 
   switch (addr&0x0003) {           // addr is between 0xE000 and 0xE002
@@ -200,79 +178,49 @@ uint8_t rd8255(uint16_t addr)
     case 1:// Port B is keyboard input
            idx=portA&0x0F;
            // 10 lines (KBDROWS) to strobe, so idx must be between 0 and 9
-           if (idx < KBDROWS) {
-
-#ifdef USBDIAGOUTPUT
-             /* Copy processkey if at start of scan and ready for a new */
-             /* key - we may not be if scantimes > 1 (K and A differ)   */
-             if ((idxloop == 0) && (idx == 9) && (mzmodel == MZ80K)) {
+           if (idx > 9)
+             idx=9;
+           if (mzmodel == MZ80A) {
+             // Ensure shift / ctrl keys read correctly - (re)start scan on
+             // column 0 for the MZ-80A
+             if (idx == 0) 
                memcpy(newkey,processkey,KBDROWS);
-               memset(processkey,0xFF,KBDROWS);
-               idxloop=KBDROWS*scantimes-1;
-             } 
-             if ((idxloop == 0) && (idx == 0) && (mzmodel == MZ80A)) {
-               memcpy(newkey,processkey,KBDROWS);
-               memset(processkey,0xFF,KBDROWS);
-               idxloop=KBDROWS*scantimes+1;
-             } 
-
-             /* Return the current row of the keyboard matrix */
              retval=newkey[idx];
-             /* Decrement idxloop counter if not at zero */
-             if (idxloop > 0)
-               --idxloop;
-#else
+           }
+           else if (mzmodel == MZ80K) {
+             // Ensure shift / ctrl keys read correctly - (re)start scan on
+             // column 8 for MZ-80
+             if (idx == 8) 
+                memcpy(newkey,processkey,KBDROWS);
+             retval=newkey[idx];
+           }
+           else {
+             // MZ-700 keyboard handling
              retval=processkey[idx];
-             if (mzmodel == MZ80K) {
-               if (idx < 8) {
-                 // Wait for next strobe if a shift key is active AND
-                 // we're not scanning rows 8 or 9
-                 // 0xFE = left shift, 0xDF = right shift
-                 if ((processkey[8]==0xFE) || (processkey[8]==0xDF))
-                   retval=0xFF;
-               }
-               else {
-                 if ((idx == 8) &&
-                     ((processkey[8]==0xFE) || (processkey[8]==0xDF)) &&
-                     (processkey[9]==0xFF)) 
-                   // Shift key has been processed and row 9 is NOT active
-                   processkey[idx]=0xFF;
-                   // Wait for next scan to clear shift if row 9 IS active
-                   // before clearing the shift key
-               }
+             if (idx < 8) {
+               // Wait for next strobe if shift or ctrl pressed
+               if ((processkey[8]==0xFE)||(processkey[8]==0xBF))
+                 retval=0xFF;
              }
              else {
-               // MZ-80A
-               if (idx != 0) {
-                 // Wait for next strobe if a shift or CTRL key is active AND
-                 // we're not scanning row 0
-                 // 0xFE = shift, 0x7F = ctrl
-                 if ((processkey[0] == 0xFE) || (processkey[0] == 0x7F))
-                   retval=0xFF;
-               }
-               else {
-                 if ((idx == 0) && 
-                     ((processkey[0] == 0xFE) || (processkey[0] == 0x7F)))
-                   // Shift or Ctrl key has been processed
-                   processkey[idx]=0xFF;
-               }
+               if ((idx == 8) && ((processkey[8]==0xFE)||(processkey[8]==0xBF))
+                              &&  (processkey[9]==0xFF))
+                 // Shift / ctrl already processed if row 9 not active
+                 processkey[8]=0xFF;
+               // If row 9 is active, wait for next strobe to clear shift/ctrl
              }
-#endif
            }
-           else
-             retval=0xFF;                // 0xFF always returned if idx > 9
            break;
     case 2:// Read upper 4 bits from portC 
            retval=portC&0x0F;          // Lower 4 bits returned unchanged
            retval|=(cmotor?0x10:0x00); // Cassette motor (off=0x00,on=0x10)
            retval|=(cread()?0x20:0x00);// Next bit read from tape  (1=0x20)
                                        //                          (0=0x00)
-           retval|=((cblink>0x7F)?0x40:0x00); // Blink cursor
-           retval|=(vblank?0x80:0x00);        // /V-BLANK status
+           retval|=(cblink?0x40:0x00); // Blink cursor (false=off, true=on)
+           retval|=(vblank?0x80:0x00); // /V-BLANK status
            break;
-    default:// Error!
+    default:// Error - return 0xC7 (shouldn't be possible to get here)
            retval=0xC7;
-           SHOW("Error: illegal address passed to rd8255 0x%04x\n",addr);
            break;
   }
   return(retval);

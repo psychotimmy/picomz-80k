@@ -39,14 +39,13 @@
 
 i2c_inst_t *i2c_bus = i2c1;  // Use i2c bus 1
 
-bool has_pca9536( i2c_inst_t *i2c ){
+bool __not_in_flash_func (has_pca9536) ( i2c_inst_t *i2c ){
   // try to read configuration of the PC9536 on the I2C bus. Check for immutable
   // configuration bits
   uint8_t data[6];
   // 20ms timeout
   int nb_bytes=reg_read_timeout(i2c,PCA9536_ADDR,REG_INPUT,data,4,20000);
   if(nb_bytes <= 0){
-    SHOW("Nothing read from the PCA9536 I2C bus!");
     return false;
   }
   // try to write the register, 
@@ -59,7 +58,7 @@ bool has_pca9536( i2c_inst_t *i2c ){
   return true;
 }
 
-bool pca9536_setup_io( i2c_inst_t *i2c, uint8_t io, uint8_t io_mode ){
+bool __not_in_flash_func (pca9536_setup_io) ( i2c_inst_t *i2c, uint8_t io, uint8_t io_mode ){
   if( io>IO_3 )
     return false;
 
@@ -81,7 +80,7 @@ bool pca9536_setup_io( i2c_inst_t *i2c, uint8_t io, uint8_t io_mode ){
   return true;
 }
 
-bool pca9536_output_io( i2c_inst_t *i2c, uint8_t io, bool value ){
+bool __not_in_flash_func (pca9536_output_io) ( i2c_inst_t *i2c, uint8_t io, bool value ){
   if( io>IO_3 )
     return false;
 
@@ -99,7 +98,7 @@ bool pca9536_output_io( i2c_inst_t *i2c, uint8_t io, bool value ){
   return true;
 }
 
-bool pca9536_output_reset( i2c_inst_t *i2c, uint8_t mask ){
+bool __not_in_flash_func (pca9536_output_reset) ( i2c_inst_t *i2c, uint8_t mask ){
   /* 4 lower bits of mask indicates which of the output pins should be reset */
   uint8_t data[2];
   reg_read( i2c, PCA9536_ADDR, REG_OUTPUT, data, 1 );
@@ -115,7 +114,7 @@ bool pca9536_output_reset( i2c_inst_t *i2c, uint8_t mask ){
   return true;
 }
 
-bool pca9536_input_io( i2c_inst_t *i2c, uint8_t io ) {
+bool __not_in_flash_func (pca9536_input_io) ( i2c_inst_t *i2c, uint8_t io ) {
   // read state an input gpio
   if( io>IO_3 )
     return false;
@@ -126,7 +125,7 @@ bool pca9536_input_io( i2c_inst_t *i2c, uint8_t io ) {
   return (data[0] & (1<<io)) ? true : false ;
 }
 
-void init_i2c_bus(){
+void __not_in_flash_func (init_i2c_bus) () {
 	//Initialize I2C port at 400 kHz
 	i2c_init(i2c_bus, 400 * 1000);
 
@@ -136,7 +135,7 @@ void init_i2c_bus(){
 
 }
 
-void deinit_i2c_bus(){
+void __not_in_flash_func (deinit_i2c_bus) () {
 	// de-Initialize I2C pins
 	gpio_set_function(SDA_PIN, GPIO_FUNC_NULL);
 	gpio_set_function(SCL_PIN, GPIO_FUNC_NULL);
@@ -146,11 +145,11 @@ void deinit_i2c_bus(){
 }
 
 // Write 1 byte to the specified register
-int reg_write(  i2c_inst_t *i2c,
-                const uint addr,
-                const uint8_t reg,
-                uint8_t *buf,
-                const uint8_t nbytes) {
+int __not_in_flash_func (reg_write) (i2c_inst_t *i2c,
+                                     const uint addr,
+                                     const uint8_t reg,
+                                     uint8_t *buf,
+                                     const uint8_t nbytes) {
 
     int num_bytes_write = 0;
     uint8_t msg[nbytes + 1];
@@ -174,11 +173,11 @@ int reg_write(  i2c_inst_t *i2c,
 
 // Read byte(s) from specified register. If nbytes > 1, read from consecutive
 // registers. Returns the number for bytes readed.
-int reg_read(  i2c_inst_t *i2c,
-                const uint addr,
-                const uint8_t reg,
-                uint8_t *buf,
-                const uint8_t nbytes) {
+int __not_in_flash_func (reg_read) (i2c_inst_t *i2c,
+                                    const uint addr,
+                                    const uint8_t reg,
+                                    uint8_t *buf,
+                                    const uint8_t nbytes) {
 
     int num_bytes_read = 0;
 
@@ -196,12 +195,12 @@ int reg_read(  i2c_inst_t *i2c,
 
 // Read byte(s) from specified register. If nbytes > 1, read from consecutive
 // registers. Returns the number for bytes readed.
-int reg_read_timeout(  i2c_inst_t *i2c,
-                const uint addr,
-                const uint8_t reg,
-                uint8_t *buf,
-                const uint8_t nbytes,
-                const uint timeout_us ) {
+int __not_in_flash_func (reg_read_timeout) (i2c_inst_t *i2c,
+                                            const uint addr,
+                                            const uint8_t reg,
+                                            uint8_t *buf,
+                                            const uint8_t nbytes,
+                                            const uint timeout_us) {
 
     int num_bytes_read = 0;
 

@@ -147,7 +147,7 @@ void __not_in_flash_func (render_loop) (void)
 }
 
 /* Initialise the VGA code and render forever on core 1*/
-void vga_main(void)
+void __not_in_flash_func (vga_main) (void)
 {
   scanvideo_setup(&VGA_MODE);
   scanvideo_timing_enable(true);
