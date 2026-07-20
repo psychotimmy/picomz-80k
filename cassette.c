@@ -918,12 +918,9 @@ void __not_in_flash_func (cwrite) (uint8_t nextbit)
     else {
       hightime=get_absolute_time();
     }
-    /* Check to see if we're at the end of the checksum */
+    /* Check to see if we're at the end of the checksum - this code assumes it's correct(!) and carries on regardless */
     if (secbits==CHK_L) {
-      if (chkbits==(((checksum[0]<<8)&0xFF00)|checksum[1]))
-        ;
-      else
-        bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
+      bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
       cwstate=4;
       chkbits=0;
       secbits=0;
