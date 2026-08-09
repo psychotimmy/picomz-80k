@@ -217,7 +217,7 @@ extern uint8_t picotone2;
   extern uint16_t whitepix;
   extern uint16_t blackpix;
 #endif
-/* MZ model and CGROM types - UK/Japanese on MZ-80K only at present */
+/* MZ model and CGROM types */
 extern uint8_t mzmodel;
 extern bool ukrom;
 /* Keyboard array */
@@ -227,6 +227,7 @@ extern uint8_t processkey[KBDROWS];
 #ifdef MZ700EMULATOR
   extern uint8_t mzmonitor700[MROMSIZE];
   extern const uint8_t cgromuk700[CROMSIZE700];
+  extern const uint8_t cgromjp700[CROMSIZE700];
 #else
   extern uint8_t mzmonitor80k[MROMSIZE];
   extern uint8_t mzmonitor80a[MROMSIZE];

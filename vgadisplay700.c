@@ -35,7 +35,10 @@ int32_t __not_in_flash_func
     /* is set, then add 256 to the character index (2nd character set used) */
     /* tb*2048 finds the correct character in the cgrom array */
     tb=(mzvram[0x0800+vrr+colidx]>>7)&0x01;
-    charbits=cgromuk700[(mzvram[vrr+colidx]*CWIDTH+cpr)+tb*2048];
+    if (ukrom)
+      charbits=cgromuk700[(mzvram[vrr+colidx]*CWIDTH+cpr)+tb*2048];
+    else
+      charbits=cgromjp700[(mzvram[vrr+colidx]*CWIDTH+cpr)+tb*2048];
 
     /* Background colour of character is in bits 0-2, foreground in bits 4-6 */
     fgpix=colourpix[((mzvram[0x0800+vrr+colidx])>>4)&0x07];
@@ -73,7 +76,10 @@ int32_t __not_in_flash_func
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
-    charbits=cgromuk700[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
+    if (ukrom)
+      charbits=cgromuk700[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
+    else
+      charbits=cgromjp700[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
     *(++pixels) = (charbits & 0x80) ? colourpix[7] : colourpix[0];
     *(++pixels) = (charbits & 0x40) ? colourpix[7] : colourpix[0];
     *(++pixels) = (charbits & 0x20) ? colourpix[7] : colourpix[0];

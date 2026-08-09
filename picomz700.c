@@ -17,7 +17,7 @@ volatile void* unusedv;
 volatile z80*  unusedz;
 
 uint8_t mzmodel=MZ700;          // MZ model type - MZ700 = 3
-bool ukrom=true;                // UK CGROM only at present on MZ-700
+bool ukrom=true;                // default to UK CGROM - shift F4 toggles
 
                                 // Return keyboard characters
                                 // All 0xFF means no key to process
