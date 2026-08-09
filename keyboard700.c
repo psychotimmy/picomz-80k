@@ -632,6 +632,11 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x38: processkey[7]=0xFD; //?
                  break;
 
+      case 0x3d: //USB shift F4 = toggle UK/JP CGROM
+                 ukrom=!ukrom;
+                 memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
+                 break;  
+
       case 0x3e: //USB shift F5 = MZ-700 shift F1
                  processkey[8]=0xFE;
                  processkey[9]=0x7F;
