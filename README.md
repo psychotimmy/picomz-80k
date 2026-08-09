@@ -83,6 +83,8 @@ Release 2.0.0 introduced MZ-80A emulation (select by holding down button A at po
 
 Release 3.0.0 introduced MZ-700 emulation (separate .uf2 files for MZ-700 and MZ-80K/A versions).
 
+Release 3.0.1 introduced the ability (Shift F4 key) to toggle between the UK and Japanese CGROMs on the MZ-700.
+
 ## Instructions for rebuilding the Pico MZ (see also the documentation subdirectory)
 
 ### Pre-requisites for Raspberry Pi OS (Debian Bookworm)
@@ -138,4 +140,4 @@ There should now be four (Pico) or two (Pico 2) .uf2 files in your build directo
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 29th November 2025.
+### This README was last updated on 9th August 2026.
