@@ -66,12 +66,7 @@ void mzrptkey(void)
 static void process_kbd_report(hid_keyboard_report_t const *report)
 {
 
-  // Clear the repeat key code if it's not the same as in current report
-  if (report->keycode[0] != rptcode) {
-    rptcode=0x00;
-    rptmodifier=0x00;
-    rpttime=0;
-  }
+  bool kbdchanged;
 
   // Did the status of the Num Lock key change ?
   if (report->keycode[0] == 0x53) 
@@ -112,23 +107,28 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
       kleds_now |= KEYBOARD_LED_CAPSLOCK;
     }
   }
+
+  // Clear the repeat key code if it has changed
+  if (report->keycode[0] != rptcode) {
+    rptcode=0x00;
+  }
+
+  // Clear the repeat modifier code if it has changed
+  if (report->modifier != rptmodifier) {
+    rptmodifier=0x00;
+  }
+
+  // Reset processkey array
+  memset(processkey,0xFF,KBDROWS);
    
-  // Ignore anything less than 0x04 - no key, error conditions etc.
-  if (report->keycode[0] > 0x03) {
-    if (rptcode==0x00) {
-      rptcode=report->keycode[0];   // Store new key for possible repeat
-      rptmodifier=report->modifier; // Store new modifier for possible repeat
-      rpttime=to_ms_since_boot(get_absolute_time())+MZ_KEY_REPEAT_INIT;   
-                                    // Repeat key if initially held for 
-                                    // MZ_KEY_REPEAT_INIT milliseconds
-    }
-    // We have a keypress to pass to the MZ-700
-    mzhidmapkey700(report->keycode[0],report->modifier);
-  }
-  else {
-    // We have a key up - clear processkey array
-    memset(processkey,0xFF,KBDROWS);
-  }
+  // New keypress, so restart the timer and pass the new modifier
+  // and key on for processing
+  rptcode=report->keycode[0];   // Store new key for possible repeat
+  rptmodifier=report->modifier; // Store (new) modifier for possible repeat
+  rpttime=to_ms_since_boot(get_absolute_time())+MZ_KEY_REPEAT_INIT;   
+                                  // Repeat key if initially held for 
+                                  // MZ_KEY_REPEAT_INIT milliseconds
+  mzhidmapkey700(report->keycode[0],report->modifier);
 
   return;
 }
@@ -675,7 +675,8 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
       case 0x64: processkey[8]=0xFE; // | (USB pipe symbol |, shift \)
                  processkey[6]=0x7F;
                  break;
-      default:   break;
+      default:   processkey[8]=0xFE; // Just send the modifier key
+                 break;
     }
   }
 
@@ -683,86 +684,86 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
   if ((modifier == 0x01) || (modifier == 0x10)) {
     switch (usbk0) {
 
-      case 0x04: processkey[8]=0xBF; //CTRL A
+      case 0x04: processkey[8]=0xBF; // CTRL A
                  processkey[4]=0xF7; 
                  break;
-      case 0x05: processkey[8]=0xBF; //CTRL B
+      case 0x05: processkey[8]=0xBF; // CTRL B
                  processkey[4]=0xBF; 
                  break;
-      case 0x06: processkey[8]=0xBF; //CTRL C
+      case 0x06: processkey[8]=0xBF; // CTRL C
                  processkey[4]=0xDF; 
                  break;
-      case 0x07: processkey[8]=0xBF; //CTRL D
+      case 0x07: processkey[8]=0xBF; // CTRL D
                  processkey[4]=0xEF; 
                  break;
-      case 0x08: processkey[8]=0xBF; //CTRL E - keyboard to lower case
+      case 0x08: processkey[8]=0xBF; // CTRL E - keyboard to lower case
                  processkey[4]=0xF7;
                  break;
-      case 0x09: processkey[8]=0xBF; //CTRL F - keybaord to upper case
+      case 0x09: processkey[8]=0xBF; // CTRL F - keybaord to upper case
                  processkey[4]=0xFB;
                  break;
-      case 0x0a: processkey[8]=0xBF; //CTRL G
+      case 0x0a: processkey[8]=0xBF; // CTRL G
                  processkey[4]=0xFD;
                  break;
-      case 0x0b: processkey[8]=0xBF; //CTRL H
+      case 0x0b: processkey[8]=0xBF; // CTRL H
                  processkey[4]=0xFE;
                  break;
-      case 0x0c: processkey[8]=0xBF; //CTRL I
+      case 0x0c: processkey[8]=0xBF; // CTRL I
                  processkey[3]=0x7F;
                  break;
-      case 0x0d: processkey[8]=0xBF; //CTRL J
+      case 0x0d: processkey[8]=0xBF; // CTRL J
                  processkey[3]=0xBF;
                  break;
-      case 0x0e: processkey[8]=0xBF; //CTRL K
+      case 0x0e: processkey[8]=0xBF; // CTRL K
                  processkey[3]=0xDF;
                  break;
-      case 0x0f: processkey[8]=0xBF; //CTRL L
+      case 0x0f: processkey[8]=0xBF; // CTRL L
                  processkey[3]=0xEF;
                  break;
-      case 0x10: processkey[8]=0xBF; //CTRL M - <CR>
+      case 0x10: processkey[8]=0xBF; // CTRL M - <CR>
                  processkey[3]=0xF7;
                  break;
-      case 0x11: processkey[8]=0xBF; //CTRL N
+      case 0x11: processkey[8]=0xBF; // CTRL N
                  processkey[3]=0xFB;
                  break;
-      case 0x12: processkey[8]=0xBF; //CTRL O
+      case 0x12: processkey[8]=0xBF; // CTRL O
                  processkey[3]=0xFD;
                  break;
-      case 0x13: processkey[8]=0xBF; //CTRL P - <DEL>
+      case 0x13: processkey[8]=0xBF; // CTRL P - <DEL>
                  processkey[3]=0xFE;
                  break;
-      case 0x14: processkey[8]=0xBF; //CTRL Q - cursor down
+      case 0x14: processkey[8]=0xBF; // CTRL Q - cursor down
                  processkey[2]=0x7F; 
                  break;
-      case 0x15: processkey[8]=0xBF; //CTRL R - cursor up
+      case 0x15: processkey[8]=0xBF; // CTRL R - cursor up
                  processkey[2]=0xBF;
                  break;
-      case 0x16: processkey[8]=0xBF; //CTRL S - cursor left
+      case 0x16: processkey[8]=0xBF; // CTRL S - cursor left
                  processkey[2]=0xDF;
                  break;
-      case 0x17: processkey[8]=0xBF; //CTRL T - cursor right
+      case 0x17: processkey[8]=0xBF; // CTRL T - cursor right
                  processkey[2]=0xEF;
                  break;
-      case 0x18: processkey[8]=0xBF; //CTRL U - cursor home
+      case 0x18: processkey[8]=0xBF; // CTRL U - cursor home
                  processkey[2]=0xF7;
                  break;
-      case 0x19: processkey[8]=0xBF; //CTRL V - <CLR>
+      case 0x19: processkey[8]=0xBF; // CTRL V - <CLR>
                  processkey[2]=0xFB;
                  break;
-      case 0x1a: processkey[8]=0xBF; //CTRL W - <GRAPH>
+      case 0x1a: processkey[8]=0xBF; // CTRL W - <GRAPH>
                  processkey[2]=0xFD;
-                 graphmode=true;     //If true, CAPS LOCK always sets ALPHA
+                 graphmode=true;     // If true, CAPS LOCK always sets ALPHA
                  break;
-      case 0x1b: processkey[8]=0xBF; //CTRL X - <INST>
+      case 0x1b: processkey[8]=0xBF; // CTRL X - <INST>
                  processkey[2]=0xFE;
                  break;
-      case 0x1c: processkey[8]=0xBF; //CTRL Y - <ALPHA>
+      case 0x1c: processkey[8]=0xBF; // CTRL Y - <ALPHA>
                  processkey[1]=0x7F;
                  break;
-      case 0x1d: processkey[8]=0xBF; //CTRL Z
+      case 0x1d: processkey[8]=0xBF; // CTRL Z
                  processkey[1]=0xBF;
                  break;
-      case 0x43: mzcpu.pc=0x0000;         //F10 - MZ-700 reset button
+      case 0x43: mzcpu.pc=0x0000;    // F10 - MZ-700 reset button
                  // Reset only resets the program counter to 0x0000
                  // Ctrl reset is required to reset banked memory as well
                  // ... the equivalent of a power off / power on.
@@ -771,7 +772,8 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  reset_tape(); 
                  break;
 
-      default:   break;
+      default:   processkey[8]=0xBF; // Just send the modifier key
+                 break;
     }
   }
 
