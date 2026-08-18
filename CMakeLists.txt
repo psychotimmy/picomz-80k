@@ -10,13 +10,15 @@
 
   string(APPEND CMAKE_EXE_LINKER_FLAGS "-Wl,--print-memory-usage")
 
-  if (PICO_SDK_VERSION_STRING VERSION_LESS "2.2.0")
-    message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.2.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
+  if (PICO_SDK_VERSION_STRING VERSION_LESS "2.3.0")
+    message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.3.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
   endif()
 
   pico_sdk_init()
 
   if (PICO_PLATFORM MATCHES "rp2040")
+
+  set (PICO_BOARD "../boards/vgaboardrp2040")
 
   add_executable(picomz-80ka-rc2014
 	picomz.c
@@ -140,6 +142,8 @@
   pico_add_extra_outputs(picomz-700-rc2014)
 
 else()
+
+  set (PICO_BOARD "../boards/vgaboardrp2350")
 
   add_executable(pico2mz-80ka-pimoroni
 	picomz.c

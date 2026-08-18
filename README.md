@@ -67,7 +67,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-Pico MZ version 3.0.0 works with the current Pico SDK 2.2.0 master branch (latest stable).
+Pico MZ version 3.1.0 works with Pico SDK 2.3.0.
 
 ### Release highlights
 
@@ -83,7 +83,7 @@ Release 2.0.0 introduced MZ-80A emulation (select by holding down button A at po
 
 Release 3.0.0 introduced MZ-700 emulation (separate .uf2 files for MZ-700 and MZ-80K/A versions).
 
-Release 3.0.1 introduced the ability (Shift F4 key) to toggle between the UK and Japanese CGROMs on the MZ-700.
+Release 3.1.0 introduced the ability (Shift F4 key) to toggle between the UK and Japanese CGROMs on the MZ-700 and support for Pico SDK 2.3.0.
 
 ## Instructions for rebuilding the Pico MZ (see also the documentation subdirectory)
 
@@ -100,12 +100,12 @@ the Pico Extras repository must be available on your computer if you wish to re-
 Assuming that you are already in the subdirectory in which you wish to install the Pico SDK, Pico Extras 
 and Pico MZ repositories, issue the commands:
 ```
-   git clone --recursive https://github.com/raspberrypi/pico-sdk.git -b master
+   git clone --recursive https://github.com/raspberrypi/pico-sdk.git -b 2.3.0
    git clone https://github.com/raspberrypi/pico-extras.git -b master
 ```   
 Then clone **either** the current release of the Pico MZ repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 3.0.0
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 3.1.0
 ```
 **or** the latest stable version:
 ```
@@ -123,7 +123,7 @@ For Pico (RP2040) builds, issue the commands:
    cd picomz-80k
    mkdir build2040
    cd build2040
-   cmake -DPICO_BOARD=vgaboard ..
+   cmake -DPICO_PLATFORM=rp2040 ..
    make
 ```
 For Pico 2 builds, issue the commands:
@@ -131,7 +131,7 @@ For Pico 2 builds, issue the commands:
    cd picomz-80k
    mkdir build2350
    cd build2350
-   cmake -DPICO_BOARD=vgaboard -DPICO_PLATFORM=rp2350 ..
+   cmake -DPICO_PLATFORM=rp2350 ..
    make
 ```
 There should now be four (Pico) or two (Pico 2) .uf2 files in your build directory for the emulator that can be installed on the appropriate hardware.
@@ -140,4 +140,4 @@ There should now be four (Pico) or two (Pico 2) .uf2 files in your build directo
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 9th August 2026.
+### This README was last updated on 17th August 2026.
