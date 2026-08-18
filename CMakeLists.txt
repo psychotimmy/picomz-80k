@@ -45,7 +45,7 @@
 
   add_executable(picomz-700-pimoroni
 	picomz700.c
-        sharpcorp700.c
+        sharpcorp.c
 	keyboard700.c
         vgadisplay700.c
         8255.c
@@ -56,7 +56,7 @@
 
   add_executable(picomz-700-rc2014
 	picomz700.c
-        sharpcorp700.c
+        sharpcorp.c
 	keyboard700.c
         vgadisplay700.c
         8255.c
@@ -158,7 +158,7 @@ else()
 
   add_executable(pico2mz-700-pimoroni
 	picomz700.c
-        sharpcorp700.c
+        sharpcorp.c
 	keyboard700.c
         vgadisplay700.c
         8255.c
