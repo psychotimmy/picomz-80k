@@ -6,11 +6,11 @@
 #define LONGPULSE  1     /* cread() returns high for a long pulse */
 #define SHORTPULSE 0     /*                 low for a short pulse */
 
-#ifdef MZ700EMULATOR     /* Elapsed time in microseconds that on a tape      */
-  #define READPT 300     /* write a pulse is treated as a 1 rather than a 0. */
-#else                    /* The real MZ-80K/A/700 read point is 386us, but   */
-  #define READPT 420     /* 420us is safe in the K/A emulator (increased     */
-#endif                   /* from 400us during the MZ-80A implementation).    */
+#define READPT 386       /* Elapsed time in microseconds that on a tape      */
+                         /* write a pulse is treated as a 1 rather than a 0. */
+                         /* The real MZ-80K/A/700 read point is 386us, but   */
+                         /* 420us is safe in the K/A emulator (increased     */
+                         /* from 400us during the MZ-80A implementation).    */
                          /* 420 is too high for the MZ-700, but 300 seems OK */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
@@ -30,11 +30,6 @@
 
 /* Used in mzspinny() */
 #define TCOUNTERMAX 999    /* Maximum value of tapecounter */
-#ifdef MZ700EMULATOR       /* MZ700 is 3.54MHz; 80K/A are 2.0MHz, so scale */
-  #define TCOUNTERINC 354  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
-#else
-  #define TCOUNTERINC 200  /* Incr. tapecounter by 1 every TCOUNTERINC calls */
-#endif
 uint8_t crstate=0;       // Holds tape state for cread()
 uint8_t cwstate=0;       // Holds tape state for cwrite()
 
@@ -76,18 +71,26 @@ static FATFS fs;         // File system pointer for sd card
 // l - 1 long pulse
 
 /* Update the tape counter in the emulator status area, line 3 */
-void __not_in_flash_func (mzspinny) (uint8_t state)
+void mzspinny(uint8_t state)
 {
   uint8_t spos=EMULINE3;            // Write to fourth emulator status line
   static uint16_t spinny=0;         // Used to reset the tape counter
   static uint16_t ignore=0;         // Don't update the tape counter
                                     // with every call to this function
   uint8_t mzstr[15];                // Used to convert ASCII to MZ display
+  uint16_t counterinc;              // Takes account of the different clock
+                                    // speed of MZ-80<x> vs MZ-700 so tape
+                                    // counter moves at a sensible speed
 
-  // Increment ignore. If this is >= TCOUNTERINC then increment spinny.
+  // Increment ignore. If this is >= counterinc then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
 
-  if ((++ignore) >= TCOUNTERINC) {
+  if (mzmodel == MZ700) 
+    counterinc=354;
+  else
+    counterinc=200;
+
+  if ((++ignore) >= counterinc) {
     ignore=0;
     if ((++spinny) > TCOUNTERMAX) {
       spinny=0;
@@ -115,7 +118,7 @@ void __not_in_flash_func (mzspinny) (uint8_t state)
 }
 
 /* Attempt to mount an sd card */
-FRESULT __not_in_flash_func (tapeinit) (void)
+FRESULT tapeinit(void)
 {
   FRESULT res;
 
@@ -128,7 +131,7 @@ FRESULT __not_in_flash_func (tapeinit) (void)
 }
 
 /* Save MZ-80K/A/700 active memory to a file */
-FRESULT __not_in_flash_func (mzsavedump) (void)
+FRESULT mzsavedump(void)
 {
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
@@ -191,11 +194,8 @@ FRESULT __not_in_flash_func (mzsavedump) (void)
   f_write(&fp, mzuserram, URAMSIZE, &bw); 
 
   // Write 'tape' contents - everything in mzvram
-#ifdef MZ700EMULATOR
-  f_write(&fp, mzvram, VRAMSIZE700, &bw);
-#else
+  f_write(&fp, mzvram, VRAMSIZE, &bw);
   f_write(&fp, mzvram, VRAMSIZE, &bw); 
-#endif
 
 #ifdef MZ700EMULATOR
   // On MZ700 write everything in upper 12k banked memory
@@ -220,7 +220,7 @@ FRESULT __not_in_flash_func (mzsavedump) (void)
 }
 
 /* Read MZ-80K/A/700 memory dump        */
-FRESULT __not_in_flash_func (mzreaddump) (void)
+FRESULT mzreaddump(void)
 {
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
@@ -276,21 +276,12 @@ FRESULT __not_in_flash_func (mzreaddump) (void)
   }
 
   // Read 'tape' contents - everything in mzvram
-#ifdef MZ700EMULATOR
-  f_read(&fp, mzvram, VRAMSIZE700, &br);
-  if (br != VRAMSIZE700) {
-    f_close(&fp);
-    return(FR_INT_ERR);      // assertion failed
-  }
-#else
   f_read(&fp, mzvram, VRAMSIZE, &br);
   if (br != VRAMSIZE) {
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
-#endif
 
-#ifdef MZ700EMULATOR
   // On MZ700 read everything into upper 12k banked memory
   f_read(&fp, mzbank12, BANK12SIZE, &br);
 
@@ -298,7 +289,6 @@ FRESULT __not_in_flash_func (mzreaddump) (void)
   f_read(&fp, &bank4k, sizeof(bank4k), &br);
   f_read(&fp, &bank12k, sizeof(bank12k), &br);
   f_read(&fp, &bank12klck, sizeof(bank12klck), &br);
-#endif
 
   // Read z80 state
   f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
@@ -321,7 +311,7 @@ FRESULT __not_in_flash_func (mzreaddump) (void)
 }
 
 /* Preload a tape file into the header/body memory ready for LOAD */
-int16_t __not_in_flash_func (tapeloader) (int16_t n)
+int16_t tapeloader(int16_t n)
 {
   FIL fp;
   DIR dp;
@@ -480,7 +470,7 @@ int16_t __not_in_flash_func (tapeloader) (int16_t n)
 }
 
 /* Write a new file to sd card 'tape'                             */
-void __not_in_flash_func (tapewriter) (void)
+void tapewriter(void)
 {
   uint8_t sharpfilelen=0;
   uint8_t sdfilename[22];  // sdfilename needs 1 more char than
@@ -534,7 +524,7 @@ void __not_in_flash_func (tapewriter) (void)
 /* end of a successful read or write, or if SHIFT */
 /* BREAK is pressed to abort, or if the reset key */
 /* is pressed on the MZ-80A / MZ-700.             */
-void __not_in_flash_func (reset_tape) (void)
+void reset_tape(void)
 {
   crstate=0;
   cwstate=0;
@@ -554,7 +544,7 @@ void __not_in_flash_func (reset_tape) (void)
 /* assumes that the first read is ALWAYS good,        */
 /* as we're using .mzf files rather than a real       */
 /* cassette tape.                                     */
-uint8_t __not_in_flash_func (cread) (void)
+uint8_t cread(void)
 {
                              // Used to calculate the bit to output from tape
   uint8_t bitshift;          // to the MZ when reading the header or body
@@ -795,7 +785,7 @@ uint8_t __not_in_flash_func (cread) (void)
 
 /* Write a MZ-80K/A/700 format tape one bit at a time */
 /* Pseudo finite state machine implementation         */
-void __not_in_flash_func (cwrite) (uint8_t nextbit)
+void cwrite(uint8_t nextbit)
 {
   /* Note: cwrite() can only ever be called if the motor and sense are on */
 

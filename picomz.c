@@ -3,10 +3,13 @@
 
 #include "picomz.h"
 
-uint8_t mzuserram[URAMSIZE];    // MZ-80 monitor workspace and user RAM
-uint8_t mzvram[VRAMSIZE];       // MZ-80 video RAM (only 1K used on 80-K)
+uint8_t mzbank4[BANK4SIZE];     // Bank switched RAM 0x0000 - 0x0FFF (MZ-700)
+uint8_t mzbank12[BANK12SIZE];   // Bank switched RAM 0xD000 - 0xFFFF (MZ-700)
+uint8_t mzuserram[URAMSIZE];    // RAM from 0x1000 - 0xCFFF
+uint8_t mzvram[VRAMSIZE];       // VRAM from 0xD000 - 0xDFFF
 uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
-uint16_t whitepix;              // Pixel colours
+uint16_t colourpix[8];          // Pixel colour array
+uint16_t whitepix;
 uint16_t blackpix;
 uint8_t picotone1;              // gpio pins for pwm sound
 uint8_t picotone2;
@@ -24,9 +27,13 @@ bool ukrom = true;              // Default is UK CGROM
 uint8_t processkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
                                 0xFF,0xFF,0xFF,0XFF,0xFF };
 
+                                // Banked memory status - MZ-700 only
+bool bank4k=false;              // 0x0000 - 0x0FFF is ROM at switch on
+bool bank12k=false;             // 0xD000 - 0xFFFF is VRAM at switch on
+bool bank12klck=false;          // 0xD000 - 0xFFFF not inhibited at switch on
+
 /* Write a byte to RAM or an output device */
-void __not_in_flash_func 
-     (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
+void mem_write(void* unusedv, uint16_t addr, uint8_t value)
 {
   /* Can't write to monitor space on the MZ-80K */
   if ((addr < 0x1000) && (mzmodel == MZ80K)) 
@@ -96,7 +103,7 @@ void __not_in_flash_func
 }
 
 /* Read a byte from memory or input device */
-uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
+uint8_t mem_read(void* unusedv, uint16_t addr)
 {
   /* Monitor address space (ROM on 80K, RAM on 80A) */
   if ((addr < 0x1000) && (mzmodel == MZ80K)) 
@@ -205,8 +212,16 @@ uint8_t sio_read(z80* unusedz, uint8_t addr)
 /* Sharp MZ-80K/A emulator main loop */
 int main(void) 
 {
-  uint8_t toggle;          // Used to toggle the pico's led for error
-                           // conditions found on startup
+  uint8_t toggle=0;          // Used to toggle the pico's led for error
+                             // conditions found on startup
+  bool clocksetok=true;
+
+#ifdef PICO2
+
+  set_sys_clock_pll(1500000000,6,2);
+  set_sys_clock_hz(125000000,clocksetok);
+ 
+#endif
 
   stdio_init_all();
 
@@ -214,6 +229,13 @@ int main(void)
 
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+
+  // Check the clock has been set correctly - signal error if not
+  while(!clocksetok) {
+    busy_wait_ms(100);
+    toggle=!toggle;
+    mzpicoled(toggle);
+  }
 
   // If button A on the Pico's carrier board is pressed, run the emulator 
   // as a MZ-80A rather than as a MZ-80K.

@@ -18,8 +18,7 @@
 #define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K/A
 
 /* Generate each pixel for the current scanline */
-int32_t __not_in_flash_func 
-        (gen_scanline) (uint32_t *buf, size_t buf_length, int lineNum)
+int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
 {
   uint16_t *pixels = (uint16_t *) buf;
   int vrr = (lineNum/CHEIGHT)*DWIDTH;  // Find the row of the VRAM we're using
@@ -64,8 +63,7 @@ int32_t __not_in_flash_func
 }
 
 /* The bottom 40 scanlines are used for emulator status messages */
-int32_t __not_in_flash_func 
-        (gen_last40_scanlines) (uint32_t *buf, size_t buf_len, int lineNum)
+int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
 {
   uint16_t *pixels = (uint16_t *) buf;
   int emusrow = ((lineNum-DLASTLINE)/CHEIGHT)*DWIDTH;  // Find row of the 
@@ -102,8 +100,7 @@ int32_t __not_in_flash_func
 }
 
 /* Output the composed scanline to the display */
-void __not_in_flash_func 
-     (render_scanline) (struct scanvideo_scanline_buffer *dest, int core)
+void render_scanline(struct scanvideo_scanline_buffer *dest, int core)
 {
   uint32_t *buf = dest->data;
   size_t buf_length = dest->data_max;
@@ -126,7 +123,7 @@ void __not_in_flash_func
 }
 
 /* Prepare the next scanline and send it for display on core 1 */
-void __not_in_flash_func (render_loop) (void)
+void render_loop(void)
 {
   int core_num = get_core_num();
 
@@ -147,7 +144,7 @@ void __not_in_flash_func (render_loop) (void)
 }
 
 /* Initialise the VGA code and render forever on core 1*/
-void __not_in_flash_func (vga_main) (void)
+void vga_main(void)
 {
   scanvideo_setup(&VGA_MODE);
   scanvideo_timing_enable(true);

@@ -46,7 +46,7 @@
   add_executable(picomz-700-pimoroni
 	picomz700.c
         sharpcorp.c
-	keyboard700.c
+	keyboard.c
         vgadisplay700.c
         8255.c
         8253.c
@@ -57,7 +57,7 @@
   add_executable(picomz-700-rc2014
 	picomz700.c
         sharpcorp.c
-	keyboard700.c
+	keyboard.c
         vgadisplay700.c
         8255.c
         8253.c
@@ -159,7 +159,7 @@ else()
   add_executable(pico2mz-700-pimoroni
 	picomz700.c
         sharpcorp.c
-	keyboard700.c
+	keyboard.c
         vgadisplay700.c
         8255.c
         8253.c
@@ -180,22 +180,12 @@ else()
   target_compile_definitions(pico2mz-80ka-pimoroni
   PRIVATE
       PICO2=1
-      PLL_SYS_REFDIV=1
-      PLL_SYS_VCO_FREQ_HZ=1500000000
-      PLL_SYS_POSTDIV1=6
-      PLL_SYS_POSTDIV2=2
-      SYS_CLK_HZ=125000000
   )
 
   target_compile_definitions(pico2mz-700-pimoroni
   PRIVATE
       PICO2=1
       MZ700EMULATOR=1
-      PLL_SYS_REFDIV=1
-      PLL_SYS_VCO_FREQ_HZ=1500000000
-      PLL_SYS_POSTDIV1=5
-      PLL_SYS_POSTDIV2=2
-      SYS_CLK_HZ=150000000
   )
 
   add_subdirectory(zazu80)

@@ -6,9 +6,11 @@
 uint8_t mzbank4[BANK4SIZE];     // Bank switched RAM 0x0000 - 0x0FFF
 uint8_t mzbank12[BANK12SIZE];   // Bank switched RAM 0xD000 - 0xFFFF
 uint8_t mzuserram[URAMSIZE];    // RAM from 0x1000 - 0xCFFF
-uint8_t mzvram[VRAMSIZE700];    // VRAM from 0xD000 - 0xDFFF
+uint8_t mzvram[VRAMSIZE];       // VRAM from 0xD000 - 0xDFFF
 uint8_t mzemustatus[EMUSSIZE];  // Emulator status area
 uint16_t colourpix[8];          // Pixel colour array
+uint16_t whitepix;
+uint16_t blackpix;
 uint8_t picotone1;              // gpio pins for pwm sound
 uint8_t picotone2;
 
@@ -31,8 +33,7 @@ bool bank12k=false;             // 0xD000 - 0xFFFF is VRAM at switch on
 bool bank12klck=false;          // 0xD000 - 0xFFFF not inhibited at switch on
 
 /* Write a byte to RAM or an output device */
-void __not_in_flash_func 
-     (mem_write) (void* unusedv, uint16_t addr, uint8_t value)
+void mem_write(void* unusedv, uint16_t addr, uint8_t value)
 {
   /* Write to 0x0000 - 0x0FFF only if RAM has been switched in */
   if ((addr < 0x1000) && (bank4k)) {
@@ -85,7 +86,7 @@ void __not_in_flash_func
 }
 
 /* Read a byte from memory or input device */
-uint8_t __not_in_flash_func (mem_read) (void* unusedv, uint16_t addr)
+uint8_t mem_read(void* unusedv, uint16_t addr)
 {
 
   /* Read from ROM or RAM at 0x0000 - 0x0FFF */
@@ -178,8 +179,16 @@ uint8_t sio_read(z80* unusedz, uint8_t addr)
 /* Sharp MZ-700 emulator main loop */
 int main(void) 
 {
-  uint8_t toggle;          // Used to toggle the pico's led for error
+  uint8_t toggle=0;        // Used to toggle the pico's led for error
                            // conditions found on startup
+  bool clocksetok=true;
+
+#ifdef PICO2
+
+//set_sys_clock_pll(1500000000,5,2);
+//set_sys_clock_hz(150000000,clocksetok);
+
+#endif
 
   stdio_init_all();
 
@@ -188,9 +197,16 @@ int main(void)
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
+  // Check the clock has been set correctly - signal error if not
+  while(!clocksetok) {
+    busy_wait_ms(100);
+    toggle=!toggle;
+    mzpicoled(toggle);
+  }
+
   // Initialise MZ-700 user memory (48K) and VRAM (4K)
   memset(mzuserram,0xFF,URAMSIZE);
-  memset(mzvram,0x00,VRAMSIZE700);
+  memset(mzvram,0x00,VRAMSIZE);
 
   // Initialise MZ-700 banked RAM (4K and 12K) - inactive at switch on */
   memset(mzbank4,0xFF,BANK4SIZE);
@@ -253,7 +269,6 @@ int main(void)
     // We've been unable to mount the sd card, so signal this with
     // 1s long pulses on the pico led. Emulator will need restarting
     // as without the sd card it's not much use!
-    toggle=1;
     mzpicoled(toggle);
     while (true) {
       busy_wait_ms(1000);
@@ -280,25 +295,18 @@ int main(void)
   for(;;) {
 
     z80_step(&mzcpu);		  // Execute next z80 opcode
-  #ifdef PICO1
-    #ifdef RC2014VGA
-    if (++delay == 7) {
+    #ifdef PICO1
+    if (++delay == 3) {
       busy_wait_us(1);            // Need to slow down the Pico a little
-      delay=0;                    // Pimoroni base is slightly slower than
-    }                             // the RC2014 cards for some unknown reason!
-    #else
-    if (++delay == 255) {
-      busy_wait_us(1);            // Need to slow down the Pico a little
-      //delay=0;                  // Pimoroni base (255 is limit of uint8_t)
+      delay=0;                    // Pimoroni base (255 is limit of uint8_t)
     }
     #endif
-  #endif
-  #ifdef PICO2
-    if (++delay == 3) {
-      busy_wait_us(1);            // Need to slow down the Pico 2 a little
+    #ifdef PICO2
+    if (++delay == 18) {
+      busy_wait_us(3);            // Need to slow down the Pico 2 a little
       delay=0;
     }
-  #endif
+    #endif
 
     tuh_task();                   // Check for new keyboard events
     mzrptkey();                   // Check for a repeating key event
