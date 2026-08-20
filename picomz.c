@@ -287,39 +287,46 @@ int main(void)
 {
   uint8_t toggle=0;          // Used to toggle the pico's led for error
                              // conditions found on startup
-  bool clocksetok=true;
+  bool clocksetok=true;      // Assume clock set ok - as over/underclocking is
+                             // not always used
 
   stdio_init_all();
 
   busy_wait_ms(250);               // Wait for inits to complete
 
-  gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25).
+  gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25)
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-
-  // Check the clock has been set correctly - signal error if not
-  while(!clocksetok) {
-    busy_wait_ms(100);
-    toggle=!toggle;
-    mzpicoled(toggle);
-  }
 
   // If button A on the Pico's carrier board is pressed, run the emulator 
   // as a MZ-80A. Button B = MZ-700, no button = MZ-80K.
 
   gpio_init(0);  // Button A
-  gpio_init(6);  // Button B (Button C is GPIO 11)
+  gpio_init(6);  // Button B
   gpio_set_dir(0,GPIO_IN);
   gpio_set_dir(6,GPIO_IN);
   gpio_pull_down(0);
   gpio_pull_down(6);
-  if (gpio_get(0)) {
-    mzmodel=MZ80A;
-  } 
-  else if (gpio_get(6)) {
+  if (gpio_get(6))
     mzmodel=MZ700;
-  }
-  else {
+  else if (gpio_get(0))
+    mzmodel=MZ80A;
+  else
     mzmodel=MZ80K;
+
+  // Over/underclocking depends on pico type, board type and MZ model
+  #ifdef PICO1
+  #endif
+  #ifdef PICO2
+  if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+    set_sys_clock_pll(1500000000,6,2);
+    set_sys_clock_hz(125000000,clocksetok);
+  }
+  #endif
+  // Check the clock has been set correctly - signal error if not
+  while(!clocksetok) {
+    busy_wait_ms(100);
+    toggle=!toggle;
+    mzpicoled(toggle);
   }
 
   // Initialise mzuserram and mzvram
@@ -428,16 +435,16 @@ int main(void)
     // code at the time of compilation.
 
     #ifdef PICO2
-    if ((mzmodel==MZ700) && (++delay == 18)) {
-      busy_wait_us(3);           
+    if ((mzmodel==MZ700) && (++delay == 26)) {
+      busy_wait_us(1);           
       delay=0;
     } 
-    else if (mzmodel==MZ80K) {
-      busy_wait_us(1);           
+    else if ((mzmodel==MZ80K) && (++delay == 2)) {
+      busy_wait_us(3);           
       delay=0;
     }
-    else if (mzmodel==MZ80A) {
-      busy_wait_us(1);           
+    else if ((mzmodel==MZ80A) && (++delay == 3)) {
+      busy_wait_us(4);           
       delay=0;
     }
     #endif

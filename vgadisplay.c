@@ -1,21 +1,22 @@
-/* Sharp MZ-80K  & MZ-80A emulator - vga output */
-/*  Tim Holyoake, August 2024 - February 2025   */
+/* Sharp MZ-80K, MZ-80A & MZ-700 emulator - VGA output */
+/* Tim Holyoake, August 2024 - August 2026             */
 
 #include "picomz.h"
 
 #define VGA_MODE vga_mode_320x240_60    // This gives us a 40x30 display,
                                         // so we use the first 40x25 for the
-                                        // Sharp MZ-80K.
+                                        // Sharp MZs. Bottom 5 lines are used
+                                        // for the status area.
 #define VGA_WIDTH VGA_MODE.width
 #define VGA_LINES 240
 #define MIN_RUN 3
 
-// MZ-80K/A visible screen is 40 chars x 25 lines
+// MZ-80K/A/700 visible screen is 40 chars x 25 lines
 #define DWIDTH          40
 #define DLINES          25
-#define CWIDTH          8      // MZ-80K/A characters are 8 pixels wide
+#define CWIDTH          8      // MZ-80K/A/700 characters are 8 pixels wide
 #define CHEIGHT         8      // ... and 8 pixels tall
-#define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K/A
+#define DLASTLINE       (DLINES * CHEIGHT) // Last scanline of MZ-80K/A/700
 
 /* Generate each pixel for the current scanline */
 int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
@@ -28,8 +29,8 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits,tb;
-    uint16_t fgpix=whitepix;
-    uint16_t bgpix=blackpix;
+    uint16_t fgpix=whitepix; 
+    uint16_t bgpix=blackpix; 
     if ((ukrom) && (mzmodel==MZ80K))
       charbits=cgromuk80k[mzvram[vrr+colidx]*CWIDTH+cpr];
     else if ((!ukrom) && (mzmodel==MZ80K))
@@ -54,11 +55,11 @@ int32_t gen_scanline(uint32_t *buf, size_t buf_length, int lineNum)
         charbits=cgromuk700[(mzvram[vrr+colidx]*CWIDTH+cpr)+tb*2048];
       else
         charbits=cgromjp700[(mzvram[vrr+colidx]*CWIDTH+cpr)+tb*2048];
+      /* MZ-700 is colour - override fgpix/bgpix */
       /* Background colour of character in bits 0-2, foreground in bits 4-6 */
       fgpix=colourpix[((mzvram[0x0800+vrr+colidx])>>4)&0x07];
       bgpix=colourpix[(mzvram[0x0800+vrr+colidx])&0x07];
     }
-
     *(++pixels) = (charbits & 0x80) ? fgpix : bgpix;
     *(++pixels) = (charbits & 0x40) ? fgpix : bgpix;
     *(++pixels) = (charbits & 0x20) ? fgpix : bgpix;
@@ -90,8 +91,8 @@ int32_t gen_last40_scanlines(uint32_t *buf, size_t buf_len, int lineNum)
   pixels += 1;
   for (uint8_t colidx=0;colidx<DWIDTH;colidx++) {
     uint8_t charbits;
-    uint16_t fgpix=whitepix;
-    uint16_t bgpix=blackpix;
+    uint16_t fgpix=whitepix; 
+    uint16_t bgpix=blackpix; 
     if ((ukrom) && (mzmodel==MZ80K))
       charbits=cgromuk80k[mzemustatus[emusrow+colidx]*CWIDTH+cpixrow];
     else if ((!ukrom) && (mzmodel==MZ80K))
