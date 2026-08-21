@@ -315,9 +315,20 @@ int main(void)
 
   // Over/underclocking depends on pico type, board type and MZ model
   #ifdef PICO1
+  if (mzmodel==MZ700) {
+    // 250MHz clock
+    set_sys_clock_pll(1500000000,6,1);
+    set_sys_clock_hz(250000000,clocksetok);
+  }
+  else {
+    // 150 MHz clock
+    set_sys_clock_pll(1500000000,5,2);
+    set_sys_clock_hz(150000000,clocksetok);
+  }
   #endif
   #ifdef PICO2
   if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+    // 125MHz clock
     set_sys_clock_pll(1500000000,6,2);
     set_sys_clock_hz(125000000,clocksetok);
   }
@@ -433,7 +444,20 @@ int main(void)
     // Timing adjustments. Depends on Pico model, MZ emulator required and
     // the carrier board. Changes unpredicatably depending on what's in the
     // code at the time of compilation.
-
+    #ifdef PICO1
+    if ((mzmodel==MZ700) && (++delay == 2)) {
+      busy_wait_us(1);           
+      delay=0;
+    } 
+    else if ((mzmodel==MZ80K) && (++delay == 3)) {
+      busy_wait_us(2);           
+      delay=0;
+    } 
+    else if ((mzmodel==MZ80A) && (++delay == 3)) {
+      busy_wait_us(2);           
+      delay=0;
+    }
+    #endif
     #ifdef PICO2
     if ((mzmodel==MZ700) && (++delay == 26)) {
       busy_wait_us(1);           

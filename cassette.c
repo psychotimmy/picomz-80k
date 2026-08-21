@@ -1,17 +1,14 @@
 /* Sharp MZ-80K, MZ-80A & MZ-700 tape handling */
-/*  Tim Holyoake, August 2024 - November 2025  */
+/*   Tim Holyoake, August 2024 - August 2026   */
 
 #include "picomz.h"
 
 #define LONGPULSE  1     /* cread() returns high for a long pulse */
 #define SHORTPULSE 0     /*                 low for a short pulse */
 
-#define READPT 386       /* Elapsed time in microseconds that on a tape      */
-                         /* write a pulse is treated as a 1 rather than a 0. */
-                         /* The real MZ-80K/A/700 read point is 386us, but   */
-                         /* 420us is safe in the K/A emulator (increased     */
-                         /* from 400us during the MZ-80A implementation).    */
-                         /* 420 is too high for the MZ-700, but 300 seems OK */
+#define READPT 386       /* Elapsed time in microseconds that on a tape     */
+                         /* write a pulse is treated as a 1 rather than a 0 */
+                         /* The MZ-80K/A/700 read point is 386us            */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
 #define WBGAP_L 22000    /* Big tape gap length in bits - write */
@@ -29,12 +26,12 @@
 //(L_L+S256_L+HDR_L+(HDR_L/8)+CHK_L+(CHK_L/8)+L_L+WSGAP_L+STM_L+L_L)*2 
 
 /* Used in mzspinny() */
-#define TCOUNTERMAX 999    /* Maximum value of tapecounter */
+#define TCOUNTERMAX 999  // Maximum value of tapecounter
 uint8_t crstate=0;       // Holds tape state for cread()
 uint8_t cwstate=0;       // Holds tape state for cwrite()
 
-uint8_t header[TAPEHEADERSIZE];// Tape headers are always 128 bytes
-uint8_t body[TAPEBODYMAXSIZE]; // Maximum storage is 47.5K - 48640 bytes
+uint8_t header[TAPEHEADERSIZE]; // Tape headers are always 128 bytes
+uint8_t body[TAPEBODYMAXSIZE];  // Maximum storage is 47.5K - 48640 bytes
 
 static FATFS fs;         // File system pointer for sd card
 
@@ -85,10 +82,7 @@ void mzspinny(uint8_t state)
   // Increment ignore. If this is >= counterinc then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
 
-  if (mzmodel == MZ700) 
-    counterinc=354;
-  else
-    counterinc=200;
+  counterinc = (mzmodel == MZ700) ? 354 : 200;
 
   if ((++ignore) >= counterinc) {
     ignore=0;
@@ -175,37 +169,34 @@ FRESULT mzsavedump(void)
 
   // Write 'tape' contents - everything in (active) monitor space
   // and lower 4k banked memory on MZ700
-#ifdef MZ700EMULATOR
-  f_write(&fp, mzmonitor700, MROMSIZE, &bw);
-  f_write(&fp, mzbank4, BANK4SIZE, &bw);
-#else
   switch (mzmodel) { 
-    case MZ80K: f_write(&fp, mzmonitor80k, MROMSIZE, &bw);
+    case MZ80K: f_write(&fp, mzmonitor80k, sizeof(mzmonitor80k), &bw);
                 break;
-    case MZ80A: f_write(&fp, mzmonitor80a, MROMSIZE, &bw);
+    case MZ80A: f_write(&fp, mzmonitor80a, sizeof(mzmonitor80a), &bw);
+                break;
+    case MZ700: f_write(&fp, mzmonitor700, sizeof(mzmonitor700), &bw);
+                f_write(&fp, mzbank4, sizeof(mzbank4), &bw);
                 break;
     default:    f_close(&fp);
                 return(FR_INT_ERR);      // Model check failed
                 break;
   }
-#endif
 
   // Write 'tape' contents - everything in mzuserram 
-  f_write(&fp, mzuserram, URAMSIZE, &bw); 
+  f_write(&fp, mzuserram, sizeof(mzuserram), &bw); 
 
   // Write 'tape' contents - everything in mzvram
-  f_write(&fp, mzvram, VRAMSIZE, &bw);
-  f_write(&fp, mzvram, VRAMSIZE, &bw); 
+  f_write(&fp, mzvram, sizeof(mzvram), &bw);
 
-#ifdef MZ700EMULATOR
-  // On MZ700 write everything in upper 12k banked memory
-  f_write(&fp, mzbank12, BANK12SIZE, &bw);
+  if (mzmodel==MZ700) { 
+    // On MZ700 write everything in upper 12k banked memory
+    f_write(&fp, mzbank12, sizeof(mzbank12), &bw);
 
-  // Write bank status booleans
-  f_write(&fp, &bank4k, sizeof(bank4k), &bw);
-  f_write(&fp, &bank12k, sizeof(bank12k), &bw);
-  f_write(&fp, &bank12klck, sizeof(bank12klck), &bw);
-#endif
+    // Write bank status booleans
+    f_write(&fp, &bank4k, sizeof(bank4k), &bw);
+    f_write(&fp, &bank12k, sizeof(bank12k), &bw);
+    f_write(&fp, &bank12klck, sizeof(bank12klck), &bw);
+  }
 
   // Write 'tape' contents - z80 state
   f_write(&fp, &mzcpu, sizeof(mzcpu), &bw);
@@ -215,6 +206,14 @@ FRESULT mzsavedump(void)
 
   // Close the file and return
   f_close(&fp);
+
+  // Write confirmation message to status area
+  memset(mzemustatus,0x00,200); // Blank status area
+  uint8_t spos=EMULINE1;
+  uint8_t mzstr[32];            // Used to convert ASCII to MZ display codes
+  ascii2mzdisplay ("Memory dump created successfully",mzstr);
+  for (uint8_t i=0; i<32; i++) // Can't use strlen as space is 0x00!
+    mzemustatus[spos++]=mzstr[i];
 
   return(FR_OK);
 }
@@ -252,43 +251,43 @@ FRESULT mzreaddump(void)
 
   // Read 'tape' contents - everything in (active) monitor space
   // and lower 4k banked memory on MZ700
-#ifdef MZ700EMULATOR
-  f_read(&fp, mzmonitor700, MROMSIZE, &br);
-  f_read(&fp, mzbank4, BANK4SIZE, &br);
-#else
   switch (mzmodel) { 
-    case MZ80K: f_read(&fp, mzmonitor80k, MROMSIZE, &br);
+    case MZ80K: f_read(&fp, mzmonitor80k, sizeof(mzmonitor80k), &br);
                 break;
-    case MZ80A: f_read(&fp, mzmonitor80a, MROMSIZE, &br);
+    case MZ80A: f_read(&fp, mzmonitor80a, sizeof(mzmonitor80a), &br);
+                break;
+    case MZ700: f_read(&fp, mzmonitor700, sizeof(mzmonitor700), &br);
+                f_read(&fp, mzbank4, sizeof(mzbank4), &br);
                 break;
     default:    //MZ model check failed
                 f_close(&fp);
                 return(FR_INT_ERR);
                 break;
   }
-#endif
 
   // Read mzuserram
-  f_read(&fp, mzuserram, URAMSIZE, &br);
-  if (br != URAMSIZE) {
+  f_read(&fp, mzuserram, sizeof(mzuserram), &br);
+  if (br != sizeof(mzuserram)) {
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
 
   // Read 'tape' contents - everything in mzvram
-  f_read(&fp, mzvram, VRAMSIZE, &br);
-  if (br != VRAMSIZE) {
+  f_read(&fp, mzvram, sizeof(mzvram), &br);
+  if (br != sizeof(mzvram)) {
     f_close(&fp);
     return(FR_INT_ERR);      // assertion failed
   }
 
-  // On MZ700 read everything into upper 12k banked memory
-  f_read(&fp, mzbank12, BANK12SIZE, &br);
+  // On MZ700 read upper 12k banked memory and bank status booleans
+  if (mzmodel==MZ700) {
+    f_read(&fp, mzbank12, sizeof(mzbank12), &br);
 
-  // Read bank status booleans
-  f_read(&fp, &bank4k, sizeof(bank4k), &br);
-  f_read(&fp, &bank12k, sizeof(bank12k), &br);
-  f_read(&fp, &bank12klck, sizeof(bank12klck), &br);
+    // Read bank status booleans
+    f_read(&fp, &bank4k, sizeof(bank4k), &br);
+    f_read(&fp, &bank12k, sizeof(bank12k), &br);
+    f_read(&fp, &bank12klck, sizeof(bank12klck), &br);
+  }
 
   // Read z80 state
   f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
@@ -306,6 +305,14 @@ FRESULT mzreaddump(void)
 
   // Success - close file
   f_close(&fp);
+
+  // Write confirmation message to status area
+  memset(mzemustatus,0x00,200); // Blank status area
+  uint8_t spos=EMULINE1;
+  uint8_t mzstr[29];            // Used to convert ASCII to MZ display codes
+  ascii2mzdisplay ("Memory dump read successfully",mzstr);
+  for (uint8_t i=0; i<29; i++) // Can't use strlen as space is 0x00!
+    mzemustatus[spos++]=mzstr[i];
 
   return(FR_OK);
 }
