@@ -1,9 +1,10 @@
-// A Sharp MZ-80K & MZ-80A emulator for the Raspberry Pi Pico
+// A Sharp MZ-80K, MZ-80A & MZ-700 emulator for the Raspberry Pi Pico
 // Release 1.0 - Written August - October 2024   (MZ-80K only)
 // Release 1.1 - Written November 2024
 // Release 1.2 - Written January 2025
 // Release 2.0 - Written February 2025           (MZ-80A support)
 // Release 3.0 - Written October - November 2025 (MZ-700 support)
+// Release 3.1 - Written August 2026             (Single emulator for 80K/A/700)
 //
 // The license and copyright notice below apply to all files that make up this
 // emulator, including documentation, excepting the z80 core, fatfs, sdcard 
@@ -15,14 +16,14 @@
 //
 // The contents of the 1Z-013A Monitor and MZ-700 Character ROMs are 
 // Copyright (c) 1982 Sharp Corporation and may be found in the
-// source file sharpcorp700.c
+// source file sharpcorp.c
 //
 // This emulator has no other connection with Sharp Corporation.
 //
 
 // MIT License
 
-// Copyright (c) 2024,2025 Tim Holyoake
+// Copyright (c) 2024-2026 Tim Holyoake
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -86,9 +87,9 @@
 #define CROMSIZE        2048  //   2   Kbytes Character ROM (MZ-80K and MZ-80A)
 #define CROMSIZE700     4096  //   4   Kbytes Character ROM (MZ-700)
 #define URAMSIZE        49152 //   48  Kbytes Monitor RAM + User RAM
-#define VRAMSIZE        2048  //   2   Kbyte  Video RAM (1K used on MZ-80K)
-#define VRAMSIZE700     4096  //   4   Kbytes Video RAM (2K + 2K colour)
-#define FRAMSIZE        1024  //   1   Kbyte  FD ROM (not used at present)
+#define VRAMSIZE        4096  //   2   Kbyte  Video RAM (1K used on MZ-80K)
+                              //   4   Kbytes Video RAM (2K + 2K colour)
+#define FROMSIZE        1024  //   1   Kbyte  MZ-80K FD ROM (not implemented)
 #define BANK4SIZE       12288 //   4   Kbytes Banked RAM (MZ-700)
 #define BANK12SIZE      12288 //   12  Kbytes Banked RAM (MZ-700)
 
@@ -192,59 +193,46 @@ typedef struct pit8253 {
 
 } pit8253;
 
-/* picomz.c and picomz700.c */
+/* picomz.c */
 extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
-#ifdef MZ700EMULATOR
-  extern uint8_t mzvram[VRAMSIZE700];
-  extern uint8_t mzbank4[BANK4SIZE];
-  extern uint8_t mzbank12[BANK12SIZE];
-  extern bool bank4k;
-  extern bool bank12k;
-  extern bool bank12klck;
-  extern void sio_write(z80*, uint8_t, uint8_t);
-#else
-  extern uint8_t mzvram[VRAMSIZE];
-#endif
+extern uint8_t mzvram[VRAMSIZE];
+extern uint8_t mzbank4[BANK4SIZE];
+extern uint8_t mzbank12[BANK12SIZE];
+extern bool bank4k;
+extern bool bank12k;
+extern bool bank12klck;
+extern void sio_write(z80*, uint8_t, uint8_t);
 extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
 extern uint8_t picotone2;
 /* Pixel colours */
-#ifdef MZ700EMULATOR
-  extern uint16_t colourpix[8];
-#else
-  extern uint16_t whitepix;
-  extern uint16_t blackpix;
-#endif
+extern uint16_t colourpix[8];
+extern uint16_t whitepix;
+extern uint16_t blackpix;
 /* MZ model and CGROM types */
 extern uint8_t mzmodel;
 extern bool ukrom;
 /* Keyboard array */
 extern uint8_t processkey[KBDROWS];
 
-/* sharpcorp.c and sharpcorp700.c */
-#ifdef MZ700EMULATOR
-  extern uint8_t mzmonitor700[MROMSIZE];
-  extern const uint8_t cgromuk700[CROMSIZE700];
-  extern const uint8_t cgromjp700[CROMSIZE700];
-#else
-  extern uint8_t mzmonitor80k[MROMSIZE];
-  extern uint8_t mzmonitor80a[MROMSIZE];
-  extern const uint8_t cgromuk80k[CROMSIZE];
-  extern const uint8_t cgromjp80k[CROMSIZE];
-  extern const uint8_t cgromuk80a[CROMSIZE];
-#endif
+/* sharpcorp.c */
+extern uint8_t mzmonitor700[MROMSIZE];
+extern const uint8_t cgromuk700[CROMSIZE700];
+extern const uint8_t cgromjp700[CROMSIZE700];
+extern uint8_t mzmonitor80k[MROMSIZE];
+extern uint8_t mzmonitor80a[MROMSIZE];
+extern const uint8_t cgromuk80k[CROMSIZE];
+extern const uint8_t cgromjp80k[CROMSIZE];
+extern const uint8_t cgromuk80a[CROMSIZE];
 
-/* keyboard.c and keyboard700.c */
+/* keyboard.c */
 extern uint8_t processkey[KBDROWS];
 extern void mzrptkey(void);
-#ifndef MZ700EMULATOR
-  extern void mzhidmapkey80k(uint8_t, uint8_t);
-  extern void mzhidmapkey80a(uint8_t, uint8_t);
-#else
-  extern void mzhidmapkey700(uint8_t, uint8_t);
-#endif
+extern void mzhidmapkey80k(uint8_t, uint8_t);
+extern void mzhidmapkey80a(uint8_t, uint8_t);
+extern void mzhidmapkey700(uint8_t, uint8_t);
 
 /* cassette.c */
 extern uint8_t crstate;
@@ -260,7 +248,7 @@ extern FRESULT mzsavedump(void);
 extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
 
-/* vgadisplay.c and vgadisplay700.c */
+/* vgadisplay.c */
 extern void vga_main(void);
 
 /* 8255.c */

@@ -7,15 +7,15 @@ A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K
 
 Full user and systems documentation is provided in the [documentation subdirectory](https://github.com/psychotimmy/picomz-80k/tree/main/documentation).
 
-### Using the Pico MZ as a MZ-80K or MZ-80A
+### Installing and using the Pico MZ
 
 Flash one of:
 
-**picomz-80ka-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
+**picomz-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
 
-**pico2mz-80ka-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
+**pico2mz-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
 
-**picomz-80ka-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
+**picomz-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
 
 Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
 
@@ -37,25 +37,15 @@ To boot the emulator into MZ-80A mode, press and hold the 'A' button on your Pic
 
 is displayed on the screen.
 
-### Using the Pico MZ as a MZ-700
-
-Flash one of:
-
-**picomz-700-pimoroni.uf2** for a Pico mounted on a Pimoroni VGA demo base
-
-**pico2mz-700-pimoroni.uf2** for a Pico 2 mounted on a Pimoroni VGA demo base
-
-**picomz-700-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
-
-Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
-
-When a USB keyboard and VGA display is connected, you will see:
+To boot the emulator into MZ-700 mode, press and hold the 'B' button on your Pico's carrier board at power on, until the 1Z-013A monitor announces itself and:
 
 **  MONITOR 1Z-013A  **
 
 \*
 
-### All versions 
+is displayed on the screen.
+
+### Common problems 
 
 If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing quickly (200ms between flashes), it means that a USB keyboard has not been recognised. 
 
@@ -83,7 +73,7 @@ Release 2.0.0 introduced MZ-80A emulation (select by holding down button A at po
 
 Release 3.0.0 introduced MZ-700 emulation (separate .uf2 files for MZ-700 and MZ-80K/A versions).
 
-Release 3.1.0 introduced the ability (Shift F4 key) to toggle between the UK and Japanese CGROMs on the MZ-700 and support for Pico SDK 2.3.0.
+Release 3.1.0 consolidated the MZ-80K, MZ-80A and MZ-700 emulators into a single .uf2 file per Pico platform + carrier board type
 
 ## Instructions for rebuilding the Pico MZ (see also the documentation subdirectory)
 
@@ -134,10 +124,10 @@ For Pico 2 builds, issue the commands:
    cmake -DPICO_PLATFORM=rp2350 ..
    make
 ```
-There should now be four (Pico) or two (Pico 2) .uf2 files in your build directory for the emulator that can be installed on the appropriate hardware.
+There should now be two (Pico) or one (Pico 2) .uf2 files in your build directory for the emulator that can be installed on the appropriate hardware.
 
 ## Project Background
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 17th August 2026.
+### This README was last updated on 19th August 2026.
