@@ -437,26 +437,36 @@ int main(void)
 
   // Main emulator loop
   uint8_t delay=0;
+  uint64_t nowtime,exectime;
+  int64_t adjust=0;
   for(;;) {
 
+    exectime=get_absolute_time();
     z80_step(&mzcpu);		  // Execute next z80 opcode
 
-    // Timing adjustments. Depends on Pico model, MZ emulator required and
-    // the carrier board. Changes unpredicatably depending on what's in the
-    // code at the time of compilation.
+    // Timing adjustments 
+    // Depends on Pico model, MZ emulator required and the carrier board
     #ifdef PICO1
-    if ((mzmodel==MZ700) && (++delay == 2)) {
-      busy_wait_us(1);           
-      delay=0;
+    if (mzmodel==MZ700) {
+      nowtime=get_absolute_time();
+      // <<2 equivalent to x4
+      adjust += mzcpu.cyc-((nowtime-exectime)<<2);
+      mzcpu.cyc=0;
+      if (adjust > 1856) {
+        busy_wait_us(64);
+        adjust=0;
+      }
     } 
-    else if ((mzmodel==MZ80K) && (++delay == 3)) {
-      busy_wait_us(2);           
-      delay=0;
+    else if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+      nowtime=get_absolute_time();
+      // <<1 equivalent to x2
+      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+      mzcpu.cyc=0;
+      if (adjust > 1024) {
+        busy_wait_us(64);
+        adjust=0;
+      }
     } 
-    else if ((mzmodel==MZ80A) && (++delay == 3)) {
-      busy_wait_us(2);           
-      delay=0;
-    }
     #endif
     #ifdef PICO2
     if ((mzmodel==MZ700) && (++delay == 26)) {

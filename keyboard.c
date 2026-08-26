@@ -455,7 +455,9 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
                  ukrom=!ukrom;            // Toggle between UK and JP CGROM
                  memset(mzemustatus,0x00,EMUSSIZE); // Clear status area
                  break;
-
+      case 0x43: cmotor=1;
+                 csense=1;
+                 break;
       case 0x44: mzreaddump();            //F11 - read memory dump
                  break;
       case 0x45: mzsavedump();            //F12 - save memory dump
