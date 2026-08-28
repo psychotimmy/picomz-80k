@@ -84,7 +84,7 @@ void mzspinny(uint8_t state)
   // Increment ignore. If this is >= counterinc then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
 
-  counterinc = (mzmodel == MZ700) ? 354 : 200;
+  counterinc = (mzmodel == MZ700) ? 708 : 400;
 
   if ((++ignore) >= counterinc) {
     ignore=0;
@@ -502,8 +502,6 @@ void tapewriter(uint16_t blkno)
   FRESULT res;
   FIL fp;
 
-  mzemustatus[10]=(uint8_t) 0x20+blkno;
-
   // Sharp tape file name is up to 17 characters stored in header[1]
   // to header[17]. If less than 17 characters, name ends with 0x0D
 
@@ -594,16 +592,12 @@ uint8_t cread(void)
   // Deal with the motor off/on pause between data file blocks
   // bodyoff is only non-zero if we're reading a multi-block data file
   if ((cmotor==0) && (bodyoff>0) && (!endofdatafile)) {
-    mzemustatus[23]=0x20+bodyoff;
-    mzemustatus[24]=0x20+bodyoff;
-    mzemustatus[25]=0x20+crstate;
     csense=0;
     cmotor=1;
     hilo=0;              // Reset hilo counter for next time motor is on
     return(LONGPULSE);
   }
   else if (cmotor==0) {  // Motor is off and it's not a multi-block file
-    mzemustatus[21]=0x20+bodyoff;
     hilo=0;              // Reset hilo counter for next time motor is on
     return(LONGPULSE);
   }
@@ -625,13 +619,16 @@ uint8_t cread(void)
     chkbits=0;
     longsent=false;
     crstate=1;
-    // We don't return here - always fall through to state 1 immediately
+    // We don't return from here - always fall through to state 1 immediately
   }
  
   /* Header preamble - bgap, btm, l - state 1 */
   // Note - 22,000 pulses in a real bgap, but anything > 100 will work
   // when a tape is being read (writing is different!) 
   if (crstate==1) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<RBGAP_L) {
       ++secbits;
       return(SHORTPULSE);
@@ -651,6 +648,9 @@ uint8_t cread(void)
 
   /* First copy of the header */
   if (crstate==2) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<HDR_L) {
       /* One LONGPULSE is sent before every byte of the header */
       if (((secbits%8)==0) && (longsent==false)) {
@@ -674,6 +674,9 @@ uint8_t cread(void)
 
   /* Header checksum - state 3 */
   if (crstate==3) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<CHK_L) {
       if ((secbits==0)&&(chkbits>0)) {
         // Need to calculate the header checksum
@@ -737,6 +740,9 @@ uint8_t cread(void)
   /* before we finally get to the tape body */
 
   if (crstate==7) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<L_L) {
       ++secbits;
       return(LONGPULSE);
@@ -761,20 +767,18 @@ uint8_t cread(void)
     chkbits=0;
     longsent=false;
     crstate=8;
-    mzemustatus[36]=0x27;
   }
 
   /* Process the tape body - state 8 */
   if (crstate==8) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<(bodybytes*8)) {     // 1 byte = 8 bits to transmit
       /* One LONGPULSE is sent before every byte of the body */
       if (((secbits%8)==0) && (!longsent)) {
         /* Note - we don't increment secbits here */
         longsent=true;
-        mzspinny(1); // Increment tape counter
-        mzemustatus[19]=0x9a;
-        mzemustatus[20]=0x20+bodyoff;
-        mzemustatus[21]=0x9a;
         /* If this is an MZ-80A or MZ-80K data file, check if we have 0xFF */
         /* This indicates EOF and may appear anywhere in a block. MZ-700   */
         /* data files are handled differently as they have a block number  */
@@ -783,10 +787,6 @@ uint8_t cread(void)
         if (((mzmodel==MZ80K)||(mzmodel==MZ80A)) && bsd3file) {
           if (body[(secbits/8)+(bodyoff*bodybytes)] == 0xFF) {
             endofdatafile=true;
-            mzemustatus[30]=0x9A;
-          }
-          else {
-            mzemustatus[40+(secbits/8)]=0x20+bodyoff;
           }
         }
         return(LONGPULSE);
@@ -804,16 +804,17 @@ uint8_t cread(void)
     if (bsd4file && (body[0+(bodyoff*bodybytes)]==0xFF) 
                  && (body[1+(bodyoff*bodybytes)]==0xFF)) { 
       endofdatafile=true;
-      mzemustatus[6]=0x44;
     }
     /* At the end of the body, move onto checksum state (9) */
-    mzemustatus[38]=0x28;
     secbits=0;
     crstate=9;
   }
 
   /* Body checksum - state 9 */
   if (crstate==9) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<CHK_L) {
       if ((secbits==0)&&(chkbits>0)) {
         // Need to calculate the body checksum
@@ -850,7 +851,6 @@ uint8_t cread(void)
     }
     else {
       // End of file
-      mzemustatus[39]=0x29;
       crstate=13; 
     }
   }
@@ -864,18 +864,18 @@ uint8_t cread(void)
   /* State 12 - a copy of the body checksum */
   
   if (crstate==10) {
+    // Update tape counter
+    if ((secbits%8)==0) 
+      mzspinny(1);
     if (secbits<L_L) {
       ++secbits;
       return(LONGPULSE);
     }
     if (secbits<L_L+S256_L) {
-      mzemustatus[(40+(secbits-1))%8]=0x29+(secbits-1)/8;
       ++secbits;
       if (secbits == L_L+S256_L) {
         secbits=0;
         crstate=7;
-        //memset(mzemustatus,0x00,200);
-        mzemustatus[32]=0x24;
       }
       return(SHORTPULSE);
     }
@@ -883,7 +883,6 @@ uint8_t cread(void)
 
   if (crstate==13) {
   /* At end of body checksum, reset tape state, send final stop bit */
-      mzemustatus[38]=0x9A;
       hilo=0;
       bodyoff=0;
       bsd3file=false;
@@ -894,7 +893,6 @@ uint8_t cread(void)
   }
 
   /* Catch any errors - shouldn't happen, but ...        */
-  mzemustatus[198]=0x20+crstate;
   hilo=0;
   bodyoff=0;
   bsd3file=false;
@@ -955,6 +953,9 @@ void cwrite(uint8_t nextbit)
 
   /* State 1 - tape header preamble */
   if (cwstate==1) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
       if (absolute_time_diff_us(hightime,lowtime) < READPT)
@@ -986,6 +987,9 @@ void cwrite(uint8_t nextbit)
 
   /* State 2 - header */
   if (cwstate==2) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
       if (absolute_time_diff_us(hightime,lowtime) < READPT)
@@ -1025,16 +1029,12 @@ void cwrite(uint8_t nextbit)
         bsd3file=true;
         // Blocksize is (usually!!) 0x0080 on a MZ-80K (128 bytes), 
         // 0x0100 (256 bytes) on a MZ-80A
-        mzemustatus[0]=0x22;
-        mzemustatus[1]=0x99;
       }
       else if ((mzmodel==MZ700) && (header[0]==0x04)) {
         bsd4file=true;
         // Force blocksize to 258 as the header may be faulty due to
         // a MZ-700 monitor bug
         blocksize=258;
-        mzemustatus[0]=0x24;
-        mzemustatus[1]=0x9A;
       }
     }
     return;
@@ -1042,6 +1042,9 @@ void cwrite(uint8_t nextbit)
 
   /* State 3 - header checksum */
   if (cwstate==3) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
       if (absolute_time_diff_us(hightime,lowtime) < READPT)
@@ -1086,6 +1089,9 @@ void cwrite(uint8_t nextbit)
   /* State 7 - long pulse, 11,000 short, 20 long, 20 short, long pulse */
 
   if (cwstate==4) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     ++secbits;                   // Increment number of bits received
                                  // (1 pulse = 1 followed by 0 = 2 bits)
     if (secbits==SKIP_L) {
@@ -1099,6 +1105,9 @@ void cwrite(uint8_t nextbit)
   /* State 7 - long pulse, short tape gap, short tape mark */
   /* Only used in emulator for multi-block data files of type 0x03 or 0x04 */
   if (cwstate==7) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     ++secbits;                   // Increment number of bits received
                                  // (1 pulse = 1 followed by 0 = 2 bits)
     if (secbits==((L_L+WSGAP_L+STM_L+L_L)*2)) {
@@ -1110,6 +1119,9 @@ void cwrite(uint8_t nextbit)
 
   /* State 8 - file body */
   if (cwstate==8) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
       if (absolute_time_diff_us(hightime,lowtime) < READPT)
@@ -1123,7 +1135,6 @@ void cwrite(uint8_t nextbit)
         // bodyoff is zero UNLESS we are processing a multi-block data file
         body[(secbits/8)+(bodyoff*blocksize)]=0x00;
         longread=true;
-        mzspinny(1); // Increment the tape counter
       }
       else {
         longread=false;    // Reset for next byte
@@ -1147,14 +1158,11 @@ void cwrite(uint8_t nextbit)
     /* Check to see if we're at the end of the body or 0x04 data block */
     if (secbits==bodybytes*8) {
       if (bsd4file) {
-        mzemustatus[18]=0x24;
         if ((body[0+(bodyoff*blocksize)] == 0xFF) && 
             (body[1+(bodyoff*blocksize)] == 0xFF)) {
           /* We have the end of file marker for type 0x04 */
-          mzemustatus[19]=0x25;
           endofdatafile=true;
         }
-        mzemustatus[20]=0x26;
       }
       /* Need to increment bodyoff if we're not at end of a data file */
       if ((bsd3file||bsd4file)&&(!endofdatafile)) ++bodyoff;
@@ -1167,6 +1175,9 @@ void cwrite(uint8_t nextbit)
 
   /* State 9 - file body checksum */
   if (cwstate==9) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
       if (absolute_time_diff_us(hightime,lowtime) < READPT)
@@ -1209,6 +1220,9 @@ void cwrite(uint8_t nextbit)
   /* State 12 - file checksum copy  - CHK_L + 2 pulses */
 
   if (cwstate==10) {
+    // Update tape counter
+    if ((secbits%8)==0)
+      mzspinny(1);
     ++secbits;                 // Increment bits counted
     /* Check that we have received enough 1/0 bits - 2 x number of pulses */
     if (secbits==(L_L+S256_L+bodybytes*8+bodybytes+CHK_L+2)*2) {
@@ -1216,7 +1230,6 @@ void cwrite(uint8_t nextbit)
       // if we are processing a data file and it is multi-block. Note that
       // blocksize and bodybytes are the same for type 0x03 and 0x04 files ...
       if ((bsd3file||bsd4file) && (!endofdatafile)) {
-        mzemustatus[8]=0x20+bodyoff;
         cwstate=7;
       }
       else
@@ -1249,7 +1262,6 @@ void cwrite(uint8_t nextbit)
         secbits=0;
         high=0;
         low=0;
-        mzemustatus[3]=0x90;
       }
       else {
         // Error - quit now
@@ -1257,7 +1269,6 @@ void cwrite(uint8_t nextbit)
         secbits=0;
         high=0;
         low=0;
-        mzemustatus[3]=0x95;
       }
     }
     return;
