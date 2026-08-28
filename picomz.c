@@ -1,5 +1,5 @@
 /* MZ-80K, MZ-80A & MZ-700 emulator - main program */
-/* Tim Holyoake, August 2024 - August 2026         */
+/*     Tim Holyoake, August 2024 - August 2026     */
 
 #include "picomz.h"
 
@@ -21,7 +21,7 @@ volatile z80*  unusedz;
 uint8_t mzmodel;                // MZ model type - default is MZ-80K
                                 // Button A at boot = MZ-80A
                                 // Button B at boot = MZ-700
-bool ukrom = true;              // Default is UK CGROM (no JP CGROM for MZ-80A)
+bool ukrom=true;                // Default is UK CGROM (no JP CGROM for MZ-80A)
 
                                 // Keyboard matrix mapping
                                 // All 0xFF means no key to process
@@ -221,11 +221,11 @@ uint8_t mem_read(void* unusedv, uint16_t addr)
       return(addr&0xFF);
     }
 
-  }
+    /* MZ-80A user socket ROM - return 0xC7 if not present */
+    if (addr == 0xE800) {
+      return(0xC7);
+    }
 
-  /* MZ-80A user socket ROM - return 0xC7 if not present */
-  if ((addr == 0xE800) && (mzmodel == MZ80A)) {
-    return(0xC7);
   }
 
   /* All other unused addresses */
@@ -271,14 +271,16 @@ void sio_write(z80* unusedz, uint8_t addr, uint8_t val)
       bank12klck=false;
   }
 
-  /* SIO not used by MZ-80K/A */
+  // SIO write not used by MZ-80K/A as standard, 
+  // but some peripherals not yet emulated may do.
   return;
 }
 
 /* SIO read from device */
 uint8_t sio_read(z80* unusedz, uint8_t addr)
 {
-  /* SIO not read by MZ-80K/A/700, so should never get here */
+  // SIO read not used by MZ-80K/A/700 as standard, 
+  // but some peripherals not yet emulated may do.
   return(0);
 }
 
@@ -298,15 +300,19 @@ int main(void)
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
   // If button A on the Pico's carrier board is pressed, run the emulator 
-  // as a MZ-80A. Button B = MZ-700, no button = MZ-80K.
+  // as a MZ-80A. Button B/C = MZ-700, no button = MZ-80K.
 
   gpio_init(0);  // Button A
   gpio_init(6);  // Button B
+  gpio_init(11); // Button C - does the same as button B but may be easier to
+                 // press on some PicoMZ carrier boards
   gpio_set_dir(0,GPIO_IN);
   gpio_set_dir(6,GPIO_IN);
+  gpio_set_dir(11,GPIO_IN);
   gpio_pull_down(0);
   gpio_pull_down(6);
-  if (gpio_get(6))
+  gpio_pull_down(11);
+  if (gpio_get(6)||gpio_get(11))
     mzmodel=MZ700;
   else if (gpio_get(0))
     mzmodel=MZ80A;
@@ -333,7 +339,8 @@ int main(void)
     set_sys_clock_hz(125000000,clocksetok);
   }
   #endif
-  // Check the clock has been set correctly - signal error if not
+
+  // Check the clock has been set correctly - endlessly signal an error if not
   while(!clocksetok) {
     busy_wait_ms(100);
     toggle=!toggle;
@@ -351,6 +358,27 @@ int main(void)
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
+
+  // Define default pixel colours (MZ-80K and A are monochrome)
+  colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
+  colourpix[1]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,255);      //blue
+  colourpix[2]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);      //red
+  colourpix[3]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,255);    //magenta
+  colourpix[4]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);      //green
+  colourpix[5]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,255);    //cyan
+  colourpix[6]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,0);    //yellow
+  colourpix[7]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);  //white
+
+  blackpix=colourpix[0];
+  if ((mzmodel == MZ80K) || (mzmodel == MZ700))
+    whitepix=colourpix[7];
+  else
+    /* MZ-80A has green characters */
+    whitepix=colourpix[4];
+
+  // Start VGA output on the second core - takes a while, so do it as early
+  // as possible
+  multicore_launch_core1(vga_main);
 
 #ifdef RC2014VGA
   // Check for I2C capability on RC2014 RP2040 VGA board
@@ -415,62 +443,54 @@ int main(void)
     }
   }
 
-  // Define default pixel colours (MZ-80K and A are monochrome)
-  colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
-  colourpix[1]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,255);      //blue
-  colourpix[2]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);      //red
-  colourpix[3]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,255);    //magenta
-  colourpix[4]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);      //green
-  colourpix[5]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,255);    //cyan
-  colourpix[6]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,0);    //yellow
-  colourpix[7]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);  //white
-
-  blackpix=colourpix[0];
-  if ((mzmodel == MZ80K) || (mzmodel == MZ700))
-    whitepix=colourpix[7];
-  else
-    /* MZ-80A has green characters */
-    whitepix=colourpix[4];
-
-  // Start VGA output on the second core
-  multicore_launch_core1(vga_main);
-
   // Main emulator loop
-  uint8_t delay=0;
+  uint64_t nowtime,exectime;
+  int64_t adjust=0;
   for(;;) {
 
+    exectime=get_absolute_time();
     z80_step(&mzcpu);		  // Execute next z80 opcode
 
-    // Timing adjustments. Depends on Pico model, MZ emulator required and
-    // the carrier board. Changes unpredicatably depending on what's in the
-    // code at the time of compilation.
+    // Timing adjustments depend on Pico platform and MZ emulator required
     #ifdef PICO1
-    if ((mzmodel==MZ700) && (++delay == 2)) {
-      busy_wait_us(1);           
-      delay=0;
+    if (mzmodel==MZ700) {
+      nowtime=get_absolute_time();
+      adjust += mzcpu.cyc-((nowtime-exectime)<<2);
+      mzcpu.cyc=0;
+      if (adjust > 1856) {
+        busy_wait_us(64);
+        adjust=0;
+      }
     } 
-    else if ((mzmodel==MZ80K) && (++delay == 3)) {
-      busy_wait_us(2);           
-      delay=0;
+    else if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+      nowtime=get_absolute_time();
+      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+      mzcpu.cyc=0;
+      if (adjust > 1024) {
+        busy_wait_us(64);
+        adjust=0;
+      }
     } 
-    else if ((mzmodel==MZ80A) && (++delay == 3)) {
-      busy_wait_us(2);           
-      delay=0;
-    }
     #endif
     #ifdef PICO2
-    if ((mzmodel==MZ700) && (++delay == 26)) {
-      busy_wait_us(1);           
-      delay=0;
+    if (mzmodel==MZ700) {
+      nowtime=get_absolute_time();
+      adjust += mzcpu.cyc-((nowtime-exectime)<<2);
+      mzcpu.cyc=0;
+      if (adjust > 1856) {
+        busy_wait_us(64);
+        adjust=0;
+      }
     } 
-    else if ((mzmodel==MZ80K) && (++delay == 2)) {
-      busy_wait_us(3);           
-      delay=0;
-    }
-    else if ((mzmodel==MZ80A) && (++delay == 3)) {
-      busy_wait_us(4);           
-      delay=0;
-    }
+    else if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+      nowtime=get_absolute_time();
+      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+      mzcpu.cyc=0;
+      if (adjust > 1024) {
+        busy_wait_us(64);
+        adjust=0;
+      }
+    } 
     #endif
 
     tuh_task();                   // Check for new keyboard events

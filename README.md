@@ -57,7 +57,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-Pico MZ version 3.1.0 works with Pico SDK 2.3.0.
+Pico MZ version 3.1.0 works with Pico SDK 2.2.0. Pico SDK 2.3.0 is known **not** to work with PicoMZ at the current time.
 
 ### Release highlights
 
@@ -84,13 +84,13 @@ CMake (version 3.13 or later) and a gcc cross compiler.
    sudo apt install cmake
    sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
 ```   
-The Pico MZ relies on the latest stable release of the Raspberry Pico SDK. This, along with
+The Pico MZ relies on release 2.2.0 of the Raspberry Pico SDK. This, along with
 the Pico Extras repository must be available on your computer if you wish to re-compile the emulator.
 
 Assuming that you are already in the subdirectory in which you wish to install the Pico SDK, Pico Extras 
 and Pico MZ repositories, issue the commands:
 ```
-   git clone --recursive https://github.com/raspberrypi/pico-sdk.git -b 2.3.0
+   git clone --recursive https://github.com/raspberrypi/pico-sdk.git -b 2.2.0
    git clone https://github.com/raspberrypi/pico-extras.git -b master
 ```   
 Then clone **either** the current release of the Pico MZ repository:
@@ -130,4 +130,4 @@ There should now be two (Pico) or one (Pico 2) .uf2 files in your build director
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 19th August 2026.
+### This README was last updated on 28th August 2026.

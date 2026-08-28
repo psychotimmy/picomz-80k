@@ -1,11 +1,11 @@
 /* Sharp MZ-80K, MZ-80A 8255 & MZ-700 implementation */
-/*     Tim Holyoake, August 2024 - November 2025     */
+/*      Tim Holyoake, August 2024 - August 2026      */
 
 #include "picomz.h"
 
 // 8255 address to port mapping for the MZ-80K/A/700
 // The ports are all 8 bits wide 
-// Note that the MZ-80K/A/700 only use the 8255 in mode 0,
+// Note that the MZ-80K/A/700 only uses the 8255 in mode 0,
 // so this simplifies the implementation somewhat.
 
 static uint8_t portA;           /* 0xE000 - port A */
@@ -13,18 +13,18 @@ static uint8_t portA;           /* 0xE000 - port A */
 uint8_t portC;                  /* 0xE002 - port C - provides two 4 bit ports */
                                 /* 0xE003 - Control port */
 
-uint8_t cmotor=1;               /* Cassette motor off (0) or on (1) */
-                                /* Toggled to 0 during MZ startup */
+uint8_t cmotor=0;               /* Cassette motor off (0) or on (1) */
 uint8_t csense=1;               /* Cassette sense toggle */
-                                /* Toggled to 0 during MZ startup */
                                 /* Note - the emulator currently ties the */
                                 /* cmotor & csense signals together. A more */
-                                /* faithful version would have */
-                                /* separate buttons for a virtual cassette */
-                                /* deck, so motor and sense are not always */
-                                /* the same. */
+                                /* faithful version would mimic buttons for */
+                                /* a virtual cassette deck, so motor and */
+                                /* sense operate independently */
 uint8_t vblank=0;               /* /VBLANK signal */
-uint8_t vgate;                  /* /VGATE signal  - not used */
+uint8_t vgate;                  /* /VGATE signal  - not used. Means some */
+                                /* 'clever' uses in MZ games / demos will not */
+                                /* work, but I think this is preferable to */
+                                /* lots of screen flicker for most uses. */
 
 static uint32_t blinktime;      /* Timer for cursor blink - susbstitutes for */
                                 /* the 555/556 timers in actual MZ hardware */
@@ -129,12 +129,13 @@ void wr8255(uint16_t addr, uint8_t data)
                      }
                      break;
              case 1: // Bit to write to cassette tape when
-                     // motor and sense are on
+                     // motor is on
                      if (setbit)
                        portC|=0x02;
                      else
                        portC&=0xFD;
-                     if (csense && cmotor)
+                     //if (csense && cmotor)
+                     if (cmotor)
                        cwrite(setbit);
                      break;
              case 2: // SML/CAP toggle on MZ-80K

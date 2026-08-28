@@ -176,7 +176,8 @@
 
 /* Tape header and maximum body sizes in bytes */
 #define TAPEHEADERSIZE    128 // 128 bytes
-#define TAPEBODYMAXSIZE 49152 // 48 Kbytes
+#define TAPEBODYMAXSIZE 69632 // 68 Kbytes - needs to be big for memory dump
+                              // files
 
 /* Holds global variables relating to the 8253 PIT */
 typedef struct pit8253 {  
