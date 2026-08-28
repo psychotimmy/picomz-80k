@@ -333,6 +333,7 @@ int main(void)
     set_sys_clock_hz(125000000,clocksetok);
   }
   #endif
+
   // Check the clock has been set correctly - signal error if not
   while(!clocksetok) {
     busy_wait_ms(100);
@@ -351,6 +352,26 @@ int main(void)
 
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
+
+  // Define default pixel colours (MZ-80K and A are monochrome)
+  colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
+  colourpix[1]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,255);      //blue
+  colourpix[2]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);      //red
+  colourpix[3]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,255);    //magenta
+  colourpix[4]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);      //green
+  colourpix[5]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,255);    //cyan
+  colourpix[6]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,0);    //yellow
+  colourpix[7]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);  //white
+
+  blackpix=colourpix[0];
+  if ((mzmodel == MZ80K) || (mzmodel == MZ700))
+    whitepix=colourpix[7];
+  else
+    /* MZ-80A has green characters */
+    whitepix=colourpix[4];
+
+  // Start VGA output on the second core
+  multicore_launch_core1(vga_main);
 
 #ifdef RC2014VGA
   // Check for I2C capability on RC2014 RP2040 VGA board
@@ -414,26 +435,6 @@ int main(void)
       mzpicoled(toggle);
     }
   }
-
-  // Define default pixel colours (MZ-80K and A are monochrome)
-  colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
-  colourpix[1]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,255);      //blue
-  colourpix[2]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,0);      //red
-  colourpix[3]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,0,255);    //magenta
-  colourpix[4]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,0);      //green
-  colourpix[5]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,255,255);    //cyan
-  colourpix[6]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,0);    //yellow
-  colourpix[7]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);  //white
-
-  blackpix=colourpix[0];
-  if ((mzmodel == MZ80K) || (mzmodel == MZ700))
-    whitepix=colourpix[7];
-  else
-    /* MZ-80A has green characters */
-    whitepix=colourpix[4];
-
-  // Start VGA output on the second core
-  multicore_launch_core1(vga_main);
 
   // Main emulator loop
   uint8_t delay=0;

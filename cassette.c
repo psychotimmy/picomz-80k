@@ -26,8 +26,9 @@
 //(L_L+S256_L+HDR_L+(HDR_L/8)+CHK_L+(CHK_L/8)+L_L+WSGAP_L+STM_L+L_L)*2 
 
 #define TCOUNTERMAX 999  // Maximum value of tapecounter - used in mzspinny()
-uint8_t crstate=0;       // Holds tape state for cread()
-uint8_t cwstate=0;       // Holds tape state for cwrite()
+uint8_t crstate=13;       // Holds tape state for cread()
+                          // Initialised to 13 so cassette motor resets on boot
+uint8_t cwstate=0;        // Holds tape state for cwrite()
 
 uint8_t header[TAPEHEADERSIZE]; // Tape headers are always 128 bytes
 uint8_t body[TAPEBODYMAXSIZE];  // Maximum storage is 68K - 69632 bytes
@@ -331,7 +332,6 @@ int16_t tapeloader(int16_t n)
   //Error on opening root directory if res is non-zero
   if (res) 
     return(-1);
-  
 
   // If we're passed a number less than 0, use 0 (first file).
   if (n < 0) 
@@ -367,22 +367,16 @@ int16_t tapeloader(int16_t n)
     return(-1);
   }
 
-  // Work out how many bytes to read from the header - stored in
-  // locations header[19] and header[18] (msb, lsb)
-  //bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  //f_read(&fp,body,bodybytes,&bytesread);
-  //if (bytesread != bodybytes) {
-  //  f_close(&fp);
-  //  return(-1);
-  //}
-
-  // Original method above won't work if the MZ file type is a data file.
-  // (or, at least it wouldn't if we took any notice of the return status!)
-  // Instead, attempt to read the maximum file size TAPEBODYMAXSIZE and 
-  // ignore any error - bytesread will almost certainly always be smaller
-  // than the request. v3.1.0, August 2026.
+  // Attempt to read the maximum file size TAPEBODYMAXSIZE and ignore
+  // underflow errors - bytesread will invariably be smaller than the request.
+  // Updated for v3.1.0, August 2026.
   memset(body,0x00,TAPEBODYMAXSIZE);
   f_read(&fp,body,TAPEBODYMAXSIZE,&bytesread);
+  // Still throw an error if we've read more than the requested size
+  if (bytesread > TAPEBODYMAXSIZE) {
+    f_close(&fp);
+    return(-1);
+  }
 
   // Update the preloaded tape name in the emulator status area. Note
   // this is the name stored in the header, NOT the actual file name on
@@ -492,12 +486,11 @@ int16_t tapeloader(int16_t n)
 
   // We've read the tape successfully if we get here
   f_close(&fp);
-
   return(n);     /* Return the file number loaded - matches requested */
 }
 
 /* Write a new file to sd card 'tape'                             */
-void tapewriter(uint16_t bodyoff)
+void tapewriter(uint16_t blkno)
 {
   uint8_t sharpfilelen=0;
   uint8_t sdfilename[22];  // sdfilename needs 1 more char than
@@ -509,7 +502,7 @@ void tapewriter(uint16_t bodyoff)
   FRESULT res;
   FIL fp;
 
-  mzemustatus[10]=0x20+(uint8_t)bodyoff;
+  mzemustatus[10]=(uint8_t) 0x20+blkno;
 
   // Sharp tape file name is up to 17 characters stored in header[1]
   // to header[17]. If less than 17 characters, name ends with 0x0D
@@ -539,9 +532,9 @@ void tapewriter(uint16_t bodyoff)
   f_write(&fp, header, TAPEHEADERSIZE, &bw);
 
   // Write the tape body to the file - note that we need multiples of
-  // this value if we have a data file (size will be bodybytes*(bodyoff+1))
+  // this value if we have a data file (size will be bodybytes*(blkno+1))
   uint16_t bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  for (i=0;i<(bodybytes*(bodyoff+1));i++)
+  for (i=0;i<(bodybytes*(blkno+1));i++)
     f_write(&fp, &body[i], 1, &bw);
 
   // Close the file and return
@@ -561,7 +554,7 @@ void reset_tape(void)
   /* Also reset the motor and sense flags - not sure if this
      is really needed, but should be harmless ... */
   cmotor=0;
-  csense=0;
+  csense=1;
 
   return;
 }
@@ -588,32 +581,36 @@ uint8_t cread(void)
   static uint32_t secbits;   // Tracks where we are in the current tape section
 
   /* Below added for data file handling in version 3.1.0 */
-  static bool bsd3file;      // Set true in state 3 if file is a 0x03 data file
-  static bool bsd4file;      // Set true in state 3 if file is a 0x04 data file
-  static bool endofdatafile; // Set false in state 3 - set true when EOF marker
+  static bool bsd3file=false;// Set true in state 3 if file is a 0x03 data file
+  static bool bsd4file=false;// Set true in state 3 if file is a 0x04 data file
+  static bool endofdatafile=false; 
+                             // Set false in state 3 - set true when EOF marker
                              // seen in body processing (state 8) and bsd<x>file
                              // is true
-  static bool skip101112;    // Used to determine if we need to skip a copy
-                             // of the data block just read - multi-block data
-                             // files only
   static uint16_t bodyoff=0; // Body array offest - incremented by 1 per block
                              // if the file is a multi-block data file
-                             // Initialised to zero in state 3
   
 
-  if (cmotor==0) {
-    if (crstate==0) {
-      return(LONGPULSE); // Motor is off and we're not reading a tape
-    }
-    else {               // Motor is off and we've part read a tape
-      hilo=0;            // Reset hilo counter for next time motor is on
-      return(LONGPULSE);
-    }
+  // Deal with the motor off/on pause between data file blocks
+  // bodyoff is only non-zero if we're reading a multi-block data file
+  if ((cmotor==0) && (bodyoff>0) && (!endofdatafile)) {
+    mzemustatus[23]=0x20+bodyoff;
+    mzemustatus[24]=0x20+bodyoff;
+    mzemustatus[25]=0x20+crstate;
+    csense=0;
+    cmotor=1;
+    hilo=0;              // Reset hilo counter for next time motor is on
+    return(LONGPULSE);
+  }
+  else if (cmotor==0) {  // Motor is off and it's not a multi-block file
+    mzemustatus[21]=0x20+bodyoff;
+    hilo=0;              // Reset hilo counter for next time motor is on
+    return(LONGPULSE);
   }
 
-  // If we reach here, the motor is running and sense has been triggered
+  // If we reach here, the motor is running
   // but check that we're not writing a tape before doing anything ...
-  if (cwstate > 0) return(LONGPULSE);
+  if (cwstate>0) return(LONGPULSE);
 
   // To mimic a tape being read, we need to surround each bit sent with a
   // high bit and a low bit. The lines below do this in the simplest way
@@ -702,24 +699,22 @@ uint8_t cread(void)
       return(SHORTPULSE);
     }
 
-    /* Tape body - length is calculated from the values stored by the header */
-    /* in memory locations 0x1103 and 0x1102 from the 20th & 19th values     */
-    /* found in the header - i.e. header[19] (msb) and header[18] (lsb).     */
-    /* Note: This is the blocksize if we have an MZ-80A or MZ-80K tape,      */
-    /* not the total file length */
+    // Tape body length is calculated from the values stored by the header
+    // in memory locations 0x1103 and 0x1102 from the 20th & 19th values
+    // found in the header - i.e. header[19] (msb) and header[18] (lsb).
+    // Note: This is the blocksize if we have an MZ-80A or MZ-80K tape,
+    // not the total file length. On a MZ-700 a bug in the monitor means it
+    // may not be written correctly, so always force MZ-700 BSD files to 258
+    // bytes.
     bodybytes=((header[19]<<8)&0xFF00)|header[18];
     if (((mzmodel==MZ80K)||(mzmodel==MZ80A))&&(header[0]==0x03)) {
       bsd3file=true;
       endofdatafile=false;
-      // If we have a multi-block data file we need to skip each body copy
-      skip101112=true;
     }
     if ((mzmodel==MZ700)&&(header[0]==0x04)) {
       bodybytes=258;   // May not be set in the header, so force to 258 bytes.
       bsd4file=true;
       endofdatafile=false;
-      // If we have a multi-block data file we need to skip each body copy
-      skip101112=true;
     }
 
     /* At the end of the checksum */
@@ -767,14 +762,10 @@ uint8_t cread(void)
     longsent=false;
     crstate=8;
     mzemustatus[36]=0x27;
-    if (!cmotor) cmotor=1;
-    if (!csense) csense=1;
   }
 
   /* Process the tape body - state 8 */
   if (crstate==8) {
-    if (!cmotor) cmotor=1;
-    if (!csense) csense=1;
     if (secbits<(bodybytes*8)) {     // 1 byte = 8 bits to transmit
       /* One LONGPULSE is sent before every byte of the body */
       if (((secbits%8)==0) && (!longsent)) {
@@ -785,10 +776,13 @@ uint8_t cread(void)
         mzemustatus[20]=0x20+bodyoff;
         mzemustatus[21]=0x9a;
         /* If this is an MZ-80A or MZ-80K data file, check if we have 0xFF */
+        /* This indicates EOF and may appear anywhere in a block. MZ-700   */
+        /* data files are handled differently as they have a block number  */
+        /* in the first two bytes of each block. 0xFF, 0xFF indicates EOF  */
+        /* is in that block */
         if (((mzmodel==MZ80K)||(mzmodel==MZ80A)) && bsd3file) {
           if (body[(secbits/8)+(bodyoff*bodybytes)] == 0xFF) {
             endofdatafile=true;
-            skip101112=true;
             mzemustatus[30]=0x9A;
           }
           else {
@@ -805,6 +799,12 @@ uint8_t cread(void)
         return(LONGPULSE);
       }
       return(SHORTPULSE);
+    }
+    /* Check if we have processed the last block of a MZ-700 data file */
+    if (bsd4file && (body[0+(bodyoff*bodybytes)]==0xFF) 
+                 && (body[1+(bodyoff*bodybytes)]==0xFF)) { 
+      endofdatafile=true;
+      mzemustatus[6]=0x44;
     }
     /* At the end of the body, move onto checksum state (9) */
     mzemustatus[38]=0x28;
@@ -843,17 +843,14 @@ uint8_t cread(void)
     /* all of it */
     /* Assumes copy of program / data is never needed as .mzf files used */
     secbits=0;
+    // If we're not at the end of a data file, loop back for the next block
     if ((bsd3file||bsd4file) && (!endofdatafile)) {
-        secbits=0;
-        chkbits=0;
-        longsent=false;
         bodyoff++;
-        crstate=7;
+        crstate=10;
     }
     else {
       // End of file
       mzemustatus[39]=0x29;
-      secbits=0;
       crstate=13; 
     }
   }
@@ -872,29 +869,37 @@ uint8_t cread(void)
       return(LONGPULSE);
     }
     if (secbits<L_L+S256_L) {
+      mzemustatus[(40+(secbits-1))%8]=0x29+(secbits-1)/8;
       ++secbits;
+      if (secbits == L_L+S256_L) {
+        secbits=0;
+        crstate=7;
+        //memset(mzemustatus,0x00,200);
+        mzemustatus[32]=0x24;
+      }
       return(SHORTPULSE);
     }
-    secbits=0;
-    chkbits=0;
-    longsent=false;
-    ++bodyoff;
-    crstate=7;
-    memset(mzemustatus,0x00,200);
-    mzemustatus[30]=0x24;
   }
 
   if (crstate==13) {
   /* At end of body checksum, reset tape state, send final stop bit */
       mzemustatus[38]=0x9A;
       hilo=0;
+      bodyoff=0;
+      bsd3file=false;
+      bsd4file=false;
+      endofdatafile=false;
       reset_tape();
       return(LONGPULSE);
   }
 
   /* Catch any errors - shouldn't happen, but ...        */
-  /* Reset hilo to 0, reset state */
+  mzemustatus[198]=0x20+crstate;
   hilo=0;
+  bodyoff=0;
+  bsd3file=false;
+  bsd4file=false;
+  endofdatafile=false;
   reset_tape();
 
   return(LONGPULSE);
@@ -928,9 +933,8 @@ void cwrite(uint8_t nextbit)
   static uint16_t blocksize; // Set to file body size in state 2 if we have 
                              // a data file of any type (0x03 on MZ-80 or 
                              // 0x04 on MZ-700), otherwise zero
-  static uint16_t bodyoff;   // Body array offest - incremented by 1 per block
+  static uint16_t bodyoff=0; // Body array offest - incremented by 1 per block
                              // if the file is a multi-block data file
-                             // Initialised to zero in state 2
   
   if (cwstate==0) {
     /* The first high bit has been received */
@@ -1015,24 +1019,22 @@ void cwrite(uint8_t nextbit)
       bsd3file=false;
       bsd4file=false;
       endofdatafile=false;
-      blocksize=0;
-      bodyoff=0;
+      blocksize=((header[19]<<8)&0xFF00)|header[18];
       /* Is this a data file ? Type is 0x03 for MZ-80, 0x04 for MZ-700 */
-      if ((mzmodel == MZ80K) || (mzmodel == MZ80A)) {
-        if (header[0]==0x03) {
-          bsd3file=true;
-          blocksize=((header[19]<<8)&0xFF00)|header[18];
-          mzemustatus[0]=0x22;
-          mzemustatus[1]=0x99;
-        }
+      if (((mzmodel==MZ80K) || (mzmodel==MZ80A)) && (header[0]==0x03)) {
+        bsd3file=true;
+        // Blocksize is (usually!!) 0x0080 on a MZ-80K (128 bytes), 
+        // 0x0100 (256 bytes) on a MZ-80A
+        mzemustatus[0]=0x22;
+        mzemustatus[1]=0x99;
       }
-      else if (mzmodel == MZ700) {
-        if (header[0]==0x04) {
-          bsd4file=true;
-          blocksize=((header[19]<<8)&0xFF00)|header[18];
-          mzemustatus[0]=0x22;
-          mzemustatus[1]=0x9A;
-        }
+      else if ((mzmodel==MZ700) && (header[0]==0x04)) {
+        bsd4file=true;
+        // Force blocksize to 258 as the header may be faulty due to
+        // a MZ-700 monitor bug
+        blocksize=258;
+        mzemustatus[0]=0x24;
+        mzemustatus[1]=0x9A;
       }
     }
     return;
@@ -1065,6 +1067,7 @@ void cwrite(uint8_t nextbit)
     /* Check to see if we're at the end of the checksum - this code assumes it's correct(!) and carries on regardless */
     if (secbits==CHK_L) {
       bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
+      if (bsd3file || bsd4file) bodybytes=blocksize; // Overwrite if data file
       cwstate=4;
       chkbits=0;
       secbits=0;
@@ -1132,7 +1135,9 @@ void cwrite(uint8_t nextbit)
         // byte, we've seen the end of file marker. Note that the rest of
         // the block needs to be written, but the contents will be invalid.
         if (((secbits%8)==7) && (bsd3file))
-          if (body[(secbits/8)+(bodyoff*blocksize)]==0xFF) endofdatafile=true;
+          // 0xFF is NOT an EOF marker in type 0x04 data files
+          if (bsd3file && (body[(secbits/8)+(bodyoff*blocksize)]==0xFF))
+            endofdatafile=true;
         ++secbits;         // Increment data pulses counted
       }
     }
@@ -1142,11 +1147,14 @@ void cwrite(uint8_t nextbit)
     /* Check to see if we're at the end of the body or 0x04 data block */
     if (secbits==bodybytes*8) {
       if (bsd4file) {
+        mzemustatus[18]=0x24;
         if ((body[0+(bodyoff*blocksize)] == 0xFF) && 
             (body[1+(bodyoff*blocksize)] == 0xFF)) {
           /* We have the end of file marker for type 0x04 */
+          mzemustatus[19]=0x25;
           endofdatafile=true;
         }
+        mzemustatus[20]=0x26;
       }
       /* Need to increment bodyoff if we're not at end of a data file */
       if ((bsd3file||bsd4file)&&(!endofdatafile)) ++bodyoff;
@@ -1207,8 +1215,10 @@ void cwrite(uint8_t nextbit)
       // Assumed all ok - move onto the final state (13) or back to state 7
       // if we are processing a data file and it is multi-block. Note that
       // blocksize and bodybytes are the same for type 0x03 and 0x04 files ...
-      if (((bsd3file)||(bsd4file)) && (!endofdatafile)) 
+      if ((bsd3file||bsd4file) && (!endofdatafile)) {
+        mzemustatus[8]=0x20+bodyoff;
         cwstate=7;
+      }
       else
         cwstate=13;
       secbits=0;
@@ -1239,7 +1249,7 @@ void cwrite(uint8_t nextbit)
         secbits=0;
         high=0;
         low=0;
-        mzemustatus[2]=0x9B;
+        mzemustatus[3]=0x90;
       }
       else {
         // Error - quit now
@@ -1247,7 +1257,7 @@ void cwrite(uint8_t nextbit)
         secbits=0;
         high=0;
         low=0;
-        mzemustatus[2]=0xAA;
+        mzemustatus[3]=0x95;
       }
     }
     return;
