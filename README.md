@@ -37,7 +37,7 @@ To boot the emulator into MZ-80A mode, press and hold the 'A' button on your Pic
 
 is displayed on the screen.
 
-To boot the emulator into MZ-700 mode, press and hold the 'B' button on your Pico's carrier board at power on, until the 1Z-013A monitor announces itself and:
+To boot the emulator into MZ-700 mode, press and hold either of the 'B' or 'C' buttons on your Pico's carrier board at power on, until the 1Z-013A monitor announces itself and:
 
 **  MONITOR 1Z-013A  **
 
@@ -57,7 +57,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-Pico MZ version 3.1.0 works with Pico SDK 2.2.0. Pico SDK 2.3.0 is known **not** to work with PicoMZ at the current time.
+Pico MZ version 3.1.0 works with Pico SDK 2.2.0. **Pico SDK 2.3.0 is known *not* to work with PicoMZ at the current time.**
 
 ### Release highlights
 
@@ -84,7 +84,7 @@ CMake (version 3.13 or later) and a gcc cross compiler.
    sudo apt install cmake
    sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
 ```   
-The Pico MZ relies on release 2.2.0 of the Raspberry Pico SDK. This, along with
+The Pico MZ relies on **release 2.2.0** of the Raspberry Pico SDK. This, along with
 the Pico Extras repository must be available on your computer if you wish to re-compile the emulator.
 
 Assuming that you are already in the subdirectory in which you wish to install the Pico SDK, Pico Extras 
