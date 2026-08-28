@@ -84,11 +84,11 @@ void mzspinny(uint8_t state)
   // Increment ignore. If this is >= counterinc then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
 
-  counterinc = (mzmodel == MZ700) ? 708 : 400;
+  counterinc=(mzmodel==MZ700) ? 708 : 400;
 
-  if ((++ignore) >= counterinc) {
+  if ((++ignore)>=counterinc) {
     ignore=0;
-    if ((++spinny) > TCOUNTERMAX) {
+    if ((++spinny)>TCOUNTERMAX) {
       spinny=0;
     }
   }
@@ -153,9 +153,9 @@ FRESULT mzsavedump(void)
   uramheader[12]= 0x0d;             // <end of name>
 
   // Distinguish between K, A and 700 dump files 
-  if (mzmodel == MZ80K)
+  if (mzmodel==MZ80K)
     dumpfile[6]='K';
-  else if (mzmodel == MZ80A)
+  else if (mzmodel==MZ80A)
     dumpfile[6]='A';
   else
     dumpfile[6]='7';
@@ -230,9 +230,9 @@ FRESULT mzreaddump(void)
   { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
 
   // Distinguish between K, A and 700 dump files 
-  if (mzmodel == MZ80K)
+  if (mzmodel==MZ80K)
     dumpfile[6]='K';
-  else if (mzmodel == MZ80A)
+  else if (mzmodel==MZ80A)
     dumpfile[6]='A';
   else
     dumpfile[6]='7';
@@ -653,7 +653,7 @@ uint8_t cread(void)
       mzspinny(1);
     if (secbits<HDR_L) {
       /* One LONGPULSE is sent before every byte of the header */
-      if (((secbits%8)==0) && (longsent==false)) {
+      if (((secbits%8)==0) && (!longsent)) {
         /* Note - we don't increment secbits here */
         longsent=true;
         return(LONGPULSE);
@@ -661,7 +661,7 @@ uint8_t cread(void)
       longsent=false;
       /* Bytes are sent starting with bit 7 (msb) */
       bitshift=secbits%8;
-      if (((header[secbits++/8]<<bitshift)&0x80) == 0x80) {
+      if (((header[secbits++/8]<<bitshift)&0x80)==0x80) {
         ++chkbits; // Increment the long pulse count for calculating chkh
         return(LONGPULSE);
       }
@@ -687,7 +687,7 @@ uint8_t cread(void)
         // Reset chkbits for the next time a checksum is calculated
         chkbits=0;
       }
-      if (((secbits % 8) == 0) && (longsent == false)) {
+      if (((secbits % 8)==0) && (!longsent)) {
         /* Note - we don't increment secbits here */
         longsent = true;
         return(LONGPULSE);
@@ -696,7 +696,7 @@ uint8_t cread(void)
       longsent = false;
       /* Bytes are sent starting with the MSB */
       bitshift=secbits%8;
-      if (((checksum[secbits++/8]<<bitshift)&0x80) == 0x80) {
+      if (((checksum[secbits++/8]<<bitshift)&0x80)==0x80) {
         return(LONGPULSE);
       }
       return(SHORTPULSE);
@@ -785,7 +785,7 @@ uint8_t cread(void)
         /* in the first two bytes of each block. 0xFF, 0xFF indicates EOF  */
         /* is in that block */
         if (((mzmodel==MZ80K)||(mzmodel==MZ80A)) && bsd3file) {
-          if (body[(secbits/8)+(bodyoff*bodybytes)] == 0xFF) {
+          if (body[(secbits/8)+(bodyoff*bodybytes)]==0xFF) {
             endofdatafile=true;
           }
         }
@@ -794,7 +794,7 @@ uint8_t cread(void)
       longsent=false;
       /* Bytes are sent starting with bit 7 (msb) */
       bitshift=secbits%8;
-      if (((body[(secbits++/8)+(bodyoff*bodybytes)]<<bitshift)&0x80) == 0x80) {
+      if (((body[(secbits++/8)+(bodyoff*bodybytes)]<<bitshift)&0x80)==0x80) {
         ++chkbits; // Increment the long pulse count for calculating chkb
         return(LONGPULSE);
       }
@@ -825,7 +825,7 @@ uint8_t cread(void)
         // Reset chkbits for the next time a checksum is calculated
         chkbits=0;
       }
-      if (((secbits % 8) == 0) && (longsent == false)) {
+      if (((secbits % 8)==0) && (!longsent)) {
         /* Note - we don't increment secbits here */
         longsent = true;
         return(LONGPULSE);
@@ -834,7 +834,7 @@ uint8_t cread(void)
       longsent = false;
       /* Bytes are sent starting with the MSB */
       bitshift=secbits%8;
-      if (((checksum[secbits++/8]<<bitshift)&0x80) == 0x80) {
+      if (((checksum[secbits++/8]<<bitshift)&0x80)==0x80) {
         return(LONGPULSE);
       }
       return(SHORTPULSE);
@@ -873,7 +873,7 @@ uint8_t cread(void)
     }
     if (secbits<L_L+S256_L) {
       ++secbits;
-      if (secbits == L_L+S256_L) {
+      if (secbits==L_L+S256_L) {
         secbits=0;
         crstate=7;
       }
@@ -996,7 +996,7 @@ void cwrite(uint8_t nextbit)
         pulse=0;                 // We have a low (short) pulse
       else 
         pulse=1;                 // We have a high (long) pulse
-      if (((secbits%8)==0) && (longread==false)) {
+      if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the header,
         // so we ignore it and blank the next byte of the header ready
         // for the next 8 bits
@@ -1025,7 +1025,7 @@ void cwrite(uint8_t nextbit)
       endofdatafile=false;
       blocksize=((header[19]<<8)&0xFF00)|header[18];
       /* Is this a data file ? Type is 0x03 for MZ-80, 0x04 for MZ-700 */
-      if (((mzmodel==MZ80K) || (mzmodel==MZ80A)) && (header[0]==0x03)) {
+      if (((mzmodel==MZ80K)||(mzmodel==MZ80A))&&(header[0]==0x03)) {
         bsd3file=true;
         // Blocksize is (usually!!) 0x0080 on a MZ-80K (128 bytes), 
         // 0x0100 (256 bytes) on a MZ-80A
@@ -1051,7 +1051,7 @@ void cwrite(uint8_t nextbit)
         pulse=0;                 // We have a low (short) pulse
       else 
         pulse=1;                 // We have a high (long) pulse
-      if (((secbits%8)==0) && (longread==false)) {
+      if (((secbits%8)==0) && (!longread)) {
         // This is the long pulse that preceeds every byte of the checksum,
         // so we ignore it and blank the next byte of the checksum ready
         // for the next 8 bits
@@ -1070,7 +1070,7 @@ void cwrite(uint8_t nextbit)
     /* Check to see if we're at the end of the checksum - this code assumes it's correct(!) and carries on regardless */
     if (secbits==CHK_L) {
       bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
-      if (bsd3file || bsd4file) bodybytes=blocksize; // Overwrite if data file
+      if (bsd3file||bsd4file) bodybytes=blocksize; // Overwrite if data file
       cwstate=4;
       chkbits=0;
       secbits=0;
@@ -1128,7 +1128,7 @@ void cwrite(uint8_t nextbit)
         pulse=0;                 // We have a low (short) pulse
       else 
         pulse=1;                 // We have a high (long) pulse
-      if (((secbits%8)==0) && (!longread)) {
+      if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the body,
         // so we ignore it and blank the next byte of the body ready
         // for the next 8 bits
@@ -1145,7 +1145,7 @@ void cwrite(uint8_t nextbit)
         // If this is a data file of type 0x03, and we've just seen a 0xFF
         // byte, we've seen the end of file marker. Note that the rest of
         // the block needs to be written, but the contents will be invalid.
-        if (((secbits%8)==7) && (bsd3file))
+        if (((secbits%8)==7)&&bsd3file)
           // 0xFF is NOT an EOF marker in type 0x04 data files
           if (bsd3file && (body[(secbits/8)+(bodyoff*blocksize)]==0xFF))
             endofdatafile=true;
@@ -1158,8 +1158,8 @@ void cwrite(uint8_t nextbit)
     /* Check to see if we're at the end of the body or 0x04 data block */
     if (secbits==bodybytes*8) {
       if (bsd4file) {
-        if ((body[0+(bodyoff*blocksize)] == 0xFF) && 
-            (body[1+(bodyoff*blocksize)] == 0xFF)) {
+        if ((body[0+(bodyoff*blocksize)]==0xFF) && 
+            (body[1+(bodyoff*blocksize)]==0xFF)) {
           /* We have the end of file marker for type 0x04 */
           endofdatafile=true;
         }
@@ -1180,11 +1180,11 @@ void cwrite(uint8_t nextbit)
       mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime) < READPT)
+      if (absolute_time_diff_us(hightime,lowtime)<READPT)
         pulse=0;                 // We have a low (short) pulse
       else 
         pulse=1;                 // We have a high (long) pulse
-      if (((secbits%8)==0) && (longread==false)) {
+      if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the checksum,
         // so we ignore it and blank the next byte of the checksum ready
         // for the next 8 bits
@@ -1243,7 +1243,7 @@ void cwrite(uint8_t nextbit)
   if (cwstate==13) {
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime) < READPT)
+      if (absolute_time_diff_us(hightime,lowtime)<READPT)
         ++low;                   // We have a low (short) pulse
       else
         ++high;                  // We have a high (long) pulse
