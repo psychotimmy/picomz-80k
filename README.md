@@ -17,7 +17,7 @@ Flash one of:
 
 **picomz-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
 
-Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
+Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed.
 
 When a USB keyboard and VGA display is connected, you will see:
 
