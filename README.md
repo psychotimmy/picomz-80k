@@ -128,4 +128,4 @@ There should now be two (Pico) or one (Pico 2) .uf2 files in your build director
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 28th August 2026.
+### This README was last updated on 29th August 2026.
