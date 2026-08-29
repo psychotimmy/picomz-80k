@@ -51,8 +51,6 @@ If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing 
 
 If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing slowly (1s between flashes), then your microSD card cannot be read or has not been installed.
 
-If **either** of these error conditions occur, **the Pico MZ will not display the monitor prompt until the problem is resolved.** 
-
 To find a file to load from the microSD card, use the F1 key to browse its contents forwards, F2 to go backwards. 
 
 ## Brief developer notes
