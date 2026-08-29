@@ -1,5 +1,5 @@
 /* Sharp MZ-80K, MZ-80A & MZ-700 emulator - keyboard */
-/* Tim Holyoake, August 2024 - August 2026           */
+/*      Tim Holyoake, August 2024 - August 2026      */
 
 #include "picomz.h"
 
@@ -687,6 +687,12 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
       case 0x27: processkey[8]=0x01^0xFF; //)
                  processkey[0]=0x10^0xFF;
                  break;
+      case 0x28: processkey[8]=0x10^0xFF; //<CR>    (USB return key)
+                 break;
+      case 0x2a: processkey[8]=0x02^0xFF; //<DEL>   (USB backspace)
+                 break;
+      case 0x2c: processkey[9]=0x02^0xFF; //<SPACE>
+                 break;
       case 0x2e: processkey[8]=0x01^0xFF; //+
                  processkey[0]=0x20^0xFF;
                  break;
@@ -719,7 +725,8 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
       case 0x38: processkey[8]=0x01^0xFF; //?
                  processkey[3]=0x08^0xFF;
                  break;
-      default:   break;
+      default:   processkey[8]=0x01^0xFF; // Default is to send SHIFT key only
+                 break;
     }
   }
 
@@ -1279,6 +1286,14 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
       case 0x27: processkey[0]=0x01^0xFF; //)
                  processkey[5]=0x40^0xFF;
                  break;
+      case 0x28: processkey[7]=0x08^0xFF; //<CR>    (USB return key)
+                 break;
+      case 0x29: processkey[0]=0x02^0xFF; //<GRAPH> toggle (USB ESC key)
+                 break;                   
+      case 0x2a: processkey[1]=0x04^0xFF; //<DEL>   (USB backspace)
+                 break;
+      case 0x2c: processkey[4]=0x01^0xFF; //<SPACE>
+                 break;
       case 0x2d: processkey[0]=0x01^0xFF; //_
                  processkey[5]=0x80^0xFF;
                  break;
@@ -1316,7 +1331,8 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
       case 0x64: processkey[0]=0x01^0xFF; //|
                  processkey[7]=0x40^0xFF;
                  break;
-      default:   break;
+      default:   processkey[0]=0x01^0xFF; // Default is to send SHIFT only
+                 break;
     }
   }
 
@@ -1412,7 +1428,8 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
                  processkey[6]=0x10^0xFF;
                  break;
 
-      default:   break;
+      default:   processkey[0]=0x80^0xFF; //Default is to send CTRL only
+                 break;
     }
   }
 
@@ -1828,6 +1845,15 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
       case 0x27: processkey[8]=0xFE; //)
                  processkey[6]=0xFB;
+                 break;
+      case 0x28: processkey[0]=0xFE; //<CR>    (USB return key)
+                 break;
+      case 0x2a: processkey[7]=0xBF; //<DEL>   (USB backspace)
+                 break;
+      case 0x2b: processkey[0]=0xBF; //<GRAPH> (USB tab key)
+                 graphmode=true;     //If true, CAPS LOCK always sets ALPHA
+                 break;
+      case 0x2c: processkey[6]=0xEF; //<SPACE>
                  break;
       case 0x2d: processkey[8]=0xFE; //(USB underscore _ = MZ700 pi)
                  processkey[6]=0xF7;
