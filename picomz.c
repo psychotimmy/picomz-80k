@@ -284,18 +284,8 @@ uint8_t sio_read(z80* unusedz, uint8_t addr)
   return(0);
 }
 
-/* Sharp MZ-80K/A emulator main loop */
-int main(void) 
+void getmzmodel(void)
 {
-  uint8_t toggle=0;          // Used to toggle the pico's led for error
-                             // conditions found on startup
-  bool clocksetok=true;      // Assume clock set ok - as over/underclocking is
-                             // not always used
-
-  stdio_init_all();
-
-  busy_wait_ms(250);               // Wait for inits to complete
-
   gpio_init(PICO_DEFAULT_LED_PIN); // Init onboard pico LED (GPIO 25)
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -318,6 +308,14 @@ int main(void)
     mzmodel=MZ80A;
   else
     mzmodel=MZ80K;
+}
+
+void setclocking(void)
+{
+  uint8_t toggle=0;          // Used to toggle the pico's led for error
+                             // conditions found on startup
+  bool clocksetok=true;      // Assume clock set ok - as over/underclocking is
+                             // not always used
 
   // Over/underclocking depends on pico type, board type and MZ model
   #ifdef PICO1
@@ -327,14 +325,19 @@ int main(void)
     set_sys_clock_hz(250000000,clocksetok);
   }
   else {
-    // 150 MHz clock
+    // MZ-80A and MZ-80K - 150 MHz clock
     set_sys_clock_pll(1500000000,5,2);
     set_sys_clock_hz(150000000,clocksetok);
   }
   #endif
   #ifdef PICO2
-  if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
-    // 125MHz clock
+  if (mzmodel==MZ700) {
+    // 200MHz clock
+    set_sys_clock_pll(1200000000,6,1);
+    set_sys_clock_hz(200000000,clocksetok);
+  }
+  else {
+    // MZ-80A and MZ-80K - 125MHz clock
     set_sys_clock_pll(1500000000,6,2);
     set_sys_clock_hz(125000000,clocksetok);
   }
@@ -347,18 +350,10 @@ int main(void)
     mzpicoled(toggle);
   }
 
-  // Initialise mzuserram and mzvram
-  memset(mzuserram,0x00,URAMSIZE);
-  memset(mzvram,0x00,VRAMSIZE);
+}
 
-  // Initialise MZ-700 banked RAM (4K and 12K) - inactive at switch on */
-  // Not used for the MZ-80K and A emulations
-  memset(mzbank4,0x00,BANK4SIZE);
-  memset(mzbank12,0x00,BANK12SIZE);
-
-  // Initialise mzemustatus area (bottom 40 scanlines)
-  memset(mzemustatus,0x00,EMUSSIZE);
-
+void start_display(void)
+{
   // Define default pixel colours (MZ-80K and A are monochrome)
   colourpix[0]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,0);        //black
   colourpix[1]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(0,0,255);      //blue
@@ -379,6 +374,28 @@ int main(void)
   // Start VGA output on the second core - takes a while, so do it as early
   // as possible
   multicore_launch_core1(vga_main);
+
+}
+
+void memory_init(void)
+{
+
+  // Initialise mzuserram and mzvram
+  memset(mzuserram,0x00,URAMSIZE);
+  memset(mzvram,0x00,VRAMSIZE);
+
+  // Initialise MZ-700 banked RAM (4K and 12K) - inactive at switch on */
+  // Not used for the MZ-80K and A emulations
+  memset(mzbank4,0x00,BANK4SIZE);
+  memset(mzbank12,0x00,BANK12SIZE);
+
+  // Initialise mzemustatus area (bottom 40 scanlines)
+  memset(mzemustatus,0x00,EMUSSIZE);
+
+}
+
+void setpicotone(void)
+{
 
 #ifdef RC2014VGA
   // Check for I2C capability on RC2014 RP2040 VGA board
@@ -411,21 +428,12 @@ int main(void)
    picotone2=28;
 #endif
 
-  // Initialise 8253 PIT
-  p8253_init();
+}
 
-  // Initialise the Z80 processor
-  z80_init(&mzcpu);
-  mzcpu.read_byte = mem_read;
-  mzcpu.write_byte = mem_write;
-  mzcpu.port_in = sio_read;
-  mzcpu.port_out = sio_write;
-  mzcpu.pc = 0x0000;
-
-  // Initialise USB keyboard
-  tusb_init();
-
-  mzpicoled(0);
+void sd_init(void)
+{
+  uint8_t toggle=0;          // Used to toggle the pico's led for error
+                             // conditions found on startup
 
   // Mount the sd card to act as a tape source
   FRESULT tapestatus;
@@ -442,52 +450,107 @@ int main(void)
       mzpicoled(toggle);
     }
   }
+}
 
-  // Main emulator loop
+/* Sharp MZ-80K/A emulator main loop */
+int __no_inline_not_in_flash_func (main) (void) 
+{
   uint64_t nowtime,exectime;
   int64_t adjust=0;
+
+  stdio_init_all();
+
+  busy_wait_ms(200);         // Wait for inits to complete
+
+  getmzmodel();              // Initialise mzmodel global
+
+  setclocking();             // Pico over/underclocking
+
+  memory_init();             // Initialise MZ RAM banks
+
+  sd_init();                 // Initialise SD card
+
+  start_display();           // Start VGA display on core 1
+
+  setpicotone();             // Set pins for loudspeaker
+
+  p8253_init();              // Initialise 8253 PIT
+
+  // Initialise the Z80 processor
+  z80_init(&mzcpu);
+  mzcpu.read_byte = mem_read;
+  mzcpu.write_byte = mem_write;
+  mzcpu.port_in = sio_read;
+  mzcpu.port_out = sio_write;
+  mzcpu.pc = 0x0000;
+
+  // Initialise USB keyboard
+  tusb_init();
+
+  mzpicoled(0);
+
+  // Main emulator loop
   for(;;) {
 
     exectime=get_absolute_time();
     z80_step(&mzcpu);		  // Execute next z80 opcode
 
     // Timing adjustments depend on Pico platform and MZ emulator required
+    // Altering adjust if statement: lower values of adjust = slower speed
     #ifdef PICO1
     if (mzmodel==MZ700) {
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
-      if (adjust > 1856) {
-        busy_wait_us(64);
+      if (adjust > 2560) {
+        busy_wait_us_32(64);
         adjust=0;
       }
     } 
-    else if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+    else if (mzmodel=MZ80K) {
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 1024) {
-        busy_wait_us(64);
+      if (adjust > 1152) {
+        busy_wait_us_32(64);
         adjust=0;
       }
     } 
+    else {
+      nowtime=get_absolute_time();
+      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+      mzcpu.cyc=0;
+      if (adjust > 1152) {
+        busy_wait_us_32(64);
+        adjust=0;
+      }
+    }
     #endif
     #ifdef PICO2
     if (mzmodel==MZ700) {
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
-      if (adjust > 1856) {
-        busy_wait_us(64);
+      if (adjust > 800) {
+        busy_wait_us_32(64);
         adjust=0;
       }
     } 
-    else if ((mzmodel==MZ80K)||(mzmodel==MZ80A)) {
+    else if (mzmodel==MZ80K) {
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 1024) {
-        busy_wait_us(64);
+      if (adjust > 570) {
+        busy_wait_us_32(96);
+        adjust=0;
+      }
+    } 
+    else {
+      nowtime=get_absolute_time();
+      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+      mzcpu.cyc=0;
+      if (adjust > 570) {
+        busy_wait_us_32(96);
         adjust=0;
       }
     } 

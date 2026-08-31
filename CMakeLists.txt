@@ -7,6 +7,7 @@
 
   set(CMAKE_C_STANDARD 11)
   set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_BUILD_TYPE Release)
 
   string(APPEND CMAKE_EXE_LINKER_FLAGS "-Wl,--print-memory-usage")
 
@@ -21,9 +22,9 @@
   set (PICO_BOARD "../boards/vgaboardrp2040")
 
   add_executable(picomz-rc2014
-	picomz.c
+        picomz.c
         sharpcorp.c
-	keyboard.c
+        keyboard.c
         vgadisplay.c
         8255.c
         8253.c
@@ -33,9 +34,9 @@
   )
 
   add_executable(picomz-pimoroni
-	picomz.c
+        picomz.c
         sharpcorp.c
-	keyboard.c
+        keyboard.c
         vgadisplay.c
         8255.c
         8253.c
@@ -84,9 +85,9 @@ else()
   set (PICO_BOARD "../boards/vgaboardrp2350")
 
   add_executable(pico2mz-pimoroni
-	picomz.c
+        picomz.c
         sharpcorp.c
-	keyboard.c
+        keyboard.c
         vgadisplay.c
         8255.c
         8253.c
