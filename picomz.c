@@ -502,17 +502,17 @@ int __no_inline_not_in_flash_func (main) (void)
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
-      if (adjust > 2560) {
+      if (adjust > 4096) {
         busy_wait_us_32(64);
         adjust=0;
       }
     } 
-    else if (mzmodel=MZ80K) {
+    else if (mzmodel==MZ80K) {
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 1152) {
-        busy_wait_us_32(64);
+      if (adjust > 7680) {
+        busy_wait_us_32(32);
         adjust=0;
       }
     } 
@@ -520,8 +520,8 @@ int __no_inline_not_in_flash_func (main) (void)
       nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 1152) {
-        busy_wait_us_32(64);
+      if (adjust > 9216) {
+        busy_wait_us_32(12);
         adjust=0;
       }
     }
