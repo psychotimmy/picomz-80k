@@ -17,7 +17,7 @@ Flash one of:
 
 **picomz-rc2014.uf2** for a RC2014 RP2040 VGA card or a RC2014 Pi Pico VGA card with a microSD card breakout mounted on a RC2014 backplane
 
-Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed. **The Pico MZ will not boot to the monitor screen unless a microSD card is installed.**
+Ensure a microSD card containing one or more Sharp MZ series digital software files (.mzf/.mzt/.m12) is installed.
 
 When a USB keyboard and VGA display is connected, you will see:
 
@@ -50,8 +50,6 @@ is displayed on the screen.
 If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing quickly (200ms between flashes), it means that a USB keyboard has not been recognised. 
 
 If the Pico's green led (or the RC2014 RP2040 VGA card's white led) is flashing slowly (1s between flashes), then your microSD card cannot be read or has not been installed.
-
-If **either** of these error conditions occur, **the Pico MZ will not display the monitor prompt until the problem is resolved.** 
 
 To find a file to load from the microSD card, use the F1 key to browse its contents forwards, F2 to go backwards. 
 
@@ -130,4 +128,4 @@ There should now be two (Pico) or one (Pico 2) .uf2 files in your build director
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 28th August 2026.
+### This README was last updated on 29th August 2026.
