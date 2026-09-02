@@ -497,38 +497,35 @@ int __no_inline_not_in_flash_func (main) (void)
 
     // Timing adjustments depend on Pico platform and MZ emulator required
     // Altering adjust if statement: lower values of adjust = slower speed
+    nowtime=get_absolute_time();
     #ifdef PICO1
     if (mzmodel==MZ700) {
-      nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
-      if (adjust > 4096) {
-        busy_wait_us_32(64);
+      if (adjust > 2048) {
+        busy_wait_us_32(1);
         adjust=0;
       }
     } 
     else if (mzmodel==MZ80K) {
-      nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
       if (adjust > 7680) {
-        busy_wait_us_32(32);
+        busy_wait_us_32(48);
         adjust=0;
       }
     } 
     else {
-      nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 9216) {
-        busy_wait_us_32(12);
+      if (adjust > 16384) {
+        busy_wait_us_32(1);
         adjust=0;
       }
     }
     #endif
     #ifdef PICO2
     if (mzmodel==MZ700) {
-      nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
       if (adjust > 800) {
@@ -537,7 +534,6 @@ int __no_inline_not_in_flash_func (main) (void)
       }
     } 
     else if (mzmodel==MZ80K) {
-      nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
       if (adjust > 570) {
@@ -546,7 +542,6 @@ int __no_inline_not_in_flash_func (main) (void)
       }
     } 
     else {
-      nowtime=get_absolute_time();
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
       if (adjust > 570) {
