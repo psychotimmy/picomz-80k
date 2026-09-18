@@ -168,8 +168,6 @@ void wr8255(uint16_t addr, uint8_t data)
 
 uint8_t rd8255(uint16_t addr)
 {
-  static uint8_t newkey[KBDROWS] = { 0xFF,0xFF,0xFF,0xFF,0xFF,
-                                     0xFF,0xFF,0xFF,0xFF,0xFF };
   uint8_t idx,retval;
 
   switch (addr&0x0003) {           // addr is between 0xE000 and 0xE002
@@ -179,22 +177,8 @@ uint8_t rd8255(uint16_t addr)
     case 1:// Port B is keyboard input
            idx=portA&0x0F;
            // 10 lines (KBDROWS) to strobe, so idx must be between 0 and 9
-           if (idx > 9)
-             idx=9;
-           if (mzmodel == MZ80A) {
-             // Ensure shift / ctrl keys read correctly - (re)start scan on
-             // column 0 for the MZ-80A
-             if (idx == 0) 
-               memcpy(newkey,processkey,KBDROWS);
-             retval=newkey[idx];
-           }
-           else {
-             // Ensure shift / ctrl keys read correctly - (re)start scan on
-             // column 8 for MZ-80K and MZ-700
-             if (idx == 8) 
-                memcpy(newkey,processkey,KBDROWS);
-             retval=newkey[idx];
-           }
+           if (idx > 9) idx=9;
+           retval=processkey[idx];
            break;
     case 2:// Read upper 4 bits from portC 
            retval=portC&0x0F;          // Lower 4 bits returned unchanged

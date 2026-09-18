@@ -158,7 +158,7 @@ void mzrptkey(void)
 static void process_kbd_report(hid_keyboard_report_t const *report)
 {
 
-  bool kbdchanged;
+  bool kbdchanged=false;
 
   // Did the status of the Num Lock key change ?
   if (report->keycode[0] == 0x53) 
@@ -204,31 +204,35 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
 
   // Clear the repeat key code if it has changed
   if (report->keycode[0] != rptcode) {
+    kbdchanged=true;
     rptcode=0x00;
   }
 
   // Clear the repeat modifier code if it has changed
   if (report->modifier != rptmodifier) {
+    kbdchanged=true;
     rptmodifier=0x00;
   }
 
-  // Reset processkey array
-  memset(processkey,0xFF,KBDROWS);
+  if (kbdchanged) {
+    // Reset processkey array if the keyboard has changed
+    memset(processkey,0xFF,KBDROWS);
    
-  // New keypress, so restart the timer and pass the new modifier
-  // and key on for processing
-  rptcode=report->keycode[0];   // Store new key for possible repeat
-  rptmodifier=report->modifier; // Store (new) modifier for possible repeat
-  rpttime=to_ms_since_boot(get_absolute_time())+MZ_KEY_REPEAT_INIT;   
+    // New keypress, so restart the timer and pass the new modifier
+    // and key on for processing
+    rptcode=report->keycode[0];   // Store new key for possible repeat
+    rptmodifier=report->modifier; // Store (new) modifier for possible repeat
+    rpttime=to_ms_since_boot(get_absolute_time())+MZ_KEY_REPEAT_INIT;   
                                   // Repeat key if initially held for 
                                   // MZ_KEY_REPEAT_INIT milliseconds
-  // We have a keypress to pass to the MZ-80K / MZ-80A / MZ-700
-  if (mzmodel == MZ80K)
-    mzhidmapkey80k(report->keycode[0],report->modifier);
-  else if (mzmodel == MZ80A)
-    mzhidmapkey80a(report->keycode[0],report->modifier);
-  else
-    mzhidmapkey700(report->keycode[0],report->modifier);
+    // We have a keypress to pass to the MZ-80K / MZ-80A / MZ-700
+    if (mzmodel == MZ80K)
+      mzhidmapkey80k(report->keycode[0],report->modifier);
+    else if (mzmodel == MZ80A)
+      mzhidmapkey80a(report->keycode[0],report->modifier);
+    else
+      mzhidmapkey700(report->keycode[0],report->modifier);
+  }
 
   return;
 }
