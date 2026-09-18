@@ -109,8 +109,8 @@ void pico_tone_init()
   /* Determine the pico clock speed */
   picotone.picoclock=clock_get_hz(clk_sys);
 
-  /* Set frequency to 0.1Hz (zero-ish) */
-  picotone.freq=0.1;
+  /* Set frequency to 0Hz */
+  picotone.freq=0.0;
 
   return;
 }
@@ -120,6 +120,8 @@ static int64_t mzpico_tone_off(alarm_id_t id, void *userdata)
   // Turn the sound generator off
   pwm_set_enabled(picotone.slice1, false);
   pwm_set_enabled(picotone.slice2, false);
+  // Reset frequency to 0 Hz
+  picotone.freq=0.0;
   return(0); 
 }
 
@@ -127,8 +129,8 @@ void mzpico_tone_on(void)
 {
   uint32_t *unused; /* Dummy variable for alarm callback */
 
-  // Avoid possible divide by 0 by insisting frequency >= 0.1Hz
-  if (picotone.freq >= 0.1) {
+  // Avoid possible divide by 0 by insisting frequency >= 0.001Hz
+  if (picotone.freq >= 0.001) {
     float divider=(float)picotone.picoclock/(picotone.freq*10000.0);
     pwm_set_clkdiv(picotone.slice1, divider);
     pwm_set_clkdiv(picotone.slice2, divider);
