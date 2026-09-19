@@ -55,7 +55,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-Pico MZ version 3.1.0 works with Pico SDK 2.2.0. **Pico SDK 2.3.0 is known *not* to work with PicoMZ at the current time.**
+Pico MZ version 3.1.1 uses Pico SDK 2.2.0. **Pico SDK 2.3.0 and 2.3.1 are known *not* to work with PicoMZ at the current time.**
 
 ### Release highlights
 
@@ -75,7 +75,7 @@ Release 3.1.0 consolidated the MZ-80K, MZ-80A and MZ-700 emulators into a single
 
 ## Instructions for rebuilding the Pico MZ (see also the documentation subdirectory)
 
-### Pre-requisites for Raspberry Pi OS (Debian Bookworm)
+### Pre-requisites for Raspberry Pi OS (Debian Bookworm or Trixie)
 
 CMake (version 3.13 or later) and a gcc cross compiler.
 ```
@@ -93,7 +93,7 @@ and Pico MZ repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 3.1.0
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 3.1.1
 ```
 **or** the latest stable version:
 ```
@@ -128,4 +128,4 @@ There should now be two (Pico) or one (Pico 2) .uf2 files in your build director
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 29th August 2026.
+### This README was last updated on 19th September 2026.
