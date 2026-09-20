@@ -12,7 +12,7 @@
   string(APPEND CMAKE_EXE_LINKER_FLAGS "-Wl,--print-memory-usage")
 
   if (NOT PICO_SDK_VERSION_STRING VERSION_EQUAL "2.2.0")
-    message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.2.0 is required to build PicoMZ 3.1.0. Your version is ${PICO_SDK_VERSION_STRING}")
+    message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.2.0 is required to build PicoMZ 3.1.1. Your version is ${PICO_SDK_VERSION_STRING}")
   endif()
 
   pico_sdk_init()

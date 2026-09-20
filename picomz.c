@@ -502,7 +502,7 @@ int __no_inline_not_in_flash_func (main) (void)
     if (mzmodel==MZ700) {
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
-      if (adjust > 2048) {
+      if (adjust > 4096) {
         busy_wait_us_32(1);
         adjust=0;
       }
@@ -510,16 +510,16 @@ int __no_inline_not_in_flash_func (main) (void)
     else if (mzmodel==MZ80K) {
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 7680) {
-        busy_wait_us_32(48);
+      if (adjust > 4096) {
+        busy_wait_us_32(64);
         adjust=0;
       }
     } 
     else {
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 16384) {
-        busy_wait_us_32(1);
+      if (adjust > 2560) {
+        busy_wait_us_32(64);
         adjust=0;
       }
     }
@@ -528,24 +528,24 @@ int __no_inline_not_in_flash_func (main) (void)
     if (mzmodel==MZ700) {
       adjust += mzcpu.cyc-((nowtime-exectime)<<2);
       mzcpu.cyc=0;
-      if (adjust > 800) {
-        busy_wait_us_32(64);
+      if (adjust > 2048) {
+        busy_wait_us_32(4);
         adjust=0;
       }
     } 
     else if (mzmodel==MZ80K) {
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 570) {
-        busy_wait_us_32(96);
+      if (adjust > 1536) {
+        busy_wait_us_32(32);
         adjust=0;
       }
     } 
     else {
       adjust += mzcpu.cyc-((nowtime-exectime)<<1);
       mzcpu.cyc=0;
-      if (adjust > 570) {
-        busy_wait_us_32(96);
+      if (adjust > 2048) {
+        busy_wait_us_32(32);
         adjust=0;
       }
     } 
