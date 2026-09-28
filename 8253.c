@@ -213,14 +213,13 @@ void wr8253(uint16_t addr, uint8_t val)
     else {
       mzpit.counter0|=((val<<8)&0xFF00);
       mzpit.msb0=0;
-      if (mzpit.counter0 == 0x0000)
-        // Avoid a possible divide by 0
-        mzpit.counter0 == 0x0001;
+      // Avoid a possible divide by 0
       // Legal value for frequency divider is 0x0001 to 0xFFFF
-      // Frequency divider for MZ-700 and MZ80K/A is different
-      (mzmodel == MZ700) ? 
-        (picotone.freq=1108800.0/(float)mzpit.counter0):
-        (picotone.freq=1000000.0/(float)mzpit.counter0);
+      if (mzpit.counter0 != 0x0000)
+        // Frequency calculation for MZ-700 and MZ80K/A is different
+        (mzmodel == MZ700) ? 
+          (picotone.freq=1108800.0/(float)mzpit.counter0):
+          (picotone.freq=1000000.0/(float)mzpit.counter0);
     }
   }
 
