@@ -137,28 +137,39 @@ FRESULT mzsavedump(void)
   { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
-  uramheader[0] = 0x20;             // Use 0x20 as the header identifier
-                                    // (0x20 not used by real MZ-80K/A tapes)
-  uramheader[1] = 0x4d;             // M
-  uramheader[2] = 0x92;             // e
-  uramheader[3] = 0xb3;             // m
-  uramheader[4] = 0xb7;             // o
-  uramheader[5] = 0x9d;             // r
-  uramheader[6] = 0xbd;             // y
-  uramheader[7] = 0x20;             // <space>
-  uramheader[8] = 0x9c;             // d
-  uramheader[9] = 0xa5;             // u
-  uramheader[10]= 0xb3;             // m
-  uramheader[11]= 0x9e;             // p
-  uramheader[12]= 0x0d;             // <end of name>
+  uramheader[0] =0x20;             // Use 0x20 as the header identifier
+                                   // (0x20 not used by real MZ-80K/A tapes)
+  uramheader[1] =0x4d;             // M
+  uramheader[2] =0x92;             // e
+  uramheader[3] =0xb3;             // m
+  uramheader[4] =0xb7;             // o
+  uramheader[5] =0x9d;             // r
+  uramheader[6] =0xbd;             // y
+  uramheader[7] =0x20;             // <space>
+  uramheader[8] =0x9c;             // d
+  uramheader[9] =0xa5;             // u
+  uramheader[10]=0xb3;             // m
+  uramheader[11]=0x9e;             // p
+  uramheader[12]=0x20;             // <space>
+  uramheader[14]=0x30;             // 0
+  uramheader[16]=0x0d;             // <end of name>
 
   // Distinguish between K, A and 700 dump files 
-  if (mzmodel==MZ80K)
+  if (mzmodel==MZ80K) {
     dumpfile[6]='K';
-  else if (mzmodel==MZ80A)
+    uramheader[13]=0x38;
+    uramheader[15]=0x4B;
+  }
+  else if (mzmodel==MZ80A) {
     dumpfile[6]='A';
-  else
+    uramheader[13]=0x38;
+    uramheader[15]=0x41;
+  }
+  else {
     dumpfile[6]='7';
+    uramheader[13]=0x37;
+    uramheader[15]=0x30;
+  }
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
