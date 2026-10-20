@@ -303,6 +303,7 @@ void tuh_hid_umount_cb(uint8_t addr, uint8_t inst)
 void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
+  FRESULT mntres;                         // SD card mount status
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
@@ -734,6 +735,12 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
                  load_mzf();
                  break;
 
+      case 0x3b: //USB shift F2 = (re)mount a sd card
+                 mntres=tapeinit();
+                 tfwd=true;
+                 tfno=0;
+                 break;
+
       default:   processkey[8]=0x01^0xFF; // Default is to send SHIFT key only
                  break;
     }
@@ -913,6 +920,7 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
 void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
+  FRESULT mntres;                         // SD card mount status
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
@@ -1335,6 +1343,12 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
                  load_mzf();
                  break;
 
+      case 0x3b: //USB shift F2 = (re)mount a sd card
+                 mntres=tapeinit();
+                 tfwd=true;
+                 tfno=0;
+                 break;
+
       /* Non-standard MZ-80K keys need to be somewhere ! */
 
       case 0x54: processkey[0]=0x01^0xFF; // <- (USB keypad shift /)
@@ -1454,6 +1468,7 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
 void mzhidmapkey700(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
+  FRESULT mntres;                         // SD card mount status
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
@@ -1900,6 +1915,12 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
 
       case 0x3a: //USB shift F1 = fast .mzf load
                  load_mzf();
+                 break;
+
+      case 0x3b: //USB shift F2 = (re)mount a sd card
+                 mntres=tapeinit();
+                 tfwd=true;
+                 tfno=0;
                  break;
 
       case 0x3d: //USB shift F4 = toggle UK/JP CGROM

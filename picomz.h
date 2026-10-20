@@ -243,7 +243,7 @@ extern uint8_t body[TAPEBODYMAXSIZE];
 extern void reset_tape(void);
 extern uint8_t cread(void);
 extern void cwrite(uint8_t);
-extern uint8_t tapeinit(void);
+extern FRESULT tapeinit(void);
 extern int16_t tapeloader(int16_t);
 extern FRESULT mzsavedump(void);
 extern FRESULT mzreaddump(void);
