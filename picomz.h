@@ -248,6 +248,7 @@ extern int16_t tapeloader(int16_t);
 extern FRESULT mzsavedump(void);
 extern FRESULT mzreaddump(void);
 extern void mzspinny(uint8_t);
+extern void load_mzf(void);
 
 /* vgadisplay.c */
 extern void vga_main(void);
