@@ -1,5 +1,5 @@
 /* Sharp MZ-80K, MZ-80A & MZ-700 tape handling */
-/*   Tim Holyoake, August 2024 - August 2026   */
+/*  Tim Holyoake, August 2024 - October 2026   */
 
 #include "picomz.h"
 
@@ -108,7 +108,10 @@ void mzspinny(uint8_t state)
   spinnyt=spinnyt%100;
   mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/10);
   spinnyt=spinnyt%10;
-  mzemustatus[spos]=0x20+(uint8_t)spinnyt;
+  mzemustatus[spos++]=0x20+(uint8_t)spinnyt;
+
+  // Clear the rest of the status line
+  memset(mzemustatus+spos,0x00,40-spos%40);
 
   return;
 }
@@ -1288,5 +1291,59 @@ void cwrite(uint8_t nextbit)
   /* Shouldn't be able to get here */
   cwstate=0;
 
+  return;
+}
+
+/* Shift F1 - loads current .mzf directly into memory if machine code */
+void load_mzf(void)
+{
+  uint16_t mzfleng,mzfload,count;
+  uint8_t mzstr[40],spos;
+
+  // Clear an emulator status line
+  memset(mzemustatus+EMULINE3,0x00,40);
+  spos=EMULINE3;
+
+  // Only fast load files of header type 0x01 (machine code)
+  if (header[0] == 0x01) {
+
+    // Load the tape header into the monitor's work area (0x10F0 = 4336 decimal)
+    for (count=0; count < TAPEHEADERSIZE; count++)
+      mzuserram[0x00F0+count]=header[count];
+
+    // The length of the file is stored in header locations 18 & 19
+    mzfleng=((header[19]<<8)&0xFF00)|header[18];
+
+    // The load address of the file is stored in header locations 20 & 21
+    mzfload=((header[21]<<8)&0xFF00)|header[20];
+
+    // Load the file into memory (mzuserram locations start 0x1000 (4096) lower
+    // than the address in the header due to separate monitor ROM/RAM)
+    for (count=0; count < mzfleng; count ++)
+      mzuserram[mzfload-0x1000+count]=body[count];
+
+    // Set the program counter to the execution address
+    // The execution address of the file is stored in header locations 22 & 23
+    mzcpu.pc=((header[23]<<8)&0xFF00)|header[22];
+
+    if (ukrom)
+      ascii2mzdisplay("Fast load successful",mzstr); 
+    else
+      ascii2mzdisplay("FAST LOAD SUCCESSFUL",mzstr); 
+
+    for (count=0; count<20; count++)    // Can't use strlen as space is 0x00!!
+      mzemustatus[spos++]=mzstr[count];
+  }
+  else {
+
+    if (ukrom)
+      ascii2mzdisplay("Can only fast load machine code files",mzstr); 
+    else
+      ascii2mzdisplay("CAN ONLY FAST LOAD MACHINE CODE FILES",mzstr); 
+
+    for (count=0; count<37; count++)    // Can't use strlen as space is 0x00!!
+      mzemustatus[spos++]=mzstr[count];
+  }
+  
   return;
 }

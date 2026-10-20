@@ -1,5 +1,5 @@
 /* Sharp MZ-80K, MZ-80A & MZ-700 emulator - keyboard */
-/*      Tim Holyoake, August 2024 - August 2026      */
+/*     Tim Holyoake, August 2024 - October 2026      */
 
 #include "picomz.h"
 
@@ -729,6 +729,11 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
       case 0x38: processkey[8]=0x01^0xFF; //?
                  processkey[3]=0x08^0xFF;
                  break;
+
+      case 0x3a: //USB shift F1 = fast .mzf load
+                 load_mzf();
+                 break;
+
       default:   processkey[8]=0x01^0xFF; // Default is to send SHIFT key only
                  break;
     }
@@ -1326,6 +1331,10 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
       case 0x38: processkey[7]=0x01^0xFF; //?
                  break;
 
+      case 0x3a: //USB shift F1 = fast .mzf load
+                 load_mzf();
+                 break;
+
       /* Non-standard MZ-80K keys need to be somewhere ! */
 
       case 0x54: processkey[0]=0x01^0xFF; // <- (USB keypad shift /)
@@ -1887,6 +1896,10 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  processkey[6]=0xFE;
                  break;
       case 0x38: processkey[7]=0xFD; //?
+                 break;
+
+      case 0x3a: //USB shift F1 = fast .mzf load
+                 load_mzf();
                  break;
 
       case 0x3d: //USB shift F4 = toggle UK/JP CGROM
