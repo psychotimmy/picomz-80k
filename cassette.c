@@ -35,7 +35,7 @@ uint8_t body[TAPEBODYMAXSIZE];  // Maximum storage is 68K - 69632 bytes
                                 // Needs to be larger than real max tape
                                 // sizes due to memory dump read/write code
 
-static FATFS fs;         // File system pointer for sd card
+static FATFS *fs;               // File system pointer for sd card
 
 /* MZ-80K/A/700 tapes always have a 128 byte header, followed by a body */
 
@@ -116,15 +116,51 @@ void mzspinny(uint8_t state)
   return;
 }
 
-/* Attempt to mount an sd card */
+/* Attempt to mount a sd card */
 FRESULT tapeinit(void)
 {
   FRESULT res;
+  uint8_t spos=EMULINE1;
+  uint8_t i,mzstr[20];          // Used to convert ASCII to MZ display codes
 
   // Attempt to mount the sd card filesystem
   // Calling routine must deal with status
+
+  memset(mzemustatus,0x00,200); // Blank status area
+  if (ukrom)
+    ascii2mzdisplay ("Mounting SD card ...",mzstr);
+  else
+    ascii2mzdisplay ("MOUNTING SD CARD ...",mzstr);
+  for (i=0; i<20; i++) // Can't use strlen as space is 0x00!
+    mzemustatus[spos++]=mzstr[i];
+
+  // Wait for card to initialise - 500ms is conservative but reliable
   busy_wait_ms(500);
-  res=f_mount(&fs, "", 1);
+
+  // Unmount the last file system if there was one - allows hot SD card swaps
+  res=f_mount(0, "", 0);
+  free(fs);
+
+  // Mount the new file system
+  fs = malloc(sizeof(FATFS));
+  res=f_mount(fs, "", 1);
+
+  if (res == FR_OK) {
+    if (ukrom)
+      ascii2mzdisplay (" SD card mounted.",mzstr);
+    else
+      ascii2mzdisplay (" SD CARD MOUNTED.",mzstr);
+    for (i=0; i<17; i++) // Can't use strlen as space is 0x00!
+      mzemustatus[spos++]=mzstr[i];
+  }
+  else {
+    if (ukrom)
+      ascii2mzdisplay (" failed. Try again.",mzstr);
+    else
+      ascii2mzdisplay (" FAILED. TRY AGAIN.",mzstr);
+    for (i=0; i<19; i++) // Can't use strlen as space is 0x00!
+      mzemustatus[spos++]=mzstr[i];
+  }
 
   return(res);
 }
