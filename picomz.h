@@ -165,7 +165,8 @@
 
 /* Emulator status information display - uses the last 40 scanlines */
 /* equivalent to 5 rows of 40 characters */
-#define EMUSSIZE 200   // Up to 200 bytes of status info stored
+#define EMUSSIZE 200   // Up to 200 bytes of status info in the display
+#define EMULINEL  40   // Up to 40 bytes of status info per line
 
 /* Start points in mzemustatus array of emulator status area lines */
 #define EMULINE0      0
@@ -176,8 +177,8 @@
 
 /* Tape header and maximum body sizes in bytes */
 #define TAPEHEADERSIZE    128 // 128 bytes
-#define TAPEBODYMAXSIZE 69632 // 68 Kbytes - needs to be big for memory dump
-                              // files
+#define TAPEBODYMAXSIZE 73728 // 72 Kbytes - needs to be big for memory dump
+                              // files (64K RAM, plus 4K ROM, plus flags)
 
 /* Holds global variables relating to the 8253 PIT */
 typedef struct pit8253 {  

@@ -111,7 +111,7 @@ void mzspinny(uint8_t state)
   mzemustatus[spos++]=0x20+(uint8_t)spinnyt;
 
   // Clear the rest of the status line
-  memset(mzemustatus+spos,0x00,40-spos%40);
+  memset(mzemustatus+spos,0x00,EMULINEL-spos%EMULINEL);
 
   return;
 }
@@ -126,7 +126,7 @@ FRESULT tapeinit(void)
   // Attempt to mount the sd card filesystem
   // Calling routine must deal with status
 
-  memset(mzemustatus,0x00,200); // Blank status area
+  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
   if (ukrom)
     ascii2mzdisplay ("Mounting SD card ...",mzstr);
   else
@@ -257,7 +257,7 @@ FRESULT mzsavedump(void)
   f_write(&fp, &mzpit, sizeof(mzpit), &bw);
 
   // Write confirmation message to status area
-  memset(mzemustatus,0x00,200); // Blank status area
+  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
   uint8_t spos=EMULINE1;
   uint8_t mzstr[32];            // Used to convert ASCII to MZ display codes
   ascii2mzdisplay ("Memory dump created successfully",mzstr);
@@ -358,7 +358,7 @@ FRESULT mzreaddump(void)
   f_close(&fp);
 
   // Write confirmation message to status area
-  memset(mzemustatus,0x00,200); // Blank status area
+  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
   uint8_t spos=EMULINE1;
   uint8_t mzstr[29];            // Used to convert ASCII to MZ display codes
   ascii2mzdisplay ("Memory dump read successfully",mzstr);
@@ -435,7 +435,7 @@ int16_t tapeloader(int16_t n)
   uint8_t spos=EMULINE1;
   // spos: EMULINE0 = start of status area line 0, EMULINE1 = line 1 etc.
 
-  memset(mzemustatus+EMULINE1,0x00,40); // Blank line
+  memset(mzemustatus+EMULINE1,0x00,EMULINEL); // Blank line
   if (ukrom)
     ascii2mzdisplay("Next file is: ",mzstr);
   else
@@ -451,7 +451,7 @@ int16_t tapeloader(int16_t n)
     mzemustatus[spos++]=mzascii2mzdisplay(header[hpos++]);
 
   // Update the preloaded tape type in the emulator status area.
-  memset(mzemustatus+EMULINE2,0x00,40); // Blank line
+  memset(mzemustatus+EMULINE2,0x00,EMULINEL); // Blank line
   spos=EMULINE2;
   if (ukrom)
     ascii2mzdisplay("File type is: ",mzstr);
@@ -1337,7 +1337,7 @@ void load_mzf(void)
   uint8_t mzstr[40],spos;
 
   // Clear an emulator status line
-  memset(mzemustatus+EMULINE3,0x00,40);
+  memset(mzemustatus+EMULINE3,0x00,EMULINEL);
   spos=EMULINE3;
 
   // Only fast load files of header type 0x01 (machine code)
