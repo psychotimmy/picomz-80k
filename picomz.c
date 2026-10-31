@@ -432,24 +432,22 @@ void setpicotone(void)
 
 void sd_init(void)
 {
-  uint8_t toggle=0;          // Used to toggle the pico's led for error
-                             // conditions found on startup
-
   // Mount the sd card to act as a tape source
   FRESULT tapestatus;
   tapestatus=tapeinit(); 
-  if (tapestatus != FR_OK) {
+  while (tapestatus != FR_OK) {
     // We've been unable to mount the sd card, so signal this with
     // 1s long pulses on the pico led. Emulator will need restarting
     // as without the sd card it's not much use!
-    toggle=1;
-    mzpicoled(toggle);
-    while (true) {
-      busy_wait_ms(1000);
-      toggle=!toggle;
-      mzpicoled(toggle);
-    }
+    mzpicoled(1);
+    busy_wait_ms(1000);
+    mzpicoled(0);
+    busy_wait_ms(1000);
+    tapestatus=tapeinit(); 
   }
+  busy_wait_ms(2000);
+  // Clear the mount message from the status area
+  memset(mzemustatus,0x00,EMUSSIZE);
 }
 
 /* Sharp MZ-80K/A emulator main loop */
@@ -468,13 +466,14 @@ int __no_inline_not_in_flash_func (main) (void)
 
   memory_init();             // Initialise MZ RAM banks
 
-  sd_init();                 // Initialise SD card
-
   start_display();           // Start VGA display on core 1
 
   setpicotone();             // Set pins for loudspeaker
 
   p8253_init();              // Initialise 8253 PIT
+
+  sd_init();                 // Initialise SD card after display starts
+                             // Emulator status area used for error messages
 
   // Initialise the Z80 processor
   z80_init(&mzcpu);
