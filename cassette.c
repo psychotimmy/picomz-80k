@@ -1,5 +1,5 @@
 /* Sharp MZ-80K, MZ-80A & MZ-700 tape handling */
-/*  Tim Holyoake, August 2024 - October 2026   */
+/*  Tim Holyoake, August 2024 - November 2026  */
 
 #include "picomz.h"
 
@@ -31,7 +31,7 @@ uint8_t crstate=13;       // Holds tape state for cread()
 uint8_t cwstate=0;        // Holds tape state for cwrite()
 
 uint8_t header[TAPEHEADERSIZE]; // Tape headers are always 128 bytes
-uint8_t body[TAPEBODYMAXSIZE];  // Maximum storage is 68K - 69632 bytes
+uint8_t body[TAPEBODYMAXSIZE];  // Maximum storage is 72K = 73728 bytes
                                 // Needs to be larger than real max tape
                                 // sizes due to memory dump read/write code
 
@@ -128,9 +128,9 @@ FRESULT tapeinit(void)
 
   memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
   if (ukrom)
-    ascii2mzdisplay ("Mounting SD card ...",mzstr);
+    ascii2mzdisplay("Mounting SD card ...",mzstr);
   else
-    ascii2mzdisplay ("MOUNTING SD CARD ...",mzstr);
+    ascii2mzdisplay("MOUNTING SD CARD ...",mzstr);
   for (i=0; i<20; i++) // Can't use strlen as space is 0x00!
     mzemustatus[spos++]=mzstr[i];
 
@@ -147,17 +147,17 @@ FRESULT tapeinit(void)
 
   if (res == FR_OK) {
     if (ukrom)
-      ascii2mzdisplay (" SD card mounted.",mzstr);
+      ascii2mzdisplay(" SD card mounted.",mzstr);
     else
-      ascii2mzdisplay (" SD CARD MOUNTED.",mzstr);
+      ascii2mzdisplay(" SD CARD MOUNTED.",mzstr);
     for (i=0; i<17; i++) // Can't use strlen as space is 0x00!
       mzemustatus[spos++]=mzstr[i];
   }
   else {
     if (ukrom)
-      ascii2mzdisplay (" failed. Try again.",mzstr);
+      ascii2mzdisplay(" failed. Try again.",mzstr);
     else
-      ascii2mzdisplay (" FAILED. TRY AGAIN.",mzstr);
+      ascii2mzdisplay(" FAILED. TRY AGAIN.",mzstr);
     for (i=0; i<19; i++) // Can't use strlen as space is 0x00!
       mzemustatus[spos++]=mzstr[i];
   }
@@ -169,11 +169,22 @@ FRESULT tapeinit(void)
 FRESULT mzsavedump(void)
 {
   FIL fp;                           // File pointer
+  FILINFO fno;                      // File info structure
   FRESULT res;                      // FatFS function result
   uint bw;                          // Number of bytes written to file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t dumpfile[12] =            // Memory dump filename
-  { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
+  uint8_t mzstr[40];                // Error / success messages
+  uint8_t spos;
+  #ifdef PICO1
+  uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
+  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
+    'm','z','d','u','m','p','1',' ','.','m','z','f','\0' };
+  #endif
+  #ifdef PICO2
+  uint8_t dumpfile[26] =            // Memory dump filename - Pico 2 / rp2350
+  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
+    'm','z','d','u','m','p','2',' ','.','m','z','f','\0' };
+  #endif
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
   uramheader[0] =0x20;             // Use 0x20 as the header identifier
@@ -194,25 +205,48 @@ FRESULT mzsavedump(void)
   uramheader[16]=0x0d;             // <end of name>
 
   // Distinguish between K, A and 700 dump files 
+  // and those created on a Pico 1 vs Pico 2
   if (mzmodel==MZ80K) {
-    dumpfile[6]='K';
+    dumpfile[20]='K';
     uramheader[13]=0x38;
     uramheader[15]=0x4B;
   }
   else if (mzmodel==MZ80A) {
-    dumpfile[6]='A';
+    dumpfile[20]='A';
     uramheader[13]=0x38;
     uramheader[15]=0x41;
   }
   else {
-    dumpfile[6]='7';
+    dumpfile[20]='7';
     uramheader[13]=0x37;
     uramheader[15]=0x30;
   }
 
+  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
+
+  // Check that the memory dump directory exists - if not , create it
+  res=f_stat("/memorydumps", &fno);
+  spos=EMULINE0;
+  if (res != FR_OK) {
+    res=f_mkdir("/memorydumps");
+    if (res != FR_OK) {
+      ascii2mzdisplay("Error: Unable to create /memorydumps",mzstr);
+      for (uint8_t i=0; i<36; i++) // Can't use strlen as space is 0x00!
+        mzemustatus[spos++]=mzstr[i];
+      return(res);
+    }
+    ascii2mzdisplay("/memorydumps created",mzstr);
+    for (uint8_t i=0; i<20; i++) // Can't use strlen as space is 0x00!
+      mzemustatus[spos++]=mzstr[i];
+  }
+
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
-  if (res) {
+  if (res != FR_OK) {
+    spos=EMULINE1;
+    ascii2mzdisplay("Error: Can't write to memory dump file",mzstr);
+    for (uint8_t i=0; i<38; i++) // Can't use strlen as space is 0x00!
+      mzemustatus[spos++]=mzstr[i];
     return(res);
   }
 
@@ -257,9 +291,7 @@ FRESULT mzsavedump(void)
   f_write(&fp, &mzpit, sizeof(mzpit), &bw);
 
   // Write confirmation message to status area
-  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
-  uint8_t spos=EMULINE1;
-  uint8_t mzstr[32];            // Used to convert ASCII to MZ display codes
+  spos=EMULINE2;
   ascii2mzdisplay ("Memory dump created successfully",mzstr);
   for (uint8_t i=0; i<32; i++) // Can't use strlen as space is 0x00!
     mzemustatus[spos++]=mzstr[i];
@@ -275,23 +307,39 @@ FRESULT mzreaddump(void)
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
   uint br;                          // Number of bytes read from file
+  uint8_t mzstr[40];                // Succcess / error status
+  uint8_t spos=EMULINE2;            // Write to 3rd emulator status line
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t dumpfile[12] =            // Memory dump filename
-  { 'M','Z','D','U','M','P',' ','.','M','Z','F','\0' };
+  #ifdef PICO1
+  uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
+  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
+    'm','z','d','u','m','p','1',' ','.','m','z','f','\0' };
+  #endif
+  #ifdef PICO2
+  uint8_t dumpfile[26] =            // Memory dump filename - Pico 2 / rp2350
+  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
+    'm','z','d','u','m','p','2',' ','.','m','z','f','\0' };
+  #endif
 
   // Distinguish between K, A and 700 dump files 
   if (mzmodel==MZ80K)
-    dumpfile[6]='K';
+    dumpfile[20]='K';
   else if (mzmodel==MZ80A)
-    dumpfile[6]='A';
+    dumpfile[20]='A';
   else
-    dumpfile[6]='7';
+    dumpfile[20]='7';
+
+  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
   // An error has occured if res is non-zero
-  if (res) 
+  if (res) {
+    ascii2mzdisplay("Error: no valid memory dump available",mzstr);
+    for (uint8_t i=0; i<37; i++) // Can't use strlen as space is 0x00!
+      mzemustatus[spos++]=mzstr[i];
     return(res);
+  }
 
   // Read the header - check it's what we're expecting
   f_read(&fp,uramheader,TAPEHEADERSIZE,&br);
@@ -358,9 +406,6 @@ FRESULT mzreaddump(void)
   f_close(&fp);
 
   // Write confirmation message to status area
-  memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
-  uint8_t spos=EMULINE1;
-  uint8_t mzstr[29];            // Used to convert ASCII to MZ display codes
   ascii2mzdisplay ("Memory dump read successfully",mzstr);
   for (uint8_t i=0; i<29; i++) // Can't use strlen as space is 0x00!
     mzemustatus[spos++]=mzstr[i];
