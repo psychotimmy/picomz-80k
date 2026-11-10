@@ -178,12 +178,12 @@ FRESULT mzsavedump(void)
   #ifdef PICO1
   uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
   { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','1',' ','.','m','z','f','\0' };
+    'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
   #ifdef PICO2
   uint8_t dumpfile[26] =            // Memory dump filename - Pico 2 / rp2350
   { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','2',' ','.','m','z','f','\0' };
+    'm','z','d','u','m','p','2',' ','.','m','z','d','\0' };
   #endif
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
@@ -313,12 +313,12 @@ FRESULT mzreaddump(void)
   #ifdef PICO1
   uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
   { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','1',' ','.','m','z','f','\0' };
+    'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
   #ifdef PICO2
   uint8_t dumpfile[26] =            // Memory dump filename - Pico 2 / rp2350
   { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','2',' ','.','m','z','f','\0' };
+    'm','z','d','u','m','p','2',' ','.','m','z','d','\0' };
   #endif
 
   // Distinguish between K, A and 700 dump files 
