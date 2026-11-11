@@ -6,9 +6,10 @@
 #define LONGPULSE  1     /* cread() returns high for a long pulse */
 #define SHORTPULSE 0     /*                 low for a short pulse */
 
-#define READPT 386       /* Elapsed time in microseconds that on a tape     */
+#define READPT 340       /* Elapsed time in microseconds that on a tape     */
                          /* write a pulse is treated as a 1 rather than a 0 */
-                         /* The MZ-80K/A/700 read point is 386us            */
+                         /* The MZ-80K/A/700 read point is 368us - slightly */
+                         /* lower should be more reliable ... */
 
 #define RBGAP_L 120      /* Big tape gap length in bits - read  */
 #define WBGAP_L 22000    /* Big tape gap length in bits - write */
@@ -26,6 +27,9 @@
 //(L_L+S256_L+HDR_L+(HDR_L/8)+CHK_L+(CHK_L/8)+L_L+WSGAP_L+STM_L+L_L)*2 
 
 #define TCOUNTERMAX 999  // Maximum value of tapecounter - used in mzspinny()
+
+/* Globals */
+
 uint8_t crstate=13;       // Holds tape state for cread()
                           // Initialised to 13 so cassette motor resets on boot
 uint8_t cwstate=0;        // Holds tape state for cwrite()
@@ -36,6 +40,7 @@ uint8_t body[TAPEBODYMAXSIZE];  // Maximum storage is 72K = 73728 bytes
                                 // sizes due to memory dump read/write code
 
 static FATFS *fs;               // File system pointer for sd card
+static uint8_t *sdcarddir;      // microSD card active directory for read/write
 
 /* MZ-80K/A/700 tapes always have a 128 byte header, followed by a body */
 
@@ -235,9 +240,6 @@ FRESULT mzsavedump(void)
         mzemustatus[spos++]=mzstr[i];
       return(res);
     }
-    ascii2mzdisplay("/memorydumps created",mzstr);
-    for (uint8_t i=0; i<20; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
   }
 
   // Open a file on the sd card
@@ -423,8 +425,31 @@ int16_t tapeloader(int16_t n)
   uint bytesread,bodybytes,dc;
   uint8_t mzstr[25];
 
-  res=f_opendir(&dp,"/");	/* Open the root directory on the sd card */
-  //Error on opening root directory if res is non-zero
+  /* If a directory named mz700, mz80a or mz80k is present on the sd card  */
+  /* and we are emulating that machine, open this directory. Otherwise,    */
+  /* open the root directory. Subsequent read/writes will be from/into the */
+  /* directory opened here. */
+
+  sdcarddir="/";
+  switch (mzmodel) {
+    case MZ80K: res=f_stat("/mz80k",&fno);
+                if (res==FR_OK) 
+                  sdcarddir="/mz80k";
+                break;
+    case MZ80A: res=f_stat("/mz80a",&fno);
+                if (res==FR_OK) 
+                  sdcarddir="/mz80a";
+                break;
+    case MZ700: res=f_stat("/mz700",&fno);
+                if (res==FR_OK) 
+                  sdcarddir="/mz700";
+                break;
+    default:    break;
+  }
+
+  res=f_opendir(&dp,sdcarddir);	/* Open the correct directory on the sd card */
+
+  //Error on opening directory if res is non-zero
   if (res) 
     return(-1);
 
@@ -436,7 +461,7 @@ int16_t tapeloader(int16_t n)
   while (dc <= n) {             /* Find the nth file in the directory */
     res=f_readdir(&dp, &fno);   /* (i.e. the nth file on the 'tape')  */
     if (res != FR_OK || fno.fname[0] == 0) {
-      /* We're at the end of the tape or an error has happened */
+      /* We're at the end of the 'tape' or an error has happened */
       /* Return with no change to the preloaded file */
       f_closedir(&dp);
       return(-1);
@@ -447,7 +472,7 @@ int16_t tapeloader(int16_t n)
       ++dc;                      /* Increment the file count */
   }
   f_closedir(&dp);               /* Close the directory pointer */
-  
+
   // We now have the next file on the tape - preload it
   res=f_open(&fp,fno.fname,FA_READ|FA_OPEN_EXISTING);
   if (res) {
@@ -584,7 +609,7 @@ int16_t tapeloader(int16_t n)
   return(n);     /* Return the file number loaded - matches requested */
 }
 
-/* Write a new file to sd card 'tape'                             */
+/* Write a new file to sd the card 'tape' */
 void tapewriter(uint16_t blkno)
 {
   uint8_t sharpfilelen=0;
@@ -593,7 +618,6 @@ void tapewriter(uint16_t blkno)
                            // termination requirements
                            // plus 4 characters for the .mzf extension
   uint bw;                 // Number of bytes written to file
-  uint16_t i;              // Counts file body bytes written to sd card
   FRESULT res;
   FIL fp;
 
@@ -603,23 +627,25 @@ void tapewriter(uint16_t blkno)
   // Find each character of the Sharp tape file name and convert
   // it into something safe for the sd card file name
   while ((sharpfilelen < 17) && (header[sharpfilelen+1] != 0x0D)) {
-    sdfilename[sharpfilelen]=mzsafefilechar(header[sharpfilelen+1]);
+    sdfilename[sharpfilelen]= mzsafefilechar(header[sharpfilelen+1]);
     ++sharpfilelen;
   }
 
-  // Add .MZF and null terminate
+  // Add .mzf and null terminate
   sdfilename[sharpfilelen++]='.';
-  sdfilename[sharpfilelen++]='M';
-  sdfilename[sharpfilelen++]='Z';
-  sdfilename[sharpfilelen++]='F';
+  sdfilename[sharpfilelen++]='m';
+  sdfilename[sharpfilelen++]='z';
+  sdfilename[sharpfilelen++]='f';
   sdfilename[sharpfilelen]='\0';
+
+  // Change to the correct directory on the sdcard for writing
+  // FF_FS_RPATH=1 (or 2) must be in fatfs/ffconf.h for this to compile
+  res=f_chdir(sdcarddir);
 
   // Open a file on the sd card for writing. If it exists already
   // we simply overwrite it ... just as would happen on a tape.
   res=f_open(&fp,sdfilename,FA_CREATE_ALWAYS|FA_WRITE);
-  if (res) {
-    return;
-  }
+  if (res) return;
 
   // Write the 128 byte header to the file
   f_write(&fp, header, TAPEHEADERSIZE, &bw);
@@ -627,7 +653,7 @@ void tapewriter(uint16_t blkno)
   // Write the tape body to the file - note that we need multiples of
   // this value if we have a data file (size will be bodybytes*(blkno+1))
   uint16_t bodybytes=((header[19]<<8)&0xFF00)|header[18];
-  for (i=0;i<(bodybytes*(blkno+1));i++)
+  for (uint16_t i=0;i<(bodybytes*(blkno+1));i++)
     f_write(&fp, &body[i], 1, &bw);
 
   // Close the file and return
@@ -1041,6 +1067,7 @@ void cwrite(uint8_t nextbit)
     secbits=0;               // Section (state) bit count
     low=0;                   // low pulse counter
     high=0;                  // high pulse counter
+    memset(mzemustatus,0x00,120); // Clear top 3 lines of status area
     hightime=get_absolute_time(); // Timestamp of first high bit received
     cwstate=1;                    // Process the preamble bits in state 1.
     return;                  
