@@ -1,6 +1,6 @@
-/* Sharp MZ-80K  & MZ-80A emulators                  */
+/*      Sharp MZ-80K, MZ-80A & MZ-700 emulators      */
 /* Status LED and miscellaneous conversion functions */
-/* Tim Holyoake, November 2024 - February 2025       */
+/*    Tim Holyoake, November 2024 - November 2026    */
 
 #include "picomz.h"
 
@@ -10,6 +10,30 @@ void mzpicoled(uint8_t state)
   // state == 1 is on, 0 is off.
   gpio_put(PICO_DEFAULT_LED_PIN, state);
   return;
+}
+
+/* Use ascii2mzdisplay() to convert a character string   */
+/* to MZ display characters and output them to the       */
+/* emulator status area at the specified position. Max   */
+/* length of string output at any time is 1 status line  */
+/* (this is stored in the EMULINEL #define as 40)        */
+/* Function returns the next cell (mod 200) to be filled */
+/* in the status area. If the string passed is more than */
+/* 40 characters long, then nothing is output and the    */
+/* current output position (epos) is returned.           */
+uint8_t ascii2emustatus(uint8_t* convert, uint8_t epos)
+{
+  uint8_t length, converted[EMULINEL];
+
+  length = strlen(convert);
+  if (length <= EMULINEL) {
+    ascii2mzdisplay(convert,converted);
+    // Write converted string to the emulator status area
+    for (uint8_t i=0;i<length;i++)
+      mzemustatus[epos++]=converted[i];
+  }
+
+  return(epos);
 }
 
 /* Convert a standard ASCII string to MZ display string. */

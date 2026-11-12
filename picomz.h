@@ -273,6 +273,7 @@ extern void wrE008(uint8_t data);
 
 /* miscfuncs.c */
 extern void mzpicoled(uint8_t);
+extern uint8_t ascii2emustatus(uint8_t*, uint8_t);
 extern void ascii2mzdisplay(uint8_t*, uint8_t*);
 extern uint8_t mzsafefilechar(uint8_t);
 extern uint8_t mzascii2mzdisplay(uint8_t);

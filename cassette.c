@@ -81,7 +81,6 @@ void mzspinny(uint8_t state)
   static uint16_t spinny=0;         // Used to reset the tape counter
   static uint16_t ignore=0;         // Don't update the tape counter
                                     // with every call to this function
-  uint8_t mzstr[15];                // Used to convert ASCII to MZ display
   uint16_t counterinc;              // Takes account of the different clock
                                     // speed of MZ-80<x> vs MZ-700 so tape
                                     // counter moves at a sensible speed
@@ -98,16 +97,11 @@ void mzspinny(uint8_t state)
     }
   }
 
+  // Write Tape counter: to 4th line of the status area
+  spos=ukrom ? ascii2emustatus("Tape counter: ",spos): // Avoid lower case
+               ascii2emustatus("TAPE COUNTER: ",spos); // for Japanese CGROM
+
   // Write out value of spinny to the emulator status area
-  if (ukrom)
-    ascii2mzdisplay("Tape counter: ",mzstr);
-  else
-    ascii2mzdisplay("TAPE COUNTER: ",mzstr);  // Avoid lower case
-                                              // for Japanese CGROM
-  for (uint8_t i=0;i<14;i++)         // Can't use strlen as space is 0x00!!
-    mzemustatus[spos++]=mzstr[i];
-  
-  // Output the tape counter number
   uint16_t spinnyt=spinny;
   mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/100);
   spinnyt=spinnyt%100;
@@ -126,18 +120,13 @@ FRESULT tapeinit(void)
 {
   FRESULT res;
   uint8_t spos=EMULINE1;
-  uint8_t i,mzstr[20];          // Used to convert ASCII to MZ display codes
 
   // Attempt to mount the sd card filesystem
   // Calling routine must deal with status
 
   memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
-  if (ukrom)
-    ascii2mzdisplay("Mounting SD card ...",mzstr);
-  else
-    ascii2mzdisplay("MOUNTING SD CARD ...",mzstr);
-  for (i=0; i<20; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ukrom ? ascii2emustatus("Mounting SD card ...",spos):
+               ascii2emustatus("Mounting SD card ...",spos);
 
   // Wait for card to initialise - 500ms is conservative but reliable
   busy_wait_ms(500);
@@ -150,22 +139,12 @@ FRESULT tapeinit(void)
   fs = malloc(sizeof(FATFS));
   res=f_mount(fs, "", 1);
 
-  if (res == FR_OK) {
-    if (ukrom)
-      ascii2mzdisplay(" SD card mounted.",mzstr);
-    else
-      ascii2mzdisplay(" SD CARD MOUNTED.",mzstr);
-    for (i=0; i<17; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
-  }
-  else {
-    if (ukrom)
-      ascii2mzdisplay(" failed. Try again.",mzstr);
-    else
-      ascii2mzdisplay(" FAILED. TRY AGAIN.",mzstr);
-    for (i=0; i<19; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
-  }
+  if (res == FR_OK) 
+    spos=ukrom ? ascii2emustatus(" SD card mounted.",spos):
+                 ascii2emustatus(" SD CARD MOUNTED.",spos);
+  else 
+    spos=ukrom ? ascii2emustatus(" failed. Try again.",spos):
+                 ascii2emustatus(" FAILED. TRY AGAIN.",spos);
 
   return(res);
 }
@@ -178,7 +157,6 @@ FRESULT mzsavedump(void)
   FRESULT res;                      // FatFS function result
   uint bw;                          // Number of bytes written to file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t mzstr[40];                // Error / success messages
   uint8_t spos;
   #ifdef PICO1
   uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
@@ -235,9 +213,8 @@ FRESULT mzsavedump(void)
   if (res != FR_OK) {
     res=f_mkdir("/memorydumps");
     if (res != FR_OK) {
-      ascii2mzdisplay("Error: Unable to create /memorydumps",mzstr);
-      for (uint8_t i=0; i<36; i++) // Can't use strlen as space is 0x00!
-        mzemustatus[spos++]=mzstr[i];
+      spos=ukrom ? ascii2emustatus("Error: Unable to create /memorydumps",spos):
+                   ascii2emustatus("ERROR: UNABLE TO CREATE /MEMORYDUMPS",spos);
       return(res);
     }
   }
@@ -246,9 +223,8 @@ FRESULT mzsavedump(void)
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res != FR_OK) {
     spos=EMULINE1;
-    ascii2mzdisplay("Error: Can't write to memory dump file",mzstr);
-    for (uint8_t i=0; i<38; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
+    spos=ukrom ? ascii2emustatus("Error: Can't write to memory dump file",spos):
+                 ascii2emustatus("ERROR: CAN'T WRITE TO MEMORY DUMP FILE",spos);
     return(res);
   }
 
@@ -294,9 +270,8 @@ FRESULT mzsavedump(void)
 
   // Write confirmation message to status area
   spos=EMULINE2;
-  ascii2mzdisplay ("Memory dump created successfully",mzstr);
-  for (uint8_t i=0; i<32; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ukrom ? ascii2emustatus("Memory dump created successfully",spos):
+               ascii2emustatus("MEMORY DUMP CREATED SUCCESSFULLY",spos);
 
   // Close the file and return
   f_close(&fp);
@@ -309,7 +284,6 @@ FRESULT mzreaddump(void)
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
   uint br;                          // Number of bytes read from file
-  uint8_t mzstr[40];                // Succcess / error status
   uint8_t spos=EMULINE2;            // Write to 3rd emulator status line
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
   #ifdef PICO1
@@ -337,9 +311,8 @@ FRESULT mzreaddump(void)
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
   // An error has occured if res is non-zero
   if (res) {
-    ascii2mzdisplay("Error: no valid memory dump available",mzstr);
-    for (uint8_t i=0; i<37; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
+    spos=ukrom ? ascii2emustatus("Error: No valid memory dump found",spos):
+                 ascii2emustatus("ERROR: NO VALID MEMORY DUMP FOUND",spos);
     return(res);
   }
 
@@ -408,9 +381,8 @@ FRESULT mzreaddump(void)
   f_close(&fp);
 
   // Write confirmation message to status area
-  ascii2mzdisplay ("Memory dump read successfully",mzstr);
-  for (uint8_t i=0; i<29; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ukrom ? ascii2emustatus("Memory dump read successfully",spos):
+               ascii2emustatus("MEMORY DUMP READ SUCCESSFULLY",spos);
 
   return(FR_OK);
 }
