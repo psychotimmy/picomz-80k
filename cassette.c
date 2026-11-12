@@ -193,7 +193,7 @@ FRESULT mzsavedump(void)
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
   uramheader[0] =0x20;             // Use 0x20 as the header identifier
-                                   // (0x20 not used by real MZ-80K/A tapes)
+                                   // (0x20 not used by real MZ-80K/A/700 tapes)
   uramheader[1] =0x4d;             // M
   uramheader[2] =0x92;             // e
   uramheader[3] =0xb3;             // m
@@ -534,7 +534,6 @@ int16_t tapeloader(int16_t n)
   // 0x01 = Machine code, 0x02 = Language (BASIC,Pascal etc.), 0x03 = MZ-80 data
   // 0x04 = Zen source (MZ-80) or MZ-700 data, 0x05 = S-BASIC on MZ700 
   // 0x06 = Chalkwell BASIC (MZ80)
-  // 0x20 = memory dump (Pico MZ-80K/A/700 specific)
   switch (header[0]) {
     case 0x01: if (ukrom)
                  ascii2mzdisplay("Machine code",mzstr);
@@ -586,13 +585,6 @@ int16_t tapeloader(int16_t n)
                else
                  ascii2mzdisplay("CHALKWELL BASIC",mzstr);
                for (uint8_t i=0; i<15; i++)
-                 mzemustatus[spos++]=mzstr[i];
-               break;
-    case 0x20: if (ukrom)
-                 ascii2mzdisplay("Pico MZ memory dump",mzstr);
-               else
-                 ascii2mzdisplay("PICO MZ MEMORY DUMP",mzstr);
-               for (uint8_t i=0; i<19; i++)
                  mzemustatus[spos++]=mzstr[i];
                break;
     default:   if (ukrom)
