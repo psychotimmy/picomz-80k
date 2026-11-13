@@ -437,18 +437,15 @@ int16_t tapeloader(int16_t n)
       f_closedir(&dp);
       return(-1);
     }
-    if (fno.fattrib & AM_DIR)    /* All subdirectories ignored at present */
-      ;
-    else 
-      ++dc;                      /* Increment the file count */
+    if (!(fno.fattrib & AM_DIR))    /* All subdirectories ignored at present */
+      ++dc;                         /* Increment the file count */
   }
   f_closedir(&dp);               /* Close the directory pointer */
 
-  // We now have the next file on the tape - preload it
+  // We now have the next file on the tape - preload it, return -1 if error
   res=f_open(&fp,fno.fname,FA_READ|FA_OPEN_EXISTING);
-  if (res) {
+  if (res)
     return(-1);
-  }
   
   // MZ-80K/A/700 tape headers are always 128 bytes
   memset(header,0x00,TAPEHEADERSIZE);
