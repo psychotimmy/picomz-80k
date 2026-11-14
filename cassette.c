@@ -133,11 +133,11 @@ FRESULT tapeinit(void)
   free(fs);
 
   // Mount the new file system
-  fs = malloc(sizeof(FATFS));
+  fs=malloc(sizeof(FATFS));
   res=f_mount(fs, "", 1);
 
-  spos=(res == FR_OK) ? ascii2emustatus(" SD card mounted.",spos):
-                        ascii2emustatus(" failed. Try again.",spos);
+  spos=(res==FR_OK) ? ascii2emustatus(" SD card mounted.",spos):
+                    ascii2emustatus(" failed. Try again.",spos);
 
   return(res);
 }
@@ -803,9 +803,8 @@ uint8_t cread(void)
         /* in the first two bytes of each block. 0xFF, 0xFF indicates EOF  */
         /* is in that block */
         if (((mzmodel==MZ80K)||(mzmodel==MZ80A)) && bsd3file) {
-          if (body[(secbits/8)+(bodyoff*bodybytes)]==0xFF) {
+          if (body[(secbits/8)+(bodyoff*bodybytes)]==0xFF)
             endofdatafile=true;
-          }
         }
         return(LONGPULSE);
       }
@@ -820,9 +819,8 @@ uint8_t cread(void)
     }
     /* Check if we have processed the last block of a MZ-700 data file */
     if (bsd4file && (body[0+(bodyoff*bodybytes)]==0xFF) 
-                 && (body[1+(bodyoff*bodybytes)]==0xFF)) { 
+                 && (body[1+(bodyoff*bodybytes)]==0xFF)) 
       endofdatafile=true;
-    }
     /* At the end of the body, move onto checksum state (9) */
     secbits=0;
     crstate=9;
@@ -852,9 +850,9 @@ uint8_t cread(void)
       longsent = false;
       /* Bytes are sent starting with the MSB */
       bitshift=secbits%8;
-      if (((checksum[secbits++/8]<<bitshift)&0x80)==0x80) {
+      if (((checksum[secbits++/8]<<bitshift)&0x80)==0x80)
         return(LONGPULSE);
-      }
+        
       return(SHORTPULSE);
     }
     /* At the end of the checksum stop - unless we have a multi-block */
@@ -867,10 +865,9 @@ uint8_t cread(void)
         bodyoff++;
         crstate=10;
     }
-    else {
+    else
       // End of file
-      crstate=13; 
-    }
+      crstate=13;
   }
 
   /* States 10,11 and 12 are only needed if the program body has failed */
@@ -978,7 +975,7 @@ void cwrite(uint8_t nextbit)
     if (nextbit==0) {
       lowtime=get_absolute_time();
       // We have a low (short) pulse if true, high (long) pulse if false
-      (absolute_time_diff_us(hightime,lowtime) < READPT) ? (++low):(++high);
+      (absolute_time_diff_us(hightime,lowtime) < READPT) ? ++low:++high;
       ++secbits;                 // Increment pulses counted
     }
     else 
@@ -995,9 +992,8 @@ void cwrite(uint8_t nextbit)
         high=0;
         chkbits=0;
       }
-      else {
+      else
         cwstate=0;
-      }
     }
     return;
   }
@@ -1162,9 +1158,9 @@ void cwrite(uint8_t nextbit)
         ++secbits;         // Increment data pulses counted
       }
     }
-    else {
+    else
       hightime=get_absolute_time();
-    }
+
     /* Check to see if we're at the end of the body or 0x04 data block */
     if (secbits==bodybytes*8) {
       if (bsd4file) {
@@ -1237,11 +1233,7 @@ void cwrite(uint8_t nextbit)
       // Assumed all ok - move onto the final state (13) or back to state 7
       // if we are processing a data file and it is multi-block. Note that
       // blocksize and bodybytes are the same for type 0x03 and 0x04 files ...
-      if ((bsd3file||bsd4file) && (!endofdatafile)) {
-        cwstate=7;
-      }
-      else
-        cwstate=13;
+      cwstate=((bsd3file||bsd4file) && (!endofdatafile)) ? 7:13;
       secbits=0;
     }
     return;
