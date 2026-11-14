@@ -90,7 +90,7 @@
 #define VRAMSIZE        4096  //   2   Kbyte  Video RAM (1K used on MZ-80K)
                               //   4   Kbytes Video RAM (2K + 2K colour)
 #define FROMSIZE        1024  //   1   Kbyte  MZ-80K FD ROM (not implemented)
-#define BANK4SIZE       12288 //   4   Kbytes Banked RAM (MZ-700)
+#define BANK4SIZE       4096  //   4   Kbytes Banked RAM (MZ-700)
 #define BANK12SIZE      12288 //   12  Kbytes Banked RAM (MZ-700)
 
 /***************************************************/
