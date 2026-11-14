@@ -1244,7 +1244,7 @@ void cwrite(uint8_t nextbit)
     if (nextbit==0) {
       lowtime=get_absolute_time();
       // We have a low (short) pulse if true, high (long) pulse if false
-      (absolute_time_diff_us(hightime,lowtime) < READPT) ? (++low):(++high);
+      (absolute_time_diff_us(hightime,lowtime) < READPT) ? ++low:++high;
       ++secbits;                 // Increment pulses counted
     }
     else
