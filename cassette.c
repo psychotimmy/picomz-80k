@@ -96,8 +96,7 @@ void mzspinny(uint8_t state)
 
     // Write Tape counter: to 4th line of the status area
     uint8_t spos=EMULINE3;
-    spos=ukrom ? ascii2emustatus("Tape counter: ",spos): // Avoid lower case
-                 ascii2emustatus("TAPE COUNTER: ",spos); // for Japanese CGROM
+    spos=ascii2emustatus("Tape counter: ",spos);
 
     // Write out value of spinny to the emulator status area
     uint16_t spinnyt=spinny;
@@ -124,8 +123,7 @@ FRESULT tapeinit(void)
   // Calling routine must deal with status
 
   memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
-  spos=ukrom ? ascii2emustatus("Mounting SD card ...",spos):
-               ascii2emustatus("Mounting SD card ...",spos);
+  spos=ascii2emustatus("Mounting SD card ...",spos);
 
   // Wait for card to initialise - 500ms is conservative but reliable
   busy_wait_ms(500);
@@ -138,12 +136,8 @@ FRESULT tapeinit(void)
   fs = malloc(sizeof(FATFS));
   res=f_mount(fs, "", 1);
 
-  if (res == FR_OK) 
-    spos=ukrom ? ascii2emustatus(" SD card mounted.",spos):
-                 ascii2emustatus(" SD CARD MOUNTED.",spos);
-  else 
-    spos=ukrom ? ascii2emustatus(" failed. Try again.",spos):
-                 ascii2emustatus(" FAILED. TRY AGAIN.",spos);
+  spos=(res == FR_OK) ? ascii2emustatus(" SD card mounted.",spos):
+                        ascii2emustatus(" failed. Try again.",spos);
 
   return(res);
 }
@@ -212,8 +206,7 @@ FRESULT mzsavedump(void)
   if (res != FR_OK) {
     res=f_mkdir("/memorydumps");
     if (res != FR_OK) {
-      spos=ukrom ? ascii2emustatus("Error: Unable to create /memorydumps",spos):
-                   ascii2emustatus("ERROR: UNABLE TO CREATE /MEMORYDUMPS",spos);
+      spos=ascii2emustatus("Error: Unable to create /memorydumps",spos);
       return(res);
     }
   }
@@ -222,8 +215,7 @@ FRESULT mzsavedump(void)
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res != FR_OK) {
     spos=EMULINE1;
-    spos=ukrom ? ascii2emustatus("Error: Can't write to memory dump file",spos):
-                 ascii2emustatus("ERROR: CAN'T WRITE TO MEMORY DUMP FILE",spos);
+    spos=ascii2emustatus("Error: Can't write to memory dump file",spos);
     return(res);
   }
 
@@ -269,8 +261,7 @@ FRESULT mzsavedump(void)
 
   // Write confirmation message to status area
   spos=EMULINE2;
-  spos=ukrom ? ascii2emustatus("Memory dump created successfully",spos):
-               ascii2emustatus("MEMORY DUMP CREATED SUCCESSFULLY",spos);
+  spos=ascii2emustatus("Memory dump created successfully",spos);
 
   // Close the file and return
   f_close(&fp);
@@ -310,8 +301,7 @@ FRESULT mzreaddump(void)
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
   // An error has occured if res is non-zero
   if (res) {
-    spos=ukrom ? ascii2emustatus("Error: No valid memory dump found",spos):
-                 ascii2emustatus("ERROR: NO VALID MEMORY DUMP FOUND",spos);
+    spos=ascii2emustatus("Error: No valid memory dump found",spos);
     return(res);
   }
 
@@ -380,8 +370,7 @@ FRESULT mzreaddump(void)
   f_close(&fp);
 
   // Write confirmation message to status area
-  spos=ukrom ? ascii2emustatus("Memory dump read successfully",spos):
-               ascii2emustatus("MEMORY DUMP READ SUCCESSFULLY",spos);
+  spos=ascii2emustatus("Memory dump read successfully",spos);
 
   return(FR_OK);
 }
@@ -474,8 +463,7 @@ int16_t tapeloader(int16_t n)
   // spos: EMULINE0 = start of status area line 0, EMULINE1 = line 1 etc.
 
   memset(mzemustatus+EMULINE1,0x00,EMULINEL); // Blank line
-  spos=ukrom ? ascii2emustatus("Next file is: ",spos):
-               ascii2emustatus("NEXT FILE IS: ",spos);
+  spos=ascii2emustatus("Next file is: ",spos);
 
   // Tape name terminates with 0x0d or is 17 characters long
   // Stored in header[1] to header[17] - update status area with this
@@ -487,38 +475,29 @@ int16_t tapeloader(int16_t n)
   // Update the preloaded tape type in the emulator status area.
   memset(mzemustatus+EMULINE2,0x00,EMULINEL); // Blank line
   spos=EMULINE2;
-  spos=ukrom ? ascii2emustatus("File type is: ",spos):
-               ascii2emustatus("FILE TYPE IS: ",spos);
+  spos=ascii2emustatus("File type is: ",spos);
 
   // Type of tape is stored in the header
   // 0x01 = Machine code, 0x02 = Language (BASIC,Pascal etc.), 0x03 = MZ-80 data
   // 0x04 = Zen source (MZ-80) or MZ-700 data, 0x05 = S-BASIC on MZ700 
   // 0x06 = Chalkwell BASIC (MZ80)
   switch (header[0]) {
-    case 0x01: spos=ukrom ? ascii2emustatus("Machine code",spos):
-                            ascii2emustatus("MACHINE CODE",spos);
+    case 0x01: spos=ascii2emustatus("Machine code",spos);
                break;
-    case 0x02: spos=ukrom ? ascii2emustatus("Sharp BASIC etc.",spos):
-                            ascii2emustatus("SHARP BASIC ETC.",spos);
+    case 0x02: spos=ascii2emustatus("Sharp BASIC etc.",spos);
                break;
-    case 0x03: spos=ukrom ? ascii2emustatus("MZ-80 data file",spos):
-                            ascii2emustatus("MZ-80 DATA FILE",spos);
+    case 0x03: spos=ascii2emustatus("MZ-80 data file",spos);
                break;
     case 0x04: if (mzmodel==MZ700)
-                 spos=ukrom ? ascii2emustatus("MZ-700 data file",spos):
-                              ascii2emustatus("MZ-700 DATA FILE",spos);
+                 spos=ascii2emustatus("MZ-700 data file",spos);
                else 
-                 spos=ukrom ? ascii2emustatus("Source code file",spos):
-                              ascii2emustatus("SOURCE CODE FILE",spos);
+                 spos=ascii2emustatus("Source code file",spos);
                break;
-    case 0x05: spos=ukrom ? ascii2emustatus("Sharp S-BASIC",spos):
-                            ascii2emustatus("SHARP S-BASIC",spos);
+    case 0x05: spos=ascii2emustatus("Sharp S-BASIC",spos);
                break;
-    case 0x06: spos=ukrom ? ascii2emustatus("Chalkwell BASIC",spos):
-                            ascii2emustatus("CHALKWELL BASIC",spos);
+    case 0x06: spos=ascii2emustatus("Chalkwell BASIC",spos);
                break;
-    default:   spos=ukrom ? ascii2emustatus("Unknown file type",spos):
-                            ascii2emustatus("UNKNOWN FILE TYPE",spos);
+    default:   spos=ascii2emustatus("Unknown file type",spos);
                break;
   }
 
@@ -1339,12 +1318,10 @@ void load_mzf(void)
     // The execution address of the file is stored in header locations 22 & 23
     mzcpu.pc=((header[23]<<8)&0xFF00)|header[22];
 
-    spos=ukrom ? ascii2emustatus("Fast load successful",spos):
-                 ascii2emustatus("FAST LOAD SUCCESSFUL",spos);
+    spos=ascii2emustatus("Fast load successful",spos);
   }
   else
-    spos=ukrom ? ascii2emustatus("Can only fast load machine code files",spos):
-                 ascii2emustatus("CAN ONLY FAST LOAD MACHINE CODE FILES",spos);
+    spos=ascii2emustatus("Can only fast load machine code files",spos);
   
   return;
 }
