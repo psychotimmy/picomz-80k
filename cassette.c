@@ -261,7 +261,7 @@ FRESULT mzsavedump(void)
 
   // Write confirmation message to status area
   spos=EMULINE2;
-  spos=ascii2emustatus("Memory dump created successfully",spos);
+  spos=ascii2emustatus("Memory dump created",spos);
 
   // Close the file and return
   f_close(&fp);
