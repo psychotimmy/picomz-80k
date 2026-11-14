@@ -1061,7 +1061,7 @@ void cwrite(uint8_t nextbit)
     if (nextbit==0) {
       lowtime=get_absolute_time();
       // We have a low (short) pulse if true, high (long) pulse if false
-      (absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
+      pulse=(absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
       if (((secbits%8)==0) && (!longread)) {
         // This is the long pulse that preceeds every byte of the checksum,
         // so we ignore it and blank the next byte of the checksum ready
@@ -1137,7 +1137,7 @@ void cwrite(uint8_t nextbit)
     if (nextbit==0) {
       lowtime=get_absolute_time();
       // We have a low (short) pulse if true, high (long) pulse if false
-      (absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
+      pulse=(absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
       if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the body,
         // so we ignore it and blank the next byte of the body ready
@@ -1191,7 +1191,7 @@ void cwrite(uint8_t nextbit)
     if (nextbit==0) {
       lowtime=get_absolute_time();
       // We have a low (short) pulse if true, high (long) pulse if false
-      (absolute_time_diff_us(hightime,lowtime)<READPT) ? 0:1;
+      pulse=(absolute_time_diff_us(hightime,lowtime)<READPT) ? 0:1;
       if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the checksum,
         // so we ignore it and blank the next byte of the checksum ready
