@@ -90,7 +90,7 @@
 #define VRAMSIZE        4096  //   2   Kbyte  Video RAM (1K used on MZ-80K)
                               //   4   Kbytes Video RAM (2K + 2K colour)
 #define FROMSIZE        1024  //   1   Kbyte  MZ-80K FD ROM (not implemented)
-#define BANK4SIZE       12288 //   4   Kbytes Banked RAM (MZ-700)
+#define BANK4SIZE       4096  //   4   Kbytes Banked RAM (MZ-700)
 #define BANK12SIZE      12288 //   12  Kbytes Banked RAM (MZ-700)
 
 /***************************************************/
@@ -273,6 +273,7 @@ extern void wrE008(uint8_t data);
 
 /* miscfuncs.c */
 extern void mzpicoled(uint8_t);
+extern uint8_t ascii2emustatus(uint8_t*, uint8_t);
 extern void ascii2mzdisplay(uint8_t*, uint8_t*);
 extern uint8_t mzsafefilechar(uint8_t);
 extern uint8_t mzascii2mzdisplay(uint8_t);

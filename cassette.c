@@ -77,46 +77,38 @@ static uint8_t *sdcarddir;      // microSD card active directory for read/write
 /* Update the tape counter in the emulator status area, line 3 */
 void mzspinny(uint8_t state)
 {
-  uint8_t spos=EMULINE3;            // Write to fourth emulator status line
-  static uint16_t spinny=0;         // Used to reset the tape counter
-  static uint16_t ignore=0;         // Don't update the tape counter
+  static uint16_t spinny=-1;        // Used to reset the tape counter
+  static uint16_t ignore=708;       // Don't update the tape counter
                                     // with every call to this function
-  uint8_t mzstr[15];                // Used to convert ASCII to MZ display
-  uint16_t counterinc;              // Takes account of the different clock
-                                    // speed of MZ-80<x> vs MZ-700 so tape
-                                    // counter moves at a sensible speed
+  // Using these defaults ensures tape counter gets written to the
+  // status area when first called.
 
   // Increment ignore. If this is >= counterinc then increment spinny.
   // If spinny > TCOUNTERMAX then spinny is reset to zero.
+  // If spinny has changed then write to emulator status area.
+  // Takes account of the different clock speed of MZ-80K/A vs MZ-700
+  // so the tape counter moves at a sensible speed.
 
-  counterinc=(mzmodel==MZ700) ? 708 : 400;
-
-  if ((++ignore)>=counterinc) {
+  if ((++ignore)>=((mzmodel==MZ700)?708:400)) {
     ignore=0;
-    if ((++spinny)>TCOUNTERMAX) {
+    if ((++spinny)>TCOUNTERMAX)
       spinny=0;
-    }
+
+    // Write Tape counter: to 4th line of the status area
+    uint8_t spos=EMULINE3;
+    spos=ascii2emustatus("Tape counter: ",spos);
+
+    // Write out value of spinny to the emulator status area
+    uint16_t spinnyt=spinny;
+    mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/100);
+    spinnyt=spinnyt%100;
+    mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/10);
+    spinnyt=spinnyt%10;
+    mzemustatus[spos++]=0x20+(uint8_t)spinnyt;
+
+    // Clear the rest of the status line
+    memset(mzemustatus+spos,0x00,EMULINEL-spos%EMULINEL);
   }
-
-  // Write out value of spinny to the emulator status area
-  if (ukrom)
-    ascii2mzdisplay("Tape counter: ",mzstr);
-  else
-    ascii2mzdisplay("TAPE COUNTER: ",mzstr);  // Avoid lower case
-                                              // for Japanese CGROM
-  for (uint8_t i=0;i<14;i++)         // Can't use strlen as space is 0x00!!
-    mzemustatus[spos++]=mzstr[i];
-  
-  // Output the tape counter number
-  uint16_t spinnyt=spinny;
-  mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/100);
-  spinnyt=spinnyt%100;
-  mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/10);
-  spinnyt=spinnyt%10;
-  mzemustatus[spos++]=0x20+(uint8_t)spinnyt;
-
-  // Clear the rest of the status line
-  memset(mzemustatus+spos,0x00,EMULINEL-spos%EMULINEL);
 
   return;
 }
@@ -126,18 +118,12 @@ FRESULT tapeinit(void)
 {
   FRESULT res;
   uint8_t spos=EMULINE1;
-  uint8_t i,mzstr[20];          // Used to convert ASCII to MZ display codes
 
   // Attempt to mount the sd card filesystem
   // Calling routine must deal with status
 
   memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
-  if (ukrom)
-    ascii2mzdisplay("Mounting SD card ...",mzstr);
-  else
-    ascii2mzdisplay("MOUNTING SD CARD ...",mzstr);
-  for (i=0; i<20; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ascii2emustatus("Mounting SD card ...",spos);
 
   // Wait for card to initialise - 500ms is conservative but reliable
   busy_wait_ms(500);
@@ -147,25 +133,11 @@ FRESULT tapeinit(void)
   free(fs);
 
   // Mount the new file system
-  fs = malloc(sizeof(FATFS));
+  fs=malloc(sizeof(FATFS));
   res=f_mount(fs, "", 1);
 
-  if (res == FR_OK) {
-    if (ukrom)
-      ascii2mzdisplay(" SD card mounted.",mzstr);
-    else
-      ascii2mzdisplay(" SD CARD MOUNTED.",mzstr);
-    for (i=0; i<17; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
-  }
-  else {
-    if (ukrom)
-      ascii2mzdisplay(" failed. Try again.",mzstr);
-    else
-      ascii2mzdisplay(" FAILED. TRY AGAIN.",mzstr);
-    for (i=0; i<19; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
-  }
+  spos=(res==FR_OK) ? ascii2emustatus(" SD card mounted.",spos):
+                    ascii2emustatus(" failed. Try again.",spos);
 
   return(res);
 }
@@ -178,7 +150,6 @@ FRESULT mzsavedump(void)
   FRESULT res;                      // FatFS function result
   uint bw;                          // Number of bytes written to file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
-  uint8_t mzstr[40];                // Error / success messages
   uint8_t spos;
   #ifdef PICO1
   uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
@@ -235,9 +206,7 @@ FRESULT mzsavedump(void)
   if (res != FR_OK) {
     res=f_mkdir("/memorydumps");
     if (res != FR_OK) {
-      ascii2mzdisplay("Error: Unable to create /memorydumps",mzstr);
-      for (uint8_t i=0; i<36; i++) // Can't use strlen as space is 0x00!
-        mzemustatus[spos++]=mzstr[i];
+      spos=ascii2emustatus("Error: Unable to create /memorydumps",spos);
       return(res);
     }
   }
@@ -246,9 +215,7 @@ FRESULT mzsavedump(void)
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res != FR_OK) {
     spos=EMULINE1;
-    ascii2mzdisplay("Error: Can't write to memory dump file",mzstr);
-    for (uint8_t i=0; i<38; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
+    spos=ascii2emustatus("Error: Can't write to memory dump file",spos);
     return(res);
   }
 
@@ -294,9 +261,7 @@ FRESULT mzsavedump(void)
 
   // Write confirmation message to status area
   spos=EMULINE2;
-  ascii2mzdisplay ("Memory dump created successfully",mzstr);
-  for (uint8_t i=0; i<32; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ascii2emustatus("Memory dump created successfully",spos);
 
   // Close the file and return
   f_close(&fp);
@@ -309,7 +274,6 @@ FRESULT mzreaddump(void)
   FIL fp;                           // File pointer
   FRESULT res;                      // FatFS function result
   uint br;                          // Number of bytes read from file
-  uint8_t mzstr[40];                // Succcess / error status
   uint8_t spos=EMULINE2;            // Write to 3rd emulator status line
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
   #ifdef PICO1
@@ -337,9 +301,7 @@ FRESULT mzreaddump(void)
   res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
   // An error has occured if res is non-zero
   if (res) {
-    ascii2mzdisplay("Error: no valid memory dump available",mzstr);
-    for (uint8_t i=0; i<37; i++) // Can't use strlen as space is 0x00!
-      mzemustatus[spos++]=mzstr[i];
+    spos=ascii2emustatus("Error: No valid memory dump found",spos);
     return(res);
   }
 
@@ -408,9 +370,7 @@ FRESULT mzreaddump(void)
   f_close(&fp);
 
   // Write confirmation message to status area
-  ascii2mzdisplay ("Memory dump read successfully",mzstr);
-  for (uint8_t i=0; i<29; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ascii2emustatus("Memory dump read successfully",spos);
 
   return(FR_OK);
 }
@@ -423,7 +383,6 @@ int16_t tapeloader(int16_t n)
   FILINFO fno;
   FRESULT res;
   uint bytesread,bodybytes,dc;
-  uint8_t mzstr[25];
 
   /* If a directory named mz700, mz80a or mz80k is present on the sd card  */
   /* and we are emulating that machine, open this directory. Otherwise,    */
@@ -448,8 +407,9 @@ int16_t tapeloader(int16_t n)
   }
 
   res=f_opendir(&dp,sdcarddir);	/* Open the correct directory on the sd card */
+  res=f_chdir(sdcarddir);       /* Change to the directory for read */
 
-  //Error on opening directory if res is non-zero
+  //Error on opening / changing directory if res is non-zero
   if (res) 
     return(-1);
 
@@ -466,18 +426,15 @@ int16_t tapeloader(int16_t n)
       f_closedir(&dp);
       return(-1);
     }
-    if (fno.fattrib & AM_DIR)    /* All subdirectories ignored at present */
-      ;
-    else 
-      ++dc;                      /* Increment the file count */
+    if (!(fno.fattrib & AM_DIR))    /* All subdirectories ignored at present */
+      ++dc;                         /* Increment the file count */
   }
   f_closedir(&dp);               /* Close the directory pointer */
 
-  // We now have the next file on the tape - preload it
+  // We now have the next file on the tape - preload it, return -1 if error
   res=f_open(&fp,fno.fname,FA_READ|FA_OPEN_EXISTING);
-  if (res) {
+  if (res)
     return(-1);
-  }
   
   // MZ-80K/A/700 tape headers are always 128 bytes
   memset(header,0x00,TAPEHEADERSIZE);
@@ -506,12 +463,7 @@ int16_t tapeloader(int16_t n)
   // spos: EMULINE0 = start of status area line 0, EMULINE1 = line 1 etc.
 
   memset(mzemustatus+EMULINE1,0x00,EMULINEL); // Blank line
-  if (ukrom)
-    ascii2mzdisplay("Next file is: ",mzstr);
-  else
-    ascii2mzdisplay("NEXT FILE IS: ",mzstr);
-  for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ascii2emustatus("Next file is: ",spos);
 
   // Tape name terminates with 0x0d or is 17 characters long
   // Stored in header[1] to header[17] - update status area with this
@@ -523,76 +475,29 @@ int16_t tapeloader(int16_t n)
   // Update the preloaded tape type in the emulator status area.
   memset(mzemustatus+EMULINE2,0x00,EMULINEL); // Blank line
   spos=EMULINE2;
-  if (ukrom)
-    ascii2mzdisplay("File type is: ",mzstr);
-  else
-    ascii2mzdisplay("FILE TYPE IS: ",mzstr);
-  for (uint8_t i=0; i<14; i++) // Can't use strlen as space is 0x00!
-    mzemustatus[spos++]=mzstr[i];
+  spos=ascii2emustatus("File type is: ",spos);
 
   // Type of tape is stored in the header
   // 0x01 = Machine code, 0x02 = Language (BASIC,Pascal etc.), 0x03 = MZ-80 data
   // 0x04 = Zen source (MZ-80) or MZ-700 data, 0x05 = S-BASIC on MZ700 
   // 0x06 = Chalkwell BASIC (MZ80)
   switch (header[0]) {
-    case 0x01: if (ukrom)
-                 ascii2mzdisplay("Machine code",mzstr);
-               else
-                 ascii2mzdisplay("MACHINE CODE",mzstr);
-               for (uint8_t i=0; i<12; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x01: spos=ascii2emustatus("Machine code",spos);
                break;
-    case 0x02: if (ukrom)
-                 ascii2mzdisplay("Sharp BASIC etc.",mzstr);
-               else
-                 ascii2mzdisplay("SHARP BASIC ETC.",mzstr);
-               for (uint8_t i=0; i<16; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x02: spos=ascii2emustatus("Sharp BASIC etc.",spos);
                break;
-    case 0x03: if (ukrom)
-                 ascii2mzdisplay("MZ-80 data file",mzstr);
-               else
-                 ascii2mzdisplay("MZ-80 DATA FILE",mzstr);
-               for (uint8_t i=0; i<15; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x03: spos=ascii2emustatus("MZ-80 data file",spos);
                break;
-    case 0x04: if (mzmodel==MZ700) {
-                 if (ukrom)
-                   ascii2mzdisplay("MZ-700 data file",mzstr);
-                 else
-                   ascii2mzdisplay("MZ-700 DATA FILE",mzstr);
-                 for (uint8_t i=0; i<16; i++)
-                   mzemustatus[spos++]=mzstr[i];
-               } 
-               else {
-                 if (ukrom)
-                   ascii2mzdisplay("Zen source",mzstr);
-                 else
-                   ascii2mzdisplay("ZEN SOURCE",mzstr);
-                 for (uint8_t i=0; i<10; i++)
-                   mzemustatus[spos++]=mzstr[i];
-               }
+    case 0x04: if (mzmodel==MZ700)
+                 spos=ascii2emustatus("MZ-700 data file",spos);
+               else 
+                 spos=ascii2emustatus("Source code file",spos);
                break;
-    case 0x05: if (ukrom)
-                 ascii2mzdisplay("Sharp S-BASIC",mzstr);
-               else
-                 ascii2mzdisplay("SHARP S-BASIC",mzstr);
-               for (uint8_t i=0; i<13; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x05: spos=ascii2emustatus("Sharp S-BASIC",spos);
                break;
-    case 0x06: if (ukrom)
-                 ascii2mzdisplay("Chalkwell BASIC",mzstr);
-               else
-                 ascii2mzdisplay("CHALKWELL BASIC",mzstr);
-               for (uint8_t i=0; i<15; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    case 0x06: spos=ascii2emustatus("Chalkwell BASIC",spos);
                break;
-    default:   if (ukrom)
-                 ascii2mzdisplay("Unknown file type",mzstr);
-               else
-                 ascii2mzdisplay("UNKNOWN FILE TYPE",mzstr);
-               for (uint8_t i=0; i<17; i++)
-                 mzemustatus[spos++]=mzstr[i];
+    default:   spos=ascii2emustatus("Unknown file type",spos);
                break;
   }
 
@@ -898,9 +803,8 @@ uint8_t cread(void)
         /* in the first two bytes of each block. 0xFF, 0xFF indicates EOF  */
         /* is in that block */
         if (((mzmodel==MZ80K)||(mzmodel==MZ80A)) && bsd3file) {
-          if (body[(secbits/8)+(bodyoff*bodybytes)]==0xFF) {
+          if (body[(secbits/8)+(bodyoff*bodybytes)]==0xFF)
             endofdatafile=true;
-          }
         }
         return(LONGPULSE);
       }
@@ -915,9 +819,8 @@ uint8_t cread(void)
     }
     /* Check if we have processed the last block of a MZ-700 data file */
     if (bsd4file && (body[0+(bodyoff*bodybytes)]==0xFF) 
-                 && (body[1+(bodyoff*bodybytes)]==0xFF)) { 
+                 && (body[1+(bodyoff*bodybytes)]==0xFF)) 
       endofdatafile=true;
-    }
     /* At the end of the body, move onto checksum state (9) */
     secbits=0;
     crstate=9;
@@ -947,9 +850,9 @@ uint8_t cread(void)
       longsent = false;
       /* Bytes are sent starting with the MSB */
       bitshift=secbits%8;
-      if (((checksum[secbits++/8]<<bitshift)&0x80)==0x80) {
+      if (((checksum[secbits++/8]<<bitshift)&0x80)==0x80)
         return(LONGPULSE);
-      }
+        
       return(SHORTPULSE);
     }
     /* At the end of the checksum stop - unless we have a multi-block */
@@ -962,10 +865,9 @@ uint8_t cread(void)
         bodyoff++;
         crstate=10;
     }
-    else {
+    else
       // End of file
-      crstate=13; 
-    }
+      crstate=13;
   }
 
   /* States 10,11 and 12 are only needed if the program body has failed */
@@ -1072,15 +974,13 @@ void cwrite(uint8_t nextbit)
       mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime) < READPT)
-        ++low;                   // We have a low (short) pulse
-      else
-        ++high;                  // We have a high (long) pulse
+      // We have a low (short) pulse if true, high (long) pulse if false
+      (absolute_time_diff_us(hightime,lowtime) < READPT) ? ++low:++high;
       ++secbits;                 // Increment pulses counted
     }
-    else {
+    else 
       hightime=get_absolute_time();
-    }
+
     /* Check that we have received 22,040 low pulses and 41 high pulses */
     /* when the total received is 22,081 - ie, after WBGAP_L+BTM_L+L_L  */
     if (secbits==WBGAP_L+BTM_L+L_L) {
@@ -1092,9 +992,8 @@ void cwrite(uint8_t nextbit)
         high=0;
         chkbits=0;
       }
-      else {
+      else
         cwstate=0;
-      }
     }
     return;
   }
@@ -1106,10 +1005,8 @@ void cwrite(uint8_t nextbit)
       mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime) < READPT)
-        pulse=0;                 // We have a low (short) pulse
-      else 
-        pulse=1;                 // We have a high (long) pulse
+      // We have a low (short) pulse if true, high (long) pulse if false
+      pulse=(absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
       if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the header,
         // so we ignore it and blank the next byte of the header ready
@@ -1124,9 +1021,8 @@ void cwrite(uint8_t nextbit)
         chkbits += pulse;  // If pulse was long, increment chkbits count
       }
     }
-    else {
+    else
       hightime=get_absolute_time();
-    }
 
     /* Check to see if we're at the end of the header */
     if (secbits==HDR_L) {
@@ -1145,10 +1041,9 @@ void cwrite(uint8_t nextbit)
         // 0x0100 (256 bytes) on a MZ-80A
       }
       else if ((mzmodel==MZ700) && (header[0]==0x04)) {
+        // There may be a monitor bug that requires blocksize to be
+        // forced to 258 - however, not doing this at the moment ...
         bsd4file=true;
-        // Force blocksize to 258 as the header may be faulty due to
-        // a MZ-700 monitor bug
-        blocksize=258;
       }
     }
     return;
@@ -1161,10 +1056,8 @@ void cwrite(uint8_t nextbit)
       mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime) < READPT)
-        pulse=0;                 // We have a low (short) pulse
-      else 
-        pulse=1;                 // We have a high (long) pulse
+      // We have a low (short) pulse if true, high (long) pulse if false
+      pulse=(absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
       if (((secbits%8)==0) && (!longread)) {
         // This is the long pulse that preceeds every byte of the checksum,
         // so we ignore it and blank the next byte of the checksum ready
@@ -1178,10 +1071,11 @@ void cwrite(uint8_t nextbit)
         ++secbits;         // Increment data pulses counted
       }
     }
-    else {
+    else
       hightime=get_absolute_time();
-    }
-    /* Check to see if we're at the end of the checksum - this code assumes it's correct(!) and carries on regardless */
+
+    /* Check to see if we're at the end of the checksum */
+    /* This code assumes it's correct(!) and carries on regardless */
     if (secbits==CHK_L) {
       bodybytes=((header[19]<<8)&0xFF00)|header[18]; // Needed for state 8
       if (bsd3file||bsd4file) bodybytes=blocksize; // Overwrite if data file
@@ -1238,10 +1132,8 @@ void cwrite(uint8_t nextbit)
       mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime) < READPT)
-        pulse=0;                 // We have a low (short) pulse
-      else 
-        pulse=1;                 // We have a high (long) pulse
+      // We have a low (short) pulse if true, high (long) pulse if false
+      pulse=(absolute_time_diff_us(hightime,lowtime) < READPT) ? 0:1;
       if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the body,
         // so we ignore it and blank the next byte of the body ready
@@ -1266,9 +1158,9 @@ void cwrite(uint8_t nextbit)
         ++secbits;         // Increment data pulses counted
       }
     }
-    else {
+    else
       hightime=get_absolute_time();
-    }
+
     /* Check to see if we're at the end of the body or 0x04 data block */
     if (secbits==bodybytes*8) {
       if (bsd4file) {
@@ -1294,10 +1186,8 @@ void cwrite(uint8_t nextbit)
       mzspinny(1);
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime)<READPT)
-        pulse=0;                 // We have a low (short) pulse
-      else 
-        pulse=1;                 // We have a high (long) pulse
+      // We have a low (short) pulse if true, high (long) pulse if false
+      pulse=(absolute_time_diff_us(hightime,lowtime)<READPT) ? 0:1;
       if (((secbits%8)==0)&&(!longread)) {
         // This is the long pulse that preceeds every byte of the checksum,
         // so we ignore it and blank the next byte of the checksum ready
@@ -1311,9 +1201,9 @@ void cwrite(uint8_t nextbit)
         ++secbits;         // Increment data pulses counted
       }
     }
-    else {
+    else
       hightime=get_absolute_time();
-    }
+
     /* Check to see if we're at the end of the checksum */
     if (secbits==CHK_L) {
       cwstate=10;
@@ -1343,11 +1233,7 @@ void cwrite(uint8_t nextbit)
       // Assumed all ok - move onto the final state (13) or back to state 7
       // if we are processing a data file and it is multi-block. Note that
       // blocksize and bodybytes are the same for type 0x03 and 0x04 files ...
-      if ((bsd3file||bsd4file) && (!endofdatafile)) {
-        cwstate=7;
-      }
-      else
-        cwstate=13;
+      cwstate=((bsd3file||bsd4file) && (!endofdatafile)) ? 7:13;
       secbits=0;
     }
     return;
@@ -1357,15 +1243,13 @@ void cwrite(uint8_t nextbit)
   if (cwstate==13) {
     if (nextbit==0) {
       lowtime=get_absolute_time();
-      if (absolute_time_diff_us(hightime,lowtime)<READPT)
-        ++low;                   // We have a low (short) pulse
-      else
-        ++high;                  // We have a high (long) pulse
+      // We have a low (short) pulse if true, high (long) pulse if false
+      (absolute_time_diff_us(hightime,lowtime) < READPT) ? ++low:++high;
       ++secbits;                 // Increment pulses counted
     }
-    else {
+    else
       hightime=get_absolute_time();
-    }
+
     /* Check that we have received 1 high pulse */
     /* when the total received is 1 */
     if (secbits==L_L) { 
@@ -1398,9 +1282,9 @@ void cwrite(uint8_t nextbit)
 void load_mzf(void)
 {
   uint16_t mzfleng,mzfload,count;
-  uint8_t mzstr[40],spos;
+  uint8_t spos;
 
-  // Clear an emulator status line
+  // Clear the 4th emulator status line
   memset(mzemustatus+EMULINE3,0x00,EMULINEL);
   spos=EMULINE3;
 
@@ -1426,24 +1310,10 @@ void load_mzf(void)
     // The execution address of the file is stored in header locations 22 & 23
     mzcpu.pc=((header[23]<<8)&0xFF00)|header[22];
 
-    if (ukrom)
-      ascii2mzdisplay("Fast load successful",mzstr); 
-    else
-      ascii2mzdisplay("FAST LOAD SUCCESSFUL",mzstr); 
-
-    for (count=0; count<20; count++)    // Can't use strlen as space is 0x00!!
-      mzemustatus[spos++]=mzstr[count];
+    spos=ascii2emustatus("Fast load successful",spos);
   }
-  else {
-
-    if (ukrom)
-      ascii2mzdisplay("Can only fast load machine code files",mzstr); 
-    else
-      ascii2mzdisplay("CAN ONLY FAST LOAD MACHINE CODE FILES",mzstr); 
-
-    for (count=0; count<37; count++)    // Can't use strlen as space is 0x00!!
-      mzemustatus[spos++]=mzstr[count];
-  }
+  else
+    spos=ascii2emustatus("Can only fast load machine code files",spos);
   
   return;
 }
