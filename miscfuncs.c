@@ -41,7 +41,7 @@ uint8_t ascii2emustatus(uint8_t* str, uint8_t epos)
   for (uint8_t count=0;count<length;count++)
     mzemustatus[epos++]=converted[count];
 
-  return(epos);
+  return(epos%EMUSSIZE);
 }
 
 /* Convert a standard ASCII string to MZ display string. */
