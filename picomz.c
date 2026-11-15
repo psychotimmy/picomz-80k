@@ -504,59 +504,63 @@ int __no_inline_not_in_flash_func (main) (void)
     z80_step(&mzcpu);		  // Execute next z80 opcode
 
     // Timing adjustments depend on Pico platform and MZ emulator required
-    // Altering adjust if statement: lower values of adjust = slower speed
+    // Higher wait values + lower values of adjust = slower speed
     nowtime=get_absolute_time();
     #ifdef PICO1
-    if (mzmodel==MZ700) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<2);
-      mzcpu.cyc=0;
-      if (adjust > 4096) {
-        busy_wait_us_32(1);
-        adjust=0;
-      }
-    } 
-    else if (mzmodel==MZ80K) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 4096) {
-        busy_wait_us_32(1);
-        adjust=0;
-      }
-    } 
-    else {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 2560) {
-        busy_wait_us_32(1);
-        adjust=0;
-      }
+    switch (mzmodel) {
+      case MZ700: 
+                 //adjust += mzcpu.cyc-((nowtime-exectime)<<2);
+                 //mzcpu.cyc=0;
+                 //if (adjust > 4096) {
+                 //  busy_wait_us_32(1);
+                 //  adjust=0;
+                 //}
+                 break; 
+     case MZ80K: 
+                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+                 mzcpu.cyc=0;
+                 if (adjust > 4096) {
+                   busy_wait_us_32(1);
+                   adjust=0;
+                 }
+                 break;
+     case MZ80A:
+                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+                 mzcpu.cyc=0;
+                 if (adjust > 2560) {
+                   busy_wait_us_32(1);
+                   adjust=0;
+                 }
+                 break;
     }
     #endif
     #ifdef PICO2
-    if (mzmodel==MZ700) {
-      //adjust += mzcpu.cyc-((nowtime-exectime)<<2);
-      //mzcpu.cyc=0;
-      //if (adjust > 256) {
-        busy_wait_us_32(1);
-      //  adjust=0;
-      //}
-    } 
-    else if (mzmodel==MZ80K) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 8192) {
-        busy_wait_us_32(1);
-        adjust=0;
-      }
-    } 
-    else {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 8192) {
-        busy_wait_us_32(1);
-        adjust=0;
-      }
-    } 
+    switch (mzmodel) {
+      case MZ700: 
+                 //adjust += mzcpu.cyc-((nowtime-exectime)<<2);
+                 //mzcpu.cyc=0;
+                 //if (adjust > 4096) {
+                 //  busy_wait_us_32(1);
+                 //  adjust=0;
+                 //}
+                 break; 
+     case MZ80K: 
+                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+                 mzcpu.cyc=0;
+                 if (adjust > 8192) {
+                   busy_wait_us_32(1);
+                   adjust=0;
+                 }
+                 break;
+     case MZ80A:
+                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
+                 mzcpu.cyc=0;
+                 if (adjust > 8192) {
+                   busy_wait_us_32(1);
+                   adjust=0;
+                 }
+                 break;
+    }
     #endif
 
     tuh_task();                   // Check for new keyboard events

@@ -244,6 +244,7 @@ extern void reset_tape(void);
 extern uint8_t cread(void);
 extern void cwrite(uint8_t);
 extern void dirselect(void);
+extern void dirhome(void);
 extern FRESULT tapeinit(void);
 extern int16_t tapeloader(int16_t);
 extern FRESULT mzsavedump(void);

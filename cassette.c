@@ -206,8 +206,7 @@ FRESULT mzsavedump(void)
     res=f_mkdir("/memorydumps");
     if (res != FR_OK) {
       spos=ascii2emustatus("Error: Unable to create /memorydumps",spos);
-      rescd=f_chdir("/");
-      rescd=f_chdir(sdcarddir);
+      dirhome();
       return(res);
     }
     spos=ascii2emustatus("/memorydumps created",spos);
@@ -218,8 +217,7 @@ FRESULT mzsavedump(void)
   res=f_chdir("/memorydumps");
   if (res != FR_OK) {
     spos=ascii2emustatus("Error: Unable to access /memorydumps",spos);
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(res);
   }
 
@@ -227,8 +225,7 @@ FRESULT mzsavedump(void)
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res != FR_OK) {
     spos=ascii2emustatus("Error: Can't create a new memory dump file",spos);
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(res);
   }
 
@@ -248,8 +245,7 @@ FRESULT mzsavedump(void)
                 f_write(&fp, mzbank4, sizeof(mzbank4), &bw);
                 break;
     default:    f_close(&fp);
-                rescd=f_chdir("/");
-                rescd=f_chdir(sdcarddir);
+                dirhome();
                 return(FR_INT_ERR);      // Model check failed
                 break;
   }
@@ -283,8 +279,7 @@ FRESULT mzsavedump(void)
   // Close the file and return; change back to normal directory for 
   // read and write
   f_close(&fp);
-  rescd=f_chdir("/");
-  rescd=f_chdir(sdcarddir);
+  dirhome();
 
   return(FR_OK);
 }
@@ -324,8 +319,7 @@ FRESULT mzreaddump(void)
     spos=ascii2emustatus("Error: No memory dump directory found",spos);
     // Make sure we're back in the right place on the SD card for normal
     // read and writes
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(res);
   }
 
@@ -335,8 +329,7 @@ FRESULT mzreaddump(void)
     spos=ascii2emustatus("Error: Unable to access /memorydumps",spos);
     // Make sure we're back in the right place on the SD card for normal
     // read and writes
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(res);
   }
 
@@ -344,8 +337,7 @@ FRESULT mzreaddump(void)
   // An error has occured if res is not FR_OK
   if (res != FR_OK) {
     spos=ascii2emustatus("Error: No valid memory dump found",spos);
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(res);
   }
 
@@ -353,8 +345,7 @@ FRESULT mzreaddump(void)
   f_read(&fp,uramheader,TAPEHEADERSIZE,&br);
   if (uramheader[0] != 0x20) {
     f_close(&fp);
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(FR_INT_ERR);      // assertion failed
   }
 
@@ -370,8 +361,7 @@ FRESULT mzreaddump(void)
                 break;
     default:    //MZ model check failed
                 f_close(&fp);
-                rescd=f_chdir("/");
-                rescd=f_chdir(sdcarddir);
+                dirhome();
                 return(FR_INT_ERR);
                 break;
   }
@@ -380,8 +370,7 @@ FRESULT mzreaddump(void)
   f_read(&fp, mzuserram, sizeof(mzuserram), &br);
   if (br != sizeof(mzuserram)) {
     f_close(&fp);
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(FR_INT_ERR);      // assertion failed
   }
 
@@ -389,8 +378,7 @@ FRESULT mzreaddump(void)
   f_read(&fp, mzvram, sizeof(mzvram), &br);
   if (br != sizeof(mzvram)) {
     f_close(&fp);
-    rescd=f_chdir("/");
-    rescd=f_chdir(sdcarddir);
+    dirhome();
     return(FR_INT_ERR);      // assertion failed
   }
 
@@ -408,8 +396,7 @@ FRESULT mzreaddump(void)
     f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
     if (br != sizeof(mzcpu)) {
       f_close(&fp);
-      rescd=f_chdir("/");
-      rescd=f_chdir(sdcarddir);
+      dirhome();
       return(FR_INT_ERR);      // assertion failed
     }
 
@@ -417,8 +404,7 @@ FRESULT mzreaddump(void)
     f_read(&fp, &mzpit, sizeof(mzpit), &br);
     if (br != sizeof(mzpit)) {
       f_close(&fp);
-      rescd=f_chdir("/");
-      rescd=f_chdir(sdcarddir);
+      dirhome();
       return(FR_INT_ERR);      // assertion failed
     }
 
@@ -429,8 +415,7 @@ FRESULT mzreaddump(void)
   spos=ascii2emustatus("Memory dump read successfully",spos);
   // Make sure we're back in the right place on the SD card for normal
   // read and writes
-  rescd=f_chdir("/");
-  rescd=f_chdir(sdcarddir);
+  dirhome();
 
   return(FR_OK);
 }
@@ -466,6 +451,16 @@ void dirselect(void)
   return;
 }
 
+/* Reset the directory back to home (used for mzf/mzt/m12 files) */
+void dirhome(void)
+{
+
+  f_chdir("/");
+  f_chdir(sdcarddir);
+
+  return;
+}
+
 /* Preload a tape file into the header/body memory ready for LOAD */
 int16_t tapeloader(int16_t n)
 {
@@ -477,7 +472,7 @@ int16_t tapeloader(int16_t n)
   int16_t dc;
 
   res=f_opendir(&dp,sdcarddir);	/* Open the correct directory on the sd card */
-  res=f_chdir(sdcarddir);       /* Change to the directory for read */
+  dirhome();                    /* Change to the directory for read */
 
   //Error on opening / changing directory if res is non-zero
   if (res) 
@@ -607,7 +602,7 @@ void tapewriter(uint16_t blkno)
 
   // Change to the correct directory on the sdcard for writing
   // FF_FS_RPATH=1 (or 2) must be in fatfs/ffconf.h for this to compile
-  res=f_chdir(sdcarddir);
+  dirhome();
 
   // Open a file on the sd card for writing. If it exists already
   // we simply overwrite it ... just as would happen on a tape.
