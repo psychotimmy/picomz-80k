@@ -101,9 +101,9 @@ void mzspinny(uint8_t state)
     // Write out value of spinny to the emulator status area
     uint16_t spinnyt=spinny;
     mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/100);
-    spinnyt=spinnyt%100;
+    spinnyt%=100;
     mzemustatus[spos++]=0x20+(uint8_t)(spinnyt/10);
-    spinnyt=spinnyt%10;
+    spinnyt%=10;
     mzemustatus[spos++]=0x20+(uint8_t)spinnyt;
 
     // Clear the rest of the status line
@@ -147,19 +147,17 @@ FRESULT mzsavedump(void)
 {
   FIL fp;                           // File pointer
   FILINFO fno;                      // File info structure
-  FRESULT res;                      // FatFS function result
+  FRESULT res, rescd;               // FatFS function result
   uint bw;                          // Number of bytes written to file
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
   uint8_t spos;
   #ifdef PICO1
-  uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
-  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
+  uint8_t dumpfile[13] =            // Memory dump filename - Pico 1 / rp2040
+  { 'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
   #ifdef PICO2
-  uint8_t dumpfile[26] =            // Memory dump filename - Pico 2 / rp2350
-  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','2',' ','.','m','z','d','\0' };
+  uint8_t dumpfile[13] =            // Memory dump filename - Pico 2 / rp2350
+  { 'm','z','d','u','m','p','2',' ','.','m','z','d','\0' };
   #endif
 
   memset(uramheader,0,TAPEHEADERSIZE); // Clear the 'tape' header
@@ -183,41 +181,58 @@ FRESULT mzsavedump(void)
   // Distinguish between K, A and 700 dump files 
   // and those created on a Pico 1 vs Pico 2
   if (mzmodel==MZ80K) {
-    dumpfile[20]='K';
+    dumpfile[7]='K';
     uramheader[13]=0x38;
     uramheader[15]=0x4B;
   }
   else if (mzmodel==MZ80A) {
-    dumpfile[20]='A';
+    dumpfile[7]='A';
     uramheader[13]=0x38;
     uramheader[15]=0x41;
   }
   else {
-    dumpfile[20]='7';
+    dumpfile[7]='7';
     uramheader[13]=0x37;
     uramheader[15]=0x30;
   }
 
   memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
 
-  // Check that the memory dump directory exists - if not , create it
+  // Check that the memory dump directory exists - if not, create it
+  rescd=f_chdir("/");
   res=f_stat("/memorydumps", &fno);
-  spos=EMULINE0;
+  spos=EMULINE1;
   if (res != FR_OK) {
     res=f_mkdir("/memorydumps");
     if (res != FR_OK) {
       spos=ascii2emustatus("Error: Unable to create /memorydumps",spos);
+      rescd=f_chdir("/");
+      rescd=f_chdir(sdcarddir);
       return(res);
     }
+    spos=ascii2emustatus("/memorydumps created",spos);
+  }
+
+  // Change to the memorydumps directory
+  spos=EMULINE2;
+  res=f_chdir("/memorydumps");
+  if (res != FR_OK) {
+    spos=ascii2emustatus("Error: Unable to access /memorydumps",spos);
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
+    return(res);
   }
 
   // Open a file on the sd card
   res=f_open(&fp,dumpfile,FA_CREATE_ALWAYS|FA_WRITE);
   if (res != FR_OK) {
-    spos=EMULINE1;
-    spos=ascii2emustatus("Error: Can't write to memory dump file",spos);
+    spos=ascii2emustatus("Error: Can't create a new memory dump file",spos);
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
     return(res);
   }
+
+  spos=ascii2emustatus("Creating new memory dump file ...",spos);
 
   // Write the 'tape' header
   f_write(&fp, uramheader, TAPEHEADERSIZE, &bw);
@@ -233,6 +248,8 @@ FRESULT mzsavedump(void)
                 f_write(&fp, mzbank4, sizeof(mzbank4), &bw);
                 break;
     default:    f_close(&fp);
+                rescd=f_chdir("/");
+                rescd=f_chdir(sdcarddir);
                 return(FR_INT_ERR);      // Model check failed
                 break;
   }
@@ -260,11 +277,15 @@ FRESULT mzsavedump(void)
   f_write(&fp, &mzpit, sizeof(mzpit), &bw);
 
   // Write confirmation message to status area
-  spos=EMULINE2;
-  spos=ascii2emustatus("Memory dump created",spos);
+  spos=EMULINE3;
+  spos=ascii2emustatus("Memory dump created successfully",spos);
 
-  // Close the file and return
+  // Close the file and return; change back to normal directory for 
+  // read and write
   f_close(&fp);
+  rescd=f_chdir("/");
+  rescd=f_chdir(sdcarddir);
+
   return(FR_OK);
 }
 
@@ -272,36 +293,59 @@ FRESULT mzsavedump(void)
 FRESULT mzreaddump(void)
 {
   FIL fp;                           // File pointer
-  FRESULT res;                      // FatFS function result
+  FILINFO fno;                      // File info structure
+  FRESULT res, rescd;               // FatFS function result
   uint br;                          // Number of bytes read from file
   uint8_t spos=EMULINE2;            // Write to 3rd emulator status line
   uint8_t uramheader[TAPEHEADERSIZE];  // A 'tape' header for the memory dump
   #ifdef PICO1
-  uint8_t dumpfile[26] =            // Memory dump filename - Pico 1 / rp2040
-  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
+  uint8_t dumpfile[13] =            // Memory dump filename - Pico 1 / rp2040
+  { 'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
   #ifdef PICO2
-  uint8_t dumpfile[26] =            // Memory dump filename - Pico 2 / rp2350
-  { '/','m','e','m','o','r','y','d','u','m','p','s','/',
-    'm','z','d','u','m','p','2',' ','.','m','z','d','\0' };
+  uint8_t dumpfile[13] =            // Memory dump filename - Pico 2 / rp2350
+  { 'm','z','d','u','m','p','2',' ','.','m','z','d','\0' };
   #endif
 
   // Distinguish between K, A and 700 dump files 
   if (mzmodel==MZ80K)
-    dumpfile[20]='K';
+    dumpfile[7]='K';
   else if (mzmodel==MZ80A)
-    dumpfile[20]='A';
+    dumpfile[7]='A';
   else
-    dumpfile[20]='7';
+    dumpfile[7]='7';
 
   memset(mzemustatus,0x00,EMUSSIZE); // Blank status area
 
-  // Open a file on the sd card
-  res=f_open(&fp,dumpfile,FA_READ|FA_WRITE);
-  // An error has occured if res is non-zero
-  if (res) {
+  // Ensure the /memorydumps directory exists
+  rescd=f_chdir("/");
+  res=f_stat("/memorydumps", &fno);
+  if (res != FR_OK) {
+    spos=ascii2emustatus("Error: No memory dump directory found",spos);
+    // Make sure we're back in the right place on the SD card for normal
+    // read and writes
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
+    return(res);
+  }
+
+  // Change to this directory
+  res=f_chdir("/memorydumps");
+  if (res != FR_OK) {
+    spos=ascii2emustatus("Error: Unable to access /memorydumps",spos);
+    // Make sure we're back in the right place on the SD card for normal
+    // read and writes
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
+    return(res);
+  }
+
+  res=f_open(&fp,dumpfile,FA_READ|FA_OPEN_EXISTING);
+  // An error has occured if res is not FR_OK
+  if (res != FR_OK) {
     spos=ascii2emustatus("Error: No valid memory dump found",spos);
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
     return(res);
   }
 
@@ -309,6 +353,8 @@ FRESULT mzreaddump(void)
   f_read(&fp,uramheader,TAPEHEADERSIZE,&br);
   if (uramheader[0] != 0x20) {
     f_close(&fp);
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
     return(FR_INT_ERR);      // assertion failed
   }
 
@@ -324,6 +370,8 @@ FRESULT mzreaddump(void)
                 break;
     default:    //MZ model check failed
                 f_close(&fp);
+                rescd=f_chdir("/");
+                rescd=f_chdir(sdcarddir);
                 return(FR_INT_ERR);
                 break;
   }
@@ -332,6 +380,8 @@ FRESULT mzreaddump(void)
   f_read(&fp, mzuserram, sizeof(mzuserram), &br);
   if (br != sizeof(mzuserram)) {
     f_close(&fp);
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
     return(FR_INT_ERR);      // assertion failed
   }
 
@@ -339,6 +389,8 @@ FRESULT mzreaddump(void)
   f_read(&fp, mzvram, sizeof(mzvram), &br);
   if (br != sizeof(mzvram)) {
     f_close(&fp);
+    rescd=f_chdir("/");
+    rescd=f_chdir(sdcarddir);
     return(FR_INT_ERR);      // assertion failed
   }
 
@@ -353,36 +405,41 @@ FRESULT mzreaddump(void)
   }
 
   // Read z80 state
-  f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
-  if (br != sizeof(mzcpu)) {
-    f_close(&fp);
-    return(FR_INT_ERR);      // assertion failed
-  }
+    f_read(&fp, &mzcpu, sizeof(mzcpu), &br);
+    if (br != sizeof(mzcpu)) {
+      f_close(&fp);
+      rescd=f_chdir("/");
+      rescd=f_chdir(sdcarddir);
+      return(FR_INT_ERR);      // assertion failed
+    }
 
   // Read 8253 state
-  f_read(&fp, &mzpit, sizeof(mzpit), &br);
-  if (br != sizeof(mzpit)) {
-    f_close(&fp);
-    return(FR_INT_ERR);      // assertion failed
-  }
+    f_read(&fp, &mzpit, sizeof(mzpit), &br);
+    if (br != sizeof(mzpit)) {
+      f_close(&fp);
+      rescd=f_chdir("/");
+      rescd=f_chdir(sdcarddir);
+      return(FR_INT_ERR);      // assertion failed
+    }
 
   // Success - close file
   f_close(&fp);
 
   // Write confirmation message to status area
   spos=ascii2emustatus("Memory dump read successfully",spos);
+  // Make sure we're back in the right place on the SD card for normal
+  // read and writes
+  rescd=f_chdir("/");
+  rescd=f_chdir(sdcarddir);
 
   return(FR_OK);
 }
 
-/* Preload a tape file into the header/body memory ready for LOAD */
-int16_t tapeloader(int16_t n)
+/* Select the directory to be used for mzf/mzt/m12 files */
+void dirselect(void)
 {
-  FIL fp;
-  DIR dp;
   FILINFO fno;
   FRESULT res;
-  uint bytesread,bodybytes,dc;
 
   /* If a directory named mz700, mz80a or mz80k is present on the sd card  */
   /* and we are emulating that machine, open this directory. Otherwise,    */
@@ -405,6 +462,19 @@ int16_t tapeloader(int16_t n)
                 break;
     default:    break;
   }
+
+  return;
+}
+
+/* Preload a tape file into the header/body memory ready for LOAD */
+int16_t tapeloader(int16_t n)
+{
+  FIL fp;
+  DIR dp;
+  FILINFO fno;
+  FRESULT res;
+  uint bytesread;
+  int16_t dc;
 
   res=f_opendir(&dp,sdcarddir);	/* Open the correct directory on the sd card */
   res=f_chdir(sdcarddir);       /* Change to the directory for read */

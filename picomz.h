@@ -177,8 +177,7 @@
 
 /* Tape header and maximum body sizes in bytes */
 #define TAPEHEADERSIZE    128 // 128 bytes
-#define TAPEBODYMAXSIZE 73728 // 72 Kbytes - needs to be big for memory dump
-                              // files (64K RAM, plus 4K ROM, plus flags)
+#define TAPEBODYMAXSIZE 61440 // 60 Kbytes - maximum RAM size less 4K monitor
 
 /* Holds global variables relating to the 8253 PIT */
 typedef struct pit8253 {  
@@ -196,16 +195,16 @@ typedef struct pit8253 {
 } pit8253;
 
 /* picomz.c */
-extern z80 mzcpu;
 extern uint8_t mzuserram[URAMSIZE];
 extern uint8_t mzvram[VRAMSIZE];
 extern uint8_t mzbank4[BANK4SIZE];
 extern uint8_t mzbank12[BANK12SIZE];
+extern uint8_t mzemustatus[EMUSSIZE];
 extern bool bank4k;
 extern bool bank12k;
 extern bool bank12klck;
+extern z80 mzcpu;
 extern void sio_write(z80*, uint8_t, uint8_t);
-extern uint8_t mzemustatus[EMUSSIZE];
 /* GPIO pins for pwm sound generation (see 8253.c) */
 extern uint8_t picotone1;
 extern uint8_t picotone2;
@@ -244,6 +243,7 @@ extern uint8_t body[TAPEBODYMAXSIZE];
 extern void reset_tape(void);
 extern uint8_t cread(void);
 extern void cwrite(uint8_t);
+extern void dirselect(void);
 extern FRESULT tapeinit(void);
 extern int16_t tapeloader(int16_t);
 extern FRESULT mzsavedump(void);
@@ -274,7 +274,7 @@ extern void wrE008(uint8_t data);
 /* miscfuncs.c */
 extern void mzpicoled(uint8_t);
 extern uint8_t ascii2emustatus(uint8_t*, uint8_t);
-extern void ascii2mzdisplay(uint8_t*, uint8_t*);
+extern void ascii2mzdisplay(uint8_t*, uint8_t, uint8_t*);
 extern uint8_t mzsafefilechar(uint8_t);
 extern uint8_t mzascii2mzdisplay(uint8_t);
 

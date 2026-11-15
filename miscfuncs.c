@@ -17,15 +17,17 @@ void mzpicoled(uint8_t state)
 /* emulator status area at the specified position. Max   */
 /* length of string output at any time is 1 status line  */
 /* (this is stored in the EMULINEL #define as 40)        */
-/* Function returns the next cell (mod 200) to be filled */
+/* Function returns the next cell number to be filled    */
 /* in the status area. If the string passed is more than */
-/* 40 characters long, then nothing is output and the    */
-/* current output position (epos) is returned.           */
+/* 40 characters long it is truncated.                   */
 uint8_t ascii2emustatus(uint8_t* str, uint8_t epos)
 {
-  uint8_t length,convert[EMULINEL],converted[EMULINEL];
+  uint8_t length;
+  char convert[EMULINEL],converted[EMULINEL];
 
-  length=(strlen(str)<EMULINEL) ? strlen(str):EMULINEL;
+  length=strlen(str);
+  if (length > EMULINEL)
+    length=EMULINEL;
   strncpy(convert,str,length);
 
   // Ensure string is CAPITALS if we're not using the UK/EU ROM
@@ -35,25 +37,27 @@ uint8_t ascii2emustatus(uint8_t* str, uint8_t epos)
         convert[count]-=0x20;   // Convert only lower case to upper case
 
   // Convert ASCII character codes to MZ display character codes
-  ascii2mzdisplay(convert,converted);
+  ascii2mzdisplay(convert,length,converted);
 
   // Write converted string to the emulator status area
   for (uint8_t count=0;count<length;count++)
     mzemustatus[epos++]=converted[count];
 
-  return(epos%EMUSSIZE);
+  return(epos);
 }
 
 /* Convert a standard ASCII string to MZ display string. */
 /* Deals with A-Z, a-z, 0-9, space plus some symbols.    */
 /* Unrecognised ASCII codes are returned as a space.     */
 /* MZ-80K has a yen symbol; MZ-80A does not (UK CGROMs)  */
-void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
+void ascii2mzdisplay(uint8_t* convert, uint8_t length, uint8_t* converted)
 {
   // Set converted to mz display code spaces - 0x00
-  memset(converted,0x00,strlen(convert)); 
+  // Assumes converted is at least EMULINEL (40) characters long and
+  // ideally, exactly 40 characters long.
+  memset(converted,0x00,EMULINEL); 
 
-  for (uint8_t i=0; i<strlen(convert); i++) {
+  for (uint8_t i=0; i<length; i++) {
 
     /* Deal with contiguous sequences of codes first */
 
@@ -83,7 +87,7 @@ void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
         case 0x2d: converted[i]=0x2a;               // -
                    break;
         case 0x2e: converted[i]=0x2e;               // .
-                 break;
+                   break;
         case 0x2f: converted[i]=0x2d;               // /
                    break;
 
@@ -104,7 +108,7 @@ void ascii2mzdisplay(uint8_t* convert, uint8_t* converted)
 
         case 0x5b: converted[i]=0x52;              // [
                    break;
-        case 0x5c: converted[i]=0x59;              // \
+        case 0x5c: converted[i]=0x59;              // backslash
                    break;
         case 0x5d: converted[i]=0x54;              // ]
                    break;
@@ -285,7 +289,7 @@ uint8_t mzascii2mzdisplay(uint8_t ascii)
 
       case 0x5b: displaychar=0x52;   //[
                  break;
-      case 0x5c: displaychar=0x59;   //\
+      case 0x5c: displaychar=0x59;   //backslash
                  break;
       case 0x5d: displaychar=0x54;   //]
                  break;
