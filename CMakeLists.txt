@@ -58,6 +58,7 @@
   PRIVATE
       PICO1=1
       RC2014VGA=1
+      RC2014VGAPICO1=1
   )
 
   target_compile_definitions(picomz-pimoroni

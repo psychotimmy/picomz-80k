@@ -462,8 +462,6 @@ void sd_init(void)
 /* Sharp MZ-80K/A emulator main loop */
 int __no_inline_not_in_flash_func (main) (void) 
 {
-  uint64_t nowtime,exectime;
-  int64_t adjust=0;
 
   stdio_init_all();
 
@@ -500,66 +498,37 @@ int __no_inline_not_in_flash_func (main) (void)
   // Main emulator loop
   for(;;) {
 
-    exectime=get_absolute_time();
     z80_step(&mzcpu);		  // Execute next z80 opcode
 
     // Timing adjustments depend on Pico platform and MZ emulator required
-    // Higher wait values + lower values of adjust = slower speed
-    nowtime=get_absolute_time();
     #ifdef PICO1
     switch (mzmodel) {
-      case MZ700: 
-                 //adjust += mzcpu.cyc-((nowtime-exectime)<<2);
-                 //mzcpu.cyc=0;
-                 //if (adjust > 4096) {
-                 //  busy_wait_us_32(1);
-                 //  adjust=0;
-                 //}
-                 break; 
-     case MZ80K: 
-                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-                 mzcpu.cyc=0;
-                 if (adjust > 4096) {
-                   busy_wait_us_32(1);
-                   adjust=0;
-                 }
-                 break;
-     case MZ80A:
-                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-                 mzcpu.cyc=0;
-                 if (adjust > 2560) {
-                   busy_wait_us_32(1);
-                   adjust=0;
-                 }
-                 break;
+      case MZ700: busy_wait_at_least_cycles(89);
+                  break; 
+      case MZ80K: busy_wait_at_least_cycles(104);
+                  break;
+      case MZ80A: busy_wait_at_least_cycles(93);
+                  break;
+    }
+    #endif
+    #ifdef RC2014VGAPICO1
+    switch (mzmodel) {
+      case MZ700: busy_wait_at_least_cycles(89);
+                  break; 
+      case MZ80K: busy_wait_at_least_cycles(104);
+                  break;
+      case MZ80A: busy_wait_at_least_cycles(93);
+                  break;
     }
     #endif
     #ifdef PICO2
     switch (mzmodel) {
-      case MZ700: 
-                 //adjust += mzcpu.cyc-((nowtime-exectime)<<2);
-                 //mzcpu.cyc=0;
-                 //if (adjust > 4096) {
-                 //  busy_wait_us_32(1);
-                 //  adjust=0;
-                 //}
-                 break; 
-     case MZ80K: 
-                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-                 mzcpu.cyc=0;
-                 if (adjust > 8192) {
-                   busy_wait_us_32(1);
-                   adjust=0;
-                 }
-                 break;
-     case MZ80A:
-                 adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-                 mzcpu.cyc=0;
-                 if (adjust > 8192) {
-                   busy_wait_us_32(1);
-                   adjust=0;
-                 }
-                 break;
+      case MZ700: busy_wait_at_least_cycles(117);
+                  break; 
+      case MZ80K: busy_wait_at_least_cycles(49);
+                  break;
+      case MZ80A: busy_wait_at_least_cycles(44);
+                  break;
     }
     #endif
 
