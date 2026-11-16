@@ -332,6 +332,18 @@ void setclocking(void)
     set_sys_clock_hz(150000000,clocksetok);
   }
   #endif
+  #ifdef RC2014PICO1
+  if (mzmodel==MZ700) {
+    // 250MHz clock
+    set_sys_clock_pll(1500000000,6,1);
+    set_sys_clock_hz(250000000,clocksetok);
+  }
+  else {
+    // MZ-80A and MZ-80K - 150 MHz clock
+    set_sys_clock_pll(1500000000,5,2);
+    set_sys_clock_hz(150000000,clocksetok);
+  }
+  #endif
   #ifdef PICO2
   if (mzmodel==MZ700) {
     // 200MHz clock
@@ -525,7 +537,7 @@ int __no_inline_not_in_flash_func (main) (void)
     switch (mzmodel) {
       case MZ700: busy_wait_at_least_cycles(117);
                   break; 
-      case MZ80K: busy_wait_at_least_cycles(49);
+      case MZ80K: busy_wait_at_least_cycles(46);
                   break;
       case MZ80A: busy_wait_at_least_cycles(44);
                   break;
