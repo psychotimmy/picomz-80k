@@ -525,11 +525,11 @@ int __no_inline_not_in_flash_func (main) (void)
     #endif
     #ifdef RC2014VGA
     switch (mzmodel) {
-      case MZ700: busy_wait_at_least_cycles(89);
+      case MZ700: busy_wait_at_least_cycles(62);
                   break; 
-      case MZ80K: busy_wait_at_least_cycles(93);
+      case MZ80K: busy_wait_at_least_cycles(60);
                   break;
-      case MZ80A: busy_wait_at_least_cycles(104);
+      case MZ80A: busy_wait_at_least_cycles(69);
                   break;
     }
     #endif
