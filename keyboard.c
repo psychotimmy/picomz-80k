@@ -303,7 +303,6 @@ void tuh_hid_umount_cb(uint8_t addr, uint8_t inst)
 void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
-  FRESULT mntres;                         // SD card mount status
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
@@ -736,7 +735,7 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
                  break;
 
       case 0x3b: //USB shift F2 = (re)mount a sd card
-                 mntres=tapeinit();
+                 sd_init();
                  tfwd=true;
                  tfno=0;
                  break;
@@ -920,7 +919,6 @@ void mzhidmapkey80k(uint8_t usbk0, uint8_t modifier)
 void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
-  FRESULT mntres;                         // SD card mount status
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
@@ -1344,7 +1342,7 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
                  break;
 
       case 0x3b: //USB shift F2 = (re)mount a sd card
-                 mntres=tapeinit();
+                 sd_init();
                  tfwd=true;
                  tfno=0;
                  break;
@@ -1468,7 +1466,6 @@ void mzhidmapkey80a(uint8_t usbk0, uint8_t modifier)
 void mzhidmapkey700(uint8_t usbk0, uint8_t modifier) 
 {
   int16_t tftemp;                         // Temporary tape file variable
-  FRESULT mntres;                         // SD card mount status
 
   /* Unshifted USB keys */
   if (modifier == 0x00) {
@@ -1918,7 +1915,7 @@ void mzhidmapkey700(uint8_t usbk0, uint8_t modifier)
                  break;
 
       case 0x3b: //USB shift F2 = (re)mount a sd card
-                 mntres=tapeinit();
+                 sd_init();
                  tfwd=true;
                  tfno=0;
                  break;

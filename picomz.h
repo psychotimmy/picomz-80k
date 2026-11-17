@@ -217,6 +217,8 @@ extern uint8_t mzmodel;
 extern bool ukrom;
 /* Keyboard array */
 extern uint8_t processkey[KBDROWS];
+/* SD card (re)initialisation */
+extern void sd_init(void);
 
 /* sharpcorp.c */
 extern uint8_t mzmonitor700[MROMSIZE];
