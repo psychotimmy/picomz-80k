@@ -332,7 +332,7 @@ void setclocking(void)
     set_sys_clock_hz(150000000,clocksetok);
   }
   #endif
-  #ifdef RC2014PICO1
+  #ifdef RC2014VGA
   if (mzmodel==MZ700) {
     // 250MHz clock
     set_sys_clock_pll(1500000000,6,1);
@@ -523,13 +523,13 @@ int __no_inline_not_in_flash_func (main) (void)
                   break;
     }
     #endif
-    #ifdef RC2014VGAPICO1
+    #ifdef RC2014VGA
     switch (mzmodel) {
       case MZ700: busy_wait_at_least_cycles(89);
                   break; 
-      case MZ80K: busy_wait_at_least_cycles(104);
+      case MZ80K: busy_wait_at_least_cycles(93);
                   break;
-      case MZ80A: busy_wait_at_least_cycles(93);
+      case MZ80A: busy_wait_at_least_cycles(104);
                   break;
     }
     #endif

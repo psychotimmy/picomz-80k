@@ -155,7 +155,7 @@ FRESULT mzsavedump(void)
   uint8_t dumpfile[13] =            // Memory dump filename - Pico 1 / rp2040
   { 'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
-  #ifdef RC2014VGAPICO1
+  #ifdef RC2014VGA
   uint8_t dumpfile[13] =            // Memory dump filename - Pico 1 / rp2040
   { 'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
@@ -301,7 +301,7 @@ FRESULT mzreaddump(void)
   uint8_t dumpfile[13] =            // Memory dump filename - Pico 1 / rp2040
   { 'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
-  #ifdef RC2014VGAPICO1
+  #ifdef RC2014VGA
   uint8_t dumpfile[13] =            // Memory dump filename - Pico 1 / rp2040
   { 'm','z','d','u','m','p','1',' ','.','m','z','d','\0' };
   #endif
