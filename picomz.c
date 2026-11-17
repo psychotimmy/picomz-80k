@@ -186,15 +186,15 @@ uint8_t mem_read(void* unusedv, uint16_t addr)
 
     /* Memory swap - Monitor code goes to 0xC000 */
     if (addr == 0xE00C) {
-      for (uint8_t i=0; i<MROMSIZE; i++)
-        mzuserram[(addr-0x1000)+i]=mzmonitor80a[i];
+      for (uint16_t i=0; i<MROMSIZE; i++)
+        mzuserram[(0xC000-0x1000)+i]=mzmonitor80a[i];
       return(0xFF);
     }
 
     /* Memory swap - 0xC000+4K goes to 0x0000 */
     if (addr == 0xE010) {
-      for (uint8_t i=0; i<MROMSIZE; i++)
-        mzmonitor80a[i]=mzuserram[(addr-0x1000)+i];
+      for (uint16_t i=0; i<MROMSIZE; i++)
+        mzmonitor80a[i]=mzuserram[(0xC000-0x1000)+i];
       return(0xFF);
     }
 
@@ -308,6 +308,8 @@ void getmzmodel(void)
     mzmodel=MZ80A;
   else
     mzmodel=MZ80K;
+
+  return;
 }
 
 void setclocking(void)
@@ -330,6 +332,18 @@ void setclocking(void)
     set_sys_clock_hz(150000000,clocksetok);
   }
   #endif
+  #ifdef RC2014VGA
+  if (mzmodel==MZ700) {
+    // 250MHz clock
+    set_sys_clock_pll(1500000000,6,1);
+    set_sys_clock_hz(250000000,clocksetok);
+  }
+  else {
+    // MZ-80A and MZ-80K - 150 MHz clock
+    set_sys_clock_pll(1500000000,5,2);
+    set_sys_clock_hz(150000000,clocksetok);
+  }
+  #endif
   #ifdef PICO2
   if (mzmodel==MZ700) {
     // 200MHz clock
@@ -337,9 +351,9 @@ void setclocking(void)
     set_sys_clock_hz(200000000,clocksetok);
   }
   else {
-    // MZ-80A and MZ-80K - 125MHz clock
-    set_sys_clock_pll(1500000000,6,2);
-    set_sys_clock_hz(125000000,clocksetok);
+    // MZ-80A and MZ-80K - 100MHz clock
+    set_sys_clock_pll(1500000000,5,3);
+    set_sys_clock_hz(100000000,clocksetok);
   }
   #endif
 
@@ -350,6 +364,7 @@ void setclocking(void)
     mzpicoled(toggle);
   }
 
+  return;
 }
 
 void start_display(void)
@@ -365,16 +380,15 @@ void start_display(void)
   colourpix[7]=PICO_SCANVIDEO_PIXEL_FROM_RGB8(255,255,255);  //white
 
   blackpix=colourpix[0];
-  if ((mzmodel == MZ80K) || (mzmodel == MZ700))
-    whitepix=colourpix[7];
-  else
-    /* MZ-80A has green characters */
-    whitepix=colourpix[4];
+  /* MZ-80A has green characters for the 'white' pixels */
+  whitepix=((mzmodel == MZ80K) || (mzmodel == MZ700)) ? colourpix[7]:
+                                                        colourpix[4];
 
-  // Start VGA output on the second core - takes a while, so do it as early
-  // as possible
+  // Start VGA output on the second core - takes a while, so do it as
+  // early as possible
   multicore_launch_core1(vga_main);
 
+  return;
 }
 
 void memory_init(void)
@@ -392,6 +406,7 @@ void memory_init(void)
   // Initialise mzemustatus area (bottom 40 scanlines)
   memset(mzemustatus,0x00,EMUSSIZE);
 
+  return;
 }
 
 void setpicotone(void)
@@ -428,6 +443,7 @@ void setpicotone(void)
    picotone2=28;
 #endif
 
+   return;
 }
 
 void sd_init(void)
@@ -448,13 +464,16 @@ void sd_init(void)
   busy_wait_ms(2000);
   // Clear the mount message from the status area
   memset(mzemustatus,0x00,EMUSSIZE);
+
+  // Select the directory for mzf/mzt/m12 files
+  dirselect();
+
+  return;
 }
 
 /* Sharp MZ-80K/A emulator main loop */
 int __no_inline_not_in_flash_func (main) (void) 
 {
-  uint64_t nowtime,exectime;
-  int64_t adjust=0;
 
   stdio_init_all();
 
@@ -491,63 +510,38 @@ int __no_inline_not_in_flash_func (main) (void)
   // Main emulator loop
   for(;;) {
 
-    exectime=get_absolute_time();
     z80_step(&mzcpu);		  // Execute next z80 opcode
 
     // Timing adjustments depend on Pico platform and MZ emulator required
-    // Altering adjust if statement: lower values of adjust = slower speed
-    nowtime=get_absolute_time();
     #ifdef PICO1
-    if (mzmodel==MZ700) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<2);
-      mzcpu.cyc=0;
-      if (adjust > 4096) {
-        busy_wait_us_32(1);
-        adjust=0;
-      }
-    } 
-    else if (mzmodel==MZ80K) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 4096) {
-        busy_wait_us_32(64);
-        adjust=0;
-      }
-    } 
-    else {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 2560) {
-        busy_wait_us_32(64);
-        adjust=0;
-      }
+    switch (mzmodel) {
+      case MZ700: busy_wait_at_least_cycles(89);
+                  break; 
+      case MZ80K: busy_wait_at_least_cycles(104);
+                  break;
+      case MZ80A: busy_wait_at_least_cycles(93);
+                  break;
+    }
+    #endif
+    #ifdef RC2014VGA
+    switch (mzmodel) {
+      case MZ700: busy_wait_at_least_cycles(62);
+                  break; 
+      case MZ80K: busy_wait_at_least_cycles(60);
+                  break;
+      case MZ80A: busy_wait_at_least_cycles(69);
+                  break;
     }
     #endif
     #ifdef PICO2
-    if (mzmodel==MZ700) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<2);
-      mzcpu.cyc=0;
-      if (adjust > 2048) {
-        busy_wait_us_32(4);
-        adjust=0;
-      }
-    } 
-    else if (mzmodel==MZ80K) {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 1536) {
-        busy_wait_us_32(32);
-        adjust=0;
-      }
-    } 
-    else {
-      adjust += mzcpu.cyc-((nowtime-exectime)<<1);
-      mzcpu.cyc=0;
-      if (adjust > 2048) {
-        busy_wait_us_32(32);
-        adjust=0;
-      }
-    } 
+    switch (mzmodel) {
+      case MZ700: busy_wait_at_least_cycles(117);
+                  break; 
+      case MZ80K: busy_wait_at_least_cycles(46);
+                  break;
+      case MZ80A: busy_wait_at_least_cycles(44);
+                  break;
+    }
     #endif
 
     tuh_task();                   // Check for new keyboard events

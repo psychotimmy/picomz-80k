@@ -1,7 +1,7 @@
 # Pico MZ 
 ## A Sharp MZ-80K, MZ-80A and MZ-700 Emulator for the Raspberry Pico and Pico 2 Microcontrollers
 
-A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K, MZ-80A and MZ-700. It makes use of a Pimoroni VGA demo base, RC2014 Pi Pico VGA card or the RC2014 RP2040 VGA card. All of the code written by me is AI-free, and I believe that the z80 core and file system libraries I use are as well.
+A Raspberry Pico (RP2040) and Pico 2 (RP2350) implementation of the Sharp MZ-80K, MZ-80A and MZ-700. It makes use of a Pimoroni VGA demo base, RC2014 Pi Pico VGA card or the RC2014 RP2040 VGA card. All of the code written by me is AI-free, and I believe that the z80 core and file system libraries I use are as well. Sadly, the Pico SDK appears to have used some AI tooling as Claude is listed as a contributor.
 
 ## Documentation
 
@@ -55,7 +55,7 @@ To find a file to load from the microSD card, use the F1 key to browse its conte
 
 ## Brief developer notes
 
-Pico MZ version 3.1.1 uses Pico SDK 2.2.0. **Pico SDK 2.3.0 and 2.3.1 are known *not* to work with PicoMZ at the current time.**
+Pico MZ version 3.2.0 uses Pico SDK 2.2.0. **Pico SDK 2.3.0 and 2.3.1 are known *not* to work with PicoMZ at the current time.**
 
 ### Release highlights
 
@@ -93,9 +93,9 @@ and Pico MZ repositories, issue the commands:
 ```   
 Then clone **either** the current release of the Pico MZ repository:
 ```
-   git clone https://github.com/psychotimmy/picomz-80k.git -b 3.1.1
+   git clone https://github.com/psychotimmy/picomz-80k.git -b 3.2.0
 ```
-**or** the latest stable version:
+**or** the current development version:
 ```
    git clone https://github.com/psychotimmy/picomz-80k.git -b main
 ```
@@ -128,4 +128,4 @@ There should now be two (Pico) or one (Pico 2) .uf2 files in your build director
 
 [The Pico MZ](https://z80.timholyoake.uk/the-pico-mz-80k/)
 
-### This README was last updated on 10th October 2026.
+### This README was last updated on 16th November 2026.
